@@ -1,17 +1,25 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import Button from './Button';
 
-interface PanelProps {
+interface NoDetailsProps {
     message: string
 }
-
-function Panel({ message }: PanelProps) {
+/*
+        <>
+        <script>
+        function() {
+            const vscode = acquireVsCodeApi();
+        }()
+        </script>
+        </>
+*/
+function NoDetails({ message }: NoDetailsProps) {
     return (
         <div className='taipy-panel'>
             <span className='taipy-panel-info'>{message}</span>
            <Button></Button>
-        </div>
+            </div>
     );
 }
 
-export default Panel;
+export default NoDetails;

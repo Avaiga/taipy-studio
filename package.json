@@ -12,7 +12,9 @@
   ],
   "activationEvents": [
     "onCommand:taipy.hello",
-    "onView:taipy-config"
+    "onView:taipy-config",
+    "onLanguage:toml",
+    "workspaceContains:**/*.toml"
   ],
   "main": "./dist/taipy.js",
   "contributes": {
@@ -26,7 +28,7 @@
       "activitybar": [
         {
           "id": "taipy-config-panel",
-          "title": "Taipy Configuration",
+          "title": "Taipy Configs",
           "icon": "assets/TaipyLogoBW.svg"
         }
       ]
@@ -34,8 +36,13 @@
     "views": {
       "taipy-config-panel": [
         {
+          "id": "taipy-configs",
+          "name": "Config files"
+        },
+        {
           "id": "taipy-config-datanodes",
-          "name": "Data Nodes"
+          "name": "Data Nodes",
+          "when": "taipy:numberOfConfigFiles>0"
         },
         {
           "id": "taipy-config-auth",
@@ -43,12 +50,18 @@
         },
         {
           "type": "webview",
-          "id": "taipy-config-webview",
-          "name": "WebView",
+          "id": "taipy-config-details",
+          "name": "Details",
           "icon": "assets/TaipyLogoBW.svg"
         }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "taipy-configs",
+        "contents": "No Taipy config files were found."
+      }
+    ]
   },
   "scripts": {
     "build": "npm run tsc -p ./",
@@ -77,6 +90,7 @@
     "webpack-cli": "^4.9.2"
   },
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
     "@vscode/codicons": "^0.0.32",
     "dotenv-webpack": "^7.1.0",
     "module-alias": "^2.2.2",
