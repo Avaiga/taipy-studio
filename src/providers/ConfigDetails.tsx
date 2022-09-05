@@ -1,8 +1,9 @@
 import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
-import { Utils } from "../utils";
+import { getNonce } from "../utils";
 import NoDetails from '../components/NoDetails';
 import DataNodeDetails from '../components/DataNodeDetails';
-import * as ReactDOMServer from "react-dom/server";
+import { renderToString } from "react-dom/server";
+import { hydrate } from "react-dom";
 
 export class ConfigDetailsView implements WebviewViewProvider {
 	private panelContent: JSX.Element;
@@ -36,9 +37,12 @@ export class ConfigDetailsView implements WebviewViewProvider {
 		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 		this._view = webviewView;
 		this._view.webview.onDidReceiveMessage((message) => {
-			switch (message.action) {
+			switch (message.command) {
 				case 'SHOW_WARNING_LOG':
 					window.showWarningMessage(message.data.message);
+					break;
+				case 'action':
+					window.showErrorMessage("Action from webview", message.id, message.msg);
 					break;
 				default:
 					break;
@@ -47,13 +51,14 @@ export class ConfigDetailsView implements WebviewViewProvider {
 	}
 
 	private joinPaths(...pathSegments: string[]): Uri {
-		return Uri.joinPath(this.extensionPath, ...pathSegments)
+		return Uri.joinPath(this.extensionPath, "dist", ...pathSegments)
 	}
 
 	private _getHtmlForWebview(webview: Webview) {
 		// Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
 		// Script to handle user action
 		const scriptUri = webview.asWebviewUri(this.joinPaths("views", "config-panel-provider.js"));
+		const utilsUri = webview.asWebviewUri(this.joinPaths("components", "utils.js"));
 		const constantUri = webview.asWebviewUri(this.joinPaths("constants.js"));
 		// CSS file to handle styling
 		const styleUri = webview.asWebviewUri(this.joinPaths("views", "config-panel.css"));
@@ -62,7 +67,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
 		const codiconsUri = webview.asWebviewUri(this.joinPaths("assets", "codicon.css"));
 
 		// Use a nonce to only allow a specific script to be run.
-		const nonce = Utils.getNonce();
+		const nonce = getNonce();
 		return `<html>
 							<head>
 								<meta charSet="utf-8"/>
@@ -77,9 +82,12 @@ export class ConfigDetailsView implements WebviewViewProvider {
 								<link href="${styleUri}" rel="stylesheet">
 							</head>
 							<body>
-								${ReactDOMServer.renderToString(this.panelContent)}
+								${renderToString(this.panelContent)}
+							  <script nonce="${nonce}" >const exports = {};</script>
 							  <script nonce="${nonce}" type="text/javascript" src="${constantUri}"></script>
 							  <script nonce="${nonce}" src="${scriptUri}"></script>
+							  <script nonce="${nonce}" src="${utilsUri}"></script>
+							  <script nonce="${nonce}" >document.querySelectorAll("button").forEach(elt => !elt.onclick && (elt.onclick = (e) => postActionMessage(e.currentTarget.id)));</script>
 							</body>
             </html>`;
 	}

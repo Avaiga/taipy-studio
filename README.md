@@ -23,11 +23,7 @@ of areas grouped in the **Taipy Configuration** panel.
 
 ## Pre-requisites
 
-Typescript must be installed globally to the transpiler can be run from the Visual Studio
-Code inner terminal windows:
-  ```
-  npm i typescript -g
-  ```
+Node.js
 
 ## Installation
 
@@ -40,8 +36,7 @@ Code inner terminal windows:
 
 - Run a compilation process in the background to watch for code changes:
   ```
-  cd src
-  tsc -watch -p ./
+  tsc -watch 
   ```
 
 ### Notes on debugging:

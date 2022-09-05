@@ -1,18 +1,18 @@
 import { Context } from '../context';
-import * as vscode from 'vscode';
+import { commands, Event, EventEmitter, FileCreateEvent, FileRenameEvent, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from 'vscode';
 
 const configFileExt = ".toml";
 
-class ConfigFileItem extends vscode.TreeItem
+class ConfigFileItem extends TreeItem
 {
-  private uri: vscode.Uri;
+  private uri: Uri;
 
-  public constructor(context: Context, uri: vscode.Uri)
+  public constructor(context: Context, uri: Uri)
   {
-    super("", vscode.TreeItemCollapsibleState.None);
+    super("", TreeItemCollapsibleState.None);
     this.setUri(uri);
   }
-  public setUri(uri: vscode.Uri)
+  public setUri(uri: Uri)
   {
     this.label = uri.path.substring(uri.path.lastIndexOf("/") + 1)
     this.uri = uri;
@@ -22,16 +22,16 @@ class ConfigFileItem extends vscode.TreeItem
       arguments: [uri]
     };
   }
-  public getUri(): vscode.Uri
+  public getUri(): Uri
   {
     return this.uri;
   }
 }
 
-class ConfigFilesProvider implements vscode.TreeDataProvider<ConfigFileItem>
+class ConfigFilesProvider implements TreeDataProvider<ConfigFileItem>
 {
-  private _onDidChangeTreeData: vscode.EventEmitter<ConfigFileItem | undefined> = new vscode.EventEmitter<ConfigFileItem | undefined>();
-	readonly onDidChangeTreeData: vscode.Event<ConfigFileItem | undefined> = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: EventEmitter<ConfigFileItem | undefined> = new EventEmitter<ConfigFileItem | undefined>();
+	readonly onDidChangeTreeData: Event<ConfigFileItem | undefined> = this._onDidChangeTreeData.event;
 
   public items: ConfigFileItem[] = [];
 
@@ -39,7 +39,7 @@ class ConfigFilesProvider implements vscode.TreeDataProvider<ConfigFileItem>
   {
   }
 
-  public getTreeItem(element: ConfigFileItem): vscode.TreeItem
+  public getTreeItem(element: ConfigFileItem): TreeItem
   {
     return element;
   }
@@ -68,23 +68,23 @@ class ConfigFilesProvider implements vscode.TreeDataProvider<ConfigFileItem>
 
 export class ConfigFilesView
 {
-  private view: vscode.TreeView<ConfigFileItem>;
+  private view: TreeView<ConfigFileItem>;
   private dataProvider: ConfigFilesProvider;
 
   constructor(context: Context, id: string)
   {
     this.dataProvider = new ConfigFilesProvider();
-    this.view = vscode.window.createTreeView(id, { treeDataProvider: this.dataProvider });
-    vscode.workspace.onDidCreateFiles(this._onDidCreateFiles, this);
+    this.view = window.createTreeView(id, { treeDataProvider: this.dataProvider });
+    workspace.onDidCreateFiles(this._onDidCreateFiles, this);
     //vscode.workspace.onDidDeleteFiles(this._onDidDeleteFiles, this);
-    vscode.workspace.onDidRenameFiles(this._onDidRenameFiles, this);
+    workspace.onDidRenameFiles(this._onDidRenameFiles, this);
     this.refresh(context);
   }
 
   async refresh(context: Context): Promise<void>
   {
-    let configUris: ConfigFileItem[] = []
-    const uris: vscode.Uri[] = await vscode.workspace.findFiles(`**/*${configFileExt}`, "**/node_modules/**");
+    const configUris: ConfigFileItem[] = []
+    const uris: Uri[] = await workspace.findFiles(`**/*${configFileExt}`, "**/node_modules/**");
     /* TODO
      * Sort and spot duplicates(in different folders)
      * File may have the same name, in different folders.
@@ -97,11 +97,11 @@ export class ConfigFilesView
       configUris.push(new ConfigFileItem(context, uri))
     });
     this.dataProvider.items = configUris;
-    vscode.commands.executeCommand('setContext', 'taipy:numberOfConfigFiles', configUris.length);
+    commands.executeCommand('setContext', 'taipy:numberOfConfigFiles', configUris.length);
     this.dataProvider.treeDataChanged();
   }
 
-  private _onDidCreateFiles(event: vscode.FileCreateEvent): void {
+  private _onDidCreateFiles(event: FileCreateEvent): void {
     /* TODO
     let updateData = false;
     for (let f of event.files) {
@@ -116,13 +116,13 @@ export class ConfigFilesView
     */
   }
 
-  private _onDidRenameFiles(event: vscode.FileRenameEvent): void
+  private _onDidRenameFiles(event: FileRenameEvent): void
   {
     /* TODO
      * Renaming may add or remove config files from lookup
      */
     let updateData = false;
-    for (let f of event.files) {
+    for (const f of event.files) {
       const uriPath = f.oldUri.path
       this.dataProvider.items.forEach(item => {
         if (item.getUri().path == uriPath) {

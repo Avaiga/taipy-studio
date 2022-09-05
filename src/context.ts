@@ -1,37 +1,36 @@
-import * as vscode from "vscode";
+import { commands, ExtensionContext, Uri, window, workspace } from "vscode";
 import { ConfigFilesView } from "./views/ConfigFilesView";
 import { DataNodesProvider } from "./providers/DataNodesProvider";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
-import { Constants } from "./constants";
+import { CONFIG_DETAILS_ID } from "./constants";
 import { parse } from "@iarna/toml";
 
 export class Context {
-  static create(vsContext: vscode.ExtensionContext): void {
+  static create(vsContext: ExtensionContext): void {
     new Context(vsContext);
   }
-  private configFileUri: vscode.Uri | null = null;
+  private configFileUri: Uri | null = null;
   private configContent: object = null;
   private configFilesView: ConfigFilesView;
   private dataNodesProvider: DataNodesProvider;
   private configDetailsView: ConfigDetailsView;
 
-  private constructor(vsContext: vscode.ExtensionContext)
+  private constructor(vsContext: ExtensionContext)
   {
     // Configuration files
     this.configFilesView = new ConfigFilesView(this, "taipy-configs");
-    vscode.commands.registerCommand('taipy.refreshConfigs', () => this.configFilesView.refresh(this));
-    vscode.commands.registerCommand("taipy.selectConfigFile",
-      (uri: vscode.Uri) => this.selectUri(uri));
+    commands.registerCommand('taipy.refreshConfigs', () => this.configFilesView.refresh(this));
+    commands.registerCommand("taipy.selectConfigFile", (uri: Uri) => this.selectUri(uri));
     // Data Nodes
     this.dataNodesProvider = new DataNodesProvider(this);
-    vscode.commands.registerCommand('taipy.refreshDataNodes', () => this.dataNodesProvider.refresh(this));
-    vscode.window.registerTreeDataProvider("taipy-config-datanodes", this.dataNodesProvider);
-    vscode.commands.registerCommand("taipy.selectDataNode",
+    commands.registerCommand('taipy.refreshDataNodes', () => this.dataNodesProvider.refresh(this));
+    window.registerTreeDataProvider("taipy-config-datanodes", this.dataNodesProvider);
+    commands.registerCommand("taipy.selectDataNode",
       (name: string, dataNode: object) => this.selectDataNode(name, dataNode));
     // Details
     this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri, {});
-    vsContext.subscriptions.push(vscode.window.registerWebviewViewProvider(
-      Constants.CONFIG_DETAILS_ID,
+    vsContext.subscriptions.push(window.registerWebviewViewProvider(
+      CONFIG_DETAILS_ID,
       this.configDetailsView
     ));
    }
@@ -40,6 +39,9 @@ export class Context {
   {
     const dataNodes = this.configContent ? this.configContent["DATA_NODE"] : null;
     if (!dataNodes) {
+      if (dataNodes === undefined) {
+        window.showWarningMessage(`Toml file should have a "DATA_NODE" section`)
+      }
       return [];
     }
     const result = [];
@@ -53,15 +55,19 @@ export class Context {
     return result;
   }
 
-  async selectUri(uri: vscode.Uri): Promise<void>
+  async selectUri(uri: Uri): Promise<void>
   {
     if (this.configFileUri == uri) {
       return;
     }
     this.configFileUri = uri;
     if (uri) {
-      const toml = await vscode.workspace.fs.readFile(uri);
-      this.configContent = parse(toml.toString());
+      const toml = await workspace.fs.readFile(uri);
+      try {
+        this.configContent = parse(toml.toString());
+      } catch (e) {
+        window.showWarningMessage("TOML parsing", e.message);
+      }
     }
     this.dataNodesProvider.refresh(this);
   }
