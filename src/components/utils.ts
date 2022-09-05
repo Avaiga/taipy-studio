@@ -8,10 +8,10 @@ declare global {
 let vscodeApi = null;
 
 export const getVsCodeApi = () => {
-    if (vscodeApi) {
-        return vscodeApi;
+    if (!vscodeApi) {
+        vscodeApi = window.acquireVsCodeApi();
     }
-    vscodeApi = window.acquireVsCodeApi();
+    return vscodeApi;
 }
 
 export const postActionMessage = (id: string, msg?: string) => getVsCodeApi().postMessage({command: "action", id: id, msg: msg});
