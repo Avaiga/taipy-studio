@@ -1,23 +1,21 @@
 import * as vscode from "vscode";
-import { ConfigPanelProvider } from "./views/config-panel-provider";
-import { Constants } from "./constants";
+import { Context } from "./context";
 
-export function activate(context: vscode.ExtensionContext) {
-	const rootPath =
-		vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
-			? vscode.workspace.workspaceFolders[0].uri.fsPath
-			: undefined;
-	context.subscriptions.push(vscode.commands.registerCommand(
-		"taipy.hello",    
+export async function activate(vsContext: vscode.ExtensionContext) {
+
+	vsContext.subscriptions.push(vscode.commands.registerCommand(
+		"taipy.hello",
 		() => {
+			const rootPath =
+				vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
+					? vscode.workspace.workspaceFolders[0].uri.fsPath
+					: undefined;
 			vscode.window.showInformationMessage("Hello Taipy!")
 			console.log(`### FLE ###: RootPath=${rootPath}`)
 		}
 	));
-	context.subscriptions.push(vscode.window.registerWebviewViewProvider(
-		Constants.WEBVIEW_PANEL_ID,
-		new ConfigPanelProvider(context?.extensionUri, {}),
-	));
+	vscode.commands.executeCommand('setContext', 'taipy.numberOfConfigs', 0);
+	Context.create(vsContext);
 }
 
 // Extension is deactivated

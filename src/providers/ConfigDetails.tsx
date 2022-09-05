@@ -1,24 +1,34 @@
-import { WebviewViewProvider, WebviewView, Webview, Uri, EventEmitter, window, CommentThreadCollapsibleState} from "vscode";
+import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
 import { Utils } from "../utils";
-import Panel from '../components/Panel';
+import NoDetails from '../components/NoDetails';
+import DataNodeDetails from '../components/DataNodeDetails';
 import * as ReactDOMServer from "react-dom/server";
 
-export class ConfigPanelProvider implements WebviewViewProvider {
+export class ConfigDetailsView implements WebviewViewProvider {
+	private panelContent: JSX.Element;
+
 	constructor(private readonly extensionPath: Uri,
 							private data: any,
-							private _view: any = null) {
-		console.log(`### FLE ###: ConfigPanelProvider constructor`)
+						  private _view: any = null) {
+		this.setEmptyContent()
 	}
-	private onDidChangeTreeData: EventEmitter<any | undefined | null | void> = new EventEmitter<any | undefined | null | void>();
+	
+	setEmptyContent(): void {
+		this.panelContent = (<NoDetails message={"No selected element"}></NoDetails>)
+	}
+
+	setDataNodeContent(name: string, storage_type: string, scope: string): void {
+		this.panelContent =
+			(<DataNodeDetails name={name} storage_type={storage_type} scope={scope}></DataNodeDetails>)
+		this.refresh(null)
+	}
 
 	refresh(context: any): void {
-		this.onDidChangeTreeData.fire(null);
 		this._view.webview.html = this._getHtmlForWebview(this._view?.webview);
 	}
 
 	//called when a view first becomes visible
 	resolveWebviewView(webviewView: WebviewView): void | Thenable<void> {
-		console.log(`### FLE ###: ConfigPanelProvider.resolveWebviewView`)
 		webviewView.webview.options = {
 			enableScripts: true,
 			localResourceRoots: [this.extensionPath],
@@ -53,7 +63,6 @@ export class ConfigPanelProvider implements WebviewViewProvider {
 
 		// Use a nonce to only allow a specific script to be run.
 		const nonce = Utils.getNonce();
-		console.log(`### FLE ### Nonce = ${nonce}`)
 		return `<html>
 							<head>
 								<meta charSet="utf-8"/>
@@ -68,7 +77,7 @@ export class ConfigPanelProvider implements WebviewViewProvider {
 								<link href="${styleUri}" rel="stylesheet">
 							</head>
 							<body>
-								${ReactDOMServer.renderToString((<Panel message={"Taipy Configuration"}></Panel>))}
+								${ReactDOMServer.renderToString(this.panelContent)}
 							  <script nonce="${nonce}" type="text/javascript" src="${constantUri}"></script>
 							  <script nonce="${nonce}" src="${scriptUri}"></script>
 							</body>
