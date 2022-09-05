@@ -42,7 +42,7 @@ export class Context {
     if (!dataNodes) {
       return [];
     }
-    let result = [];
+    const result = [];
     // Sort keys so that 'default' is always the first entry.
     const keys = Object.keys(dataNodes).sort((a, b) =>
       (a === b) ? 0

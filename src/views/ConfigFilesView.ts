@@ -64,11 +64,6 @@ class ConfigFilesProvider implements vscode.TreeDataProvider<ConfigFileItem>
   {
     this._onDidChangeTreeData.fire(undefined);
   }
-
-  public addUri(vscode.Uri uri): void
-  {
-    const item = mew 
-  }
 }
 
 export class ConfigFilesView
@@ -81,7 +76,7 @@ export class ConfigFilesView
     this.dataProvider = new ConfigFilesProvider();
     this.view = vscode.window.createTreeView(id, { treeDataProvider: this.dataProvider });
     vscode.workspace.onDidCreateFiles(this._onDidCreateFiles, this);
-    vscode.workspace.onDidDeleteFiles(this._onDidDeleteFiles, this);
+    //vscode.workspace.onDidDeleteFiles(this._onDidDeleteFiles, this);
     vscode.workspace.onDidRenameFiles(this._onDidRenameFiles, this);
     this.refresh(context);
   }
