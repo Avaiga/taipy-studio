@@ -79,6 +79,7 @@
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
     "@vscode/test-electron": "^2.1.2",
+    "dotenv-webpack": "^7.1.0",
     "electron": "^20.0.3",
     "eslint": "^8.9.0",
     "glob": "^7.2.0",
@@ -92,7 +93,6 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "@vscode/codicons": "^0.0.32",
-    "dotenv-webpack": "^7.1.0",
     "module-alias": "^2.2.2",
     "path": "^0.12.7",
     "react": "^17.0.2",
