@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, Uri, window, workspace } from "vscode";
+import { commands, ExtensionContext, FileSystemWatcher, Uri, window, workspace } from "vscode";
 import { ConfigFilesView } from "./views/ConfigFilesView";
 import { DataNodesProvider } from "./providers/DataNodesProvider";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
@@ -14,6 +14,7 @@ export class Context {
   private configFilesView: ConfigFilesView;
   private dataNodesProvider: DataNodesProvider;
   private configDetailsView: ConfigDetailsView;
+  private fileSystemWatcher: FileSystemWatcher;
 
   private constructor(vsContext: ExtensionContext)
   {
@@ -33,7 +34,23 @@ export class Context {
       CONFIG_DETAILS_ID,
       this.configDetailsView
     ));
+    this.fileSystemWatcher = workspace.createFileSystemWatcher("**/*.toml");
+    const self = this;
+    this.fileSystemWatcher.onDidChange(uri => this.onFileChange(uri));
+    this.fileSystemWatcher.onDidCreate(uri => this.onFileCreateDelete(uri));
+    this.fileSystemWatcher.onDidDelete(uri => this.onFileCreateDelete(uri));
    }
+
+  private async onFileChange(uri: Uri): Promise<void> {
+    if (uri && this.configFileUri?.toString() == uri.toString()) {
+      await this.readConfig(uri);
+      this.dataNodesProvider.refresh(this);
+    }
+  }
+
+  private async onFileCreateDelete(uri: Uri): Promise<void> {
+    this.configFilesView.refresh(this);
+  }
 
   getDataNodes(): object[]
   {
@@ -55,12 +72,7 @@ export class Context {
     return result;
   }
 
-  async selectUri(uri: Uri): Promise<void>
-  {
-    if (this.configFileUri == uri) {
-      return;
-    }
-    this.configFileUri = uri;
+  private async readConfig(uri: Uri): Promise<void> {
     if (uri) {
       const toml = await workspace.fs.readFile(uri);
       try {
@@ -69,6 +81,15 @@ export class Context {
         window.showWarningMessage("TOML parsing", e.message);
       }
     }
+  }
+
+  async selectUri(uri: Uri): Promise<void>
+  {
+    if (this.configFileUri == uri) {
+      return;
+    }
+    this.configFileUri = uri;
+    await this.readConfig(uri);
     this.dataNodesProvider.refresh(this);
   }
 
