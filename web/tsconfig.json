@@ -1,7 +1,7 @@
 /* tsconfig for Web Components Taipy's Visual Studio Code extension */
 {
 	"compilerOptions": {
-		"module": "commonjs",
+		"module": "ESNext",
 		"target": "es6",
 		"outDir": "../dist/web",
 		"lib": [

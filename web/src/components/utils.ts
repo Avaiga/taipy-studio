@@ -3,6 +3,8 @@ type vscodeApiRet = {postMessage: (pl: Record<string, unknown>) => void}
 declare global {
     interface Window {
         acquireVsCodeApi: () => vscodeApiRet;
+        VS_NONCE: string;
+        __webpack_nonce__: string;
     }
 }
 

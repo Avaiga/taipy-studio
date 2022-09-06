@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, lazy, useState, Suspense } from "react";
 import { ViewMessage } from "../../shared/messages";
 import {
   DataNodeDetailsId,
@@ -6,8 +6,11 @@ import {
   NoDetailsId,
   NoDetailsProps,
 } from "../../shared/views";
-import NoDetails from "./components/NoDetails";
-import DataNodeDetails from "./components/DataNodeDetails";
+
+const NoDetails = lazy(() => import("./components/NoDetails"));
+const DataNodeDetails = lazy(() => import("./components/DataNodeDetails"));
+
+const Loading = () => <div>Loading...</div>;
 
 const WebView = () => {
   const [message, setMessage] = useState<ViewMessage>();
@@ -21,17 +24,27 @@ const WebView = () => {
 
   if (message) {
     switch (message.name) {
-        case NoDetailsId:
-          return <NoDetails {...(message.props as NoDetailsProps)} />;
-        case DataNodeDetailsId:
-          return (
+      case NoDetailsId:
+        return (
+          <Suspense fallback={<Loading />}>
+            <NoDetails {...(message.props as NoDetailsProps)} />
+          </Suspense>
+        );
+      case DataNodeDetailsId:
+        return (
+          <Suspense fallback={<Loading />}>
             <DataNodeDetails {...(message.props as DataNodeDetailsProps)} />
-          );
-        default:
-          break;
+          </Suspense>
+        );
+      default:
+        break;
     }
   }
-  return <NoDetails message={"No selected element."} />;
+  return (
+    <Suspense fallback={<Loading />}>
+      <NoDetails message={"No selected element."} />
+    </Suspense>
+  );
 };
 
 export default WebView;

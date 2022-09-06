@@ -73,6 +73,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
 								<meta name="viewport" content="width=device-width, initial-scale=1.0">
 								<link href="${codiconsUri}" rel="stylesheet" />
 								<link href="${styleUri}" rel="stylesheet">
+								<script nonce="${nonce}">window.VS_NONCE="${nonce}";</script>
 								<script nonce="${nonce}" defer type="text/javascript" src="${scriptUri}"></script>
 								</head>
 							<body>

@@ -7,10 +7,10 @@ const path = require('path');
 // @ts-ignore
 const config = {
 
-  entry: './src/index.tsx', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
+  entry: {"taipy-web": "./src/index.tsx"}, // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
   output: { // https://webpack.js.org/configuration/output/
     path: path.resolve(__dirname, '../dist/web'),
-    filename: 'taipy-web.js',
+    filename: '[name].js',
     libraryTarget: 'umd',
   },
   devtool: 'source-map',
