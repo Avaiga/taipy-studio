@@ -9,3 +9,6 @@ export interface DataNodeDetailsProps {
     storage_type: string;
     scope:string;
 }
+
+export const webviewsLibraryDir = "webviews";
+export const webviewsLibraryName = "taipy-webviews.js";

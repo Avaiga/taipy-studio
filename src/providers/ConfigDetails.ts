@@ -1,6 +1,6 @@
 import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
 import { getNonce } from "../utils";
-import { DataNodeDetailsId, NoDetailsId } from "../../shared/views";
+import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
 
 export class ConfigDetailsView implements WebviewViewProvider {
 	private _view: WebviewView;
@@ -46,13 +46,14 @@ export class ConfigDetailsView implements WebviewViewProvider {
 	}
 
 	private joinPaths(...pathSegments: string[]): Uri {
+		// TODO remove dist from production
 		return Uri.joinPath(this.extensionPath, "dist", ...pathSegments)
 	}
 
 	private _getHtmlForWebview(webview: Webview) {
 		// Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
 		// Script to handle user action
-		const scriptUri = webview.asWebviewUri(this.joinPaths("web", "taipy-web.js"));
+		const scriptUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, webviewsLibraryName));
 		// CSS file to handle styling
 		const styleUri = webview.asWebviewUri(this.joinPaths("views", "config-panel.css"));
 

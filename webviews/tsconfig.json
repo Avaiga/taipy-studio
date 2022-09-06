@@ -3,7 +3,7 @@
 	"compilerOptions": {
 		"module": "ESNext",
 		"target": "es6",
-		"outDir": "../dist/web",
+		"outDir": "../dist/webviews",
 		"lib": [
 			"es6",
 			"dom"
