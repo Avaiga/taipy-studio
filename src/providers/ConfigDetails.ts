@@ -1,27 +1,22 @@
 import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
 import { getNonce } from "../utils";
-import NoDetails from '../components/NoDetails';
-import DataNodeDetails from '../components/DataNodeDetails';
-import { renderToString } from "react-dom/server";
-import { hydrate } from "react-dom";
+import { DataNodeDetailsId, NoDetailsId } from "../../shared/views";
 
 export class ConfigDetailsView implements WebviewViewProvider {
-	private panelContent: JSX.Element;
+	private _view: WebviewView;
 
 	constructor(private readonly extensionPath: Uri,
 							private data: any,
-						  private _view: any = null) {
+						  private view: any = null) {
 		this.setEmptyContent()
 	}
 	
 	setEmptyContent(): void {
-		this.panelContent = (<NoDetails message={"No selected element"}></NoDetails>)
+		this._view?.webview.postMessage({name: NoDetailsId, props: {message: "No selected element"}});
 	}
 
 	setDataNodeContent(name: string, storage_type: string, scope: string): void {
-		this.panelContent =
-			(<DataNodeDetails name={name} storage_type={storage_type} scope={scope}></DataNodeDetails>)
-		this.refresh(null)
+		this._view?.webview.postMessage({name: DataNodeDetailsId, props: {name:name, storage_type: storage_type, scope:scope}});
 	}
 
 	refresh(context: any): void {
@@ -57,9 +52,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
 	private _getHtmlForWebview(webview: Webview) {
 		// Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
 		// Script to handle user action
-		const scriptUri = webview.asWebviewUri(this.joinPaths("views", "config-panel-provider.js"));
-		const utilsUri = webview.asWebviewUri(this.joinPaths("components", "utils.js"));
-		const constantUri = webview.asWebviewUri(this.joinPaths("constants.js"));
+		const scriptUri = webview.asWebviewUri(this.joinPaths("web", "taipy-web.js"));
 		// CSS file to handle styling
 		const styleUri = webview.asWebviewUri(this.joinPaths("views", "config-panel.css"));
 
@@ -80,14 +73,10 @@ export class ConfigDetailsView implements WebviewViewProvider {
 								<meta name="viewport" content="width=device-width, initial-scale=1.0">
 								<link href="${codiconsUri}" rel="stylesheet" />
 								<link href="${styleUri}" rel="stylesheet">
-							</head>
+								<script nonce="${nonce}" defer type="text/javascript" src="${scriptUri}"></script>
+								</head>
 							<body>
-								${renderToString(this.panelContent)}
-							  <script nonce="${nonce}" >const exports = {};</script>
-							  <script nonce="${nonce}" type="text/javascript" src="${constantUri}"></script>
-							  <script nonce="${nonce}" src="${scriptUri}"></script>
-							  <script nonce="${nonce}" src="${utilsUri}"></script>
-							  <script nonce="${nonce}" >document.querySelectorAll("button").forEach(elt => !elt.onclick && (elt.onclick = (e) => postActionMessage(e.currentTarget.id)));</script>
+								<div id="taipy-web-root"></div>
 							</body>
             </html>`;
 	}

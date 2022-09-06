@@ -64,17 +64,14 @@
     ]
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -watch",
+    "build": "webpack --mode development",
     "vscode:package": "vsce package",
-    "webpack": "rm -rf ./dist/* && webpack --mode development",
     "package": "rm -rf *.vsix && npm run webpack && vsce package"
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^16.11.57",
-    "@types/react-dom": "^18.0.6",
     "@types/vscode": "^1.64.0",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
@@ -92,8 +89,6 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
-    "@vscode/codicons": "^0.0.32",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "@vscode/codicons": "^0.0.32"
   }
 }

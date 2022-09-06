@@ -23,12 +23,6 @@ const config = {
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: ['.ts', '.js', '.tsx'],
-    alias: {
-      utils: path.resolve(__dirname, './src/utils.ts'),
-      globals: path.resolve(__dirname, './src/globals.ts'),
-      views: path.resolve(__dirname, './src/views/'),
-      components: path.resolve(__dirname, './src/components/'),
-    },
   },
   plugins: [
       // @ts-ignore
@@ -37,15 +31,6 @@ const config = {
     rules: [
       {
         test: /\.ts$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: 'ts-loader'
-          }
-        ]
-      },
-      {
-        test: /\.tsx$/,
         exclude: /node_modules/,
         use: [
           {

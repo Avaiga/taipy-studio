@@ -14,13 +14,14 @@
 			"*": ["*"],
 		},
 		"strict": false,   /* enable all strict type-checking options */
-		"jsx": "react-jsx",
+		// "jsx": "react-jsx",
 		"noUnusedParameters": false,  /* Report errors on unused parameters. */
 		"noEmitHelpers": true,
 		"importHelpers": true,
 	},
 	"include": [
-		"src"
+		"src",
+		"shared",
 	],
 	"exclude": [
 		"node_modules",
