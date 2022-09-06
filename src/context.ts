@@ -1,9 +1,11 @@
 import { commands, ExtensionContext, FileSystemWatcher, Uri, window, workspace } from "vscode";
+import { parse } from "@iarna/toml";
+
 import { ConfigFilesView } from "./views/ConfigFilesView";
 import { DataNodesProvider } from "./providers/DataNodesProvider";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { CONFIG_DETAILS_ID } from "./constants";
-import { parse } from "@iarna/toml";
+import { configFileExt } from "./utils";
 
 export class Context {
   static create(vsContext: ExtensionContext): void {
@@ -34,7 +36,7 @@ export class Context {
       CONFIG_DETAILS_ID,
       this.configDetailsView
     ));
-    this.fileSystemWatcher = workspace.createFileSystemWatcher("**/*.toml");
+    this.fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
     const self = this;
     this.fileSystemWatcher.onDidChange(uri => this.onFileChange(uri));
     this.fileSystemWatcher.onDidCreate(uri => this.onFileCreateDelete(uri));

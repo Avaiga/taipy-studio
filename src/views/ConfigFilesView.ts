@@ -1,7 +1,6 @@
-import { Context } from '../context';
 import { commands, Event, EventEmitter, FileCreateEvent, FileRenameEvent, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from 'vscode';
-
-const configFileExt = ".toml";
+import { Context } from '../context';
+import { configFileExt } from '../utils';
 
 class ConfigFileItem extends TreeItem
 {
