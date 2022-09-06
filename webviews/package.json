@@ -1,0 +1,30 @@
+{
+  "name": "taipy-extension-web",
+  "displayName": "taipy-extension-web",
+  "description": "Components for Visual Studio Code extension for Taipy",
+  "publisher": "Avaiga",
+  "version": "0.0.1",
+  "categories": [
+    "Other"
+  ],
+  "scripts": {
+    "build": "webpack --mode development"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.57",
+    "@types/react-dom": "^18.0.6",
+    "@typescript-eslint/eslint-plugin": "^5.12.1",
+    "@typescript-eslint/parser": "^5.12.1",
+    "dotenv-webpack": "^8.0.1",
+    "eslint": "^8.9.0",
+    "path": "^0.12.7",
+    "ts-loader": "^9.2.6",
+    "typescript": "^4.5.5",
+    "webpack": "^5.69.1",
+    "webpack-cli": "^4.9.2"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

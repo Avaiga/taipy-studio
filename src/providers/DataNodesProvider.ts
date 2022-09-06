@@ -1,10 +1,10 @@
 import { Context } from '../context';
-import * as vscode from 'vscode';
+import { commands, Event, EventEmitter, TreeDataProvider, TreeItem, TreeItemCollapsibleState } from 'vscode';
 
-class DataNodeItem extends vscode.TreeItem {
+class DataNodeItem extends TreeItem {
   private dataNode: object;
   constructor(name: string, dataNode: object) {
-    super(name, vscode.TreeItemCollapsibleState.None);
+    super(name, TreeItemCollapsibleState.None);
     // TODO:Extract info from dataNode (like Scope)
     this.dataNode = dataNode;
     this.command = {
@@ -15,9 +15,9 @@ class DataNodeItem extends vscode.TreeItem {
   }
 }
 
-export class DataNodesProvider implements vscode.TreeDataProvider<DataNodeItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<DataNodeItem | undefined> = new vscode.EventEmitter<DataNodeItem | undefined>();
-  readonly onDidChangeTreeData: vscode.Event<DataNodeItem | undefined> = this._onDidChangeTreeData.event;
+export class DataNodesProvider implements TreeDataProvider<DataNodeItem> {
+  private _onDidChangeTreeData: EventEmitter<DataNodeItem | undefined> = new EventEmitter<DataNodeItem | undefined>();
+  readonly onDidChangeTreeData: Event<DataNodeItem | undefined> = this._onDidChangeTreeData.event;
   private dataNodes: DataNodeItem[] = [];
 
   constructor(context: Context) {
@@ -26,16 +26,13 @@ export class DataNodesProvider implements vscode.TreeDataProvider<DataNodeItem> 
 
   async refresh(context: Context): Promise<void> {
     const dataNodeEntries: object[] = context.getDataNodes();
-    vscode.commands.executeCommand('setContext', 'taipy.numberOfDataNodes', dataNodeEntries.length);
-    let dataNodes: DataNodeItem[] = [];
-    dataNodeEntries.forEach(entry => {
-      dataNodes.push(new DataNodeItem(entry[0], entry));
-    });
+    commands.executeCommand('setContext', 'taipy.numberOfDataNodes', dataNodeEntries.length);
+    const dataNodes: DataNodeItem[] = dataNodeEntries.map(entry => new DataNodeItem(entry[0], entry));
     this.dataNodes = dataNodes;
     this._onDidChangeTreeData.fire(undefined);
   }
 
-  getTreeItem(element: DataNodeItem): vscode.TreeItem {
+  getTreeItem(element: DataNodeItem): TreeItem {
     return element;
   }
 

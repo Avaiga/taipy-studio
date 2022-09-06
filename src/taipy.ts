@@ -1,20 +1,20 @@
-import * as vscode from "vscode";
+import { ExtensionContext, workspace, commands, window } from "vscode";
 import { Context } from "./context";
 
-export async function activate(vsContext: vscode.ExtensionContext) {
+export async function activate(vsContext: ExtensionContext) {
 
-	vsContext.subscriptions.push(vscode.commands.registerCommand(
+	vsContext.subscriptions.push(commands.registerCommand(
 		"taipy.hello",
 		() => {
 			const rootPath =
-				vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
-					? vscode.workspace.workspaceFolders[0].uri.fsPath
+				workspace.workspaceFolders && workspace.workspaceFolders.length > 0
+					? workspace.workspaceFolders[0].uri.fsPath
 					: undefined;
-			vscode.window.showInformationMessage("Hello Taipy!")
+			window.showInformationMessage("Hello Taipy!")
 			console.log(`### FLE ###: RootPath=${rootPath}`)
 		}
 	));
-	vscode.commands.executeCommand('setContext', 'taipy.numberOfConfigs', 0);
+	commands.executeCommand('setContext', 'taipy.numberOfConfigs', 0);
 	Context.create(vsContext);
 }
 

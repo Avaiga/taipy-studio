@@ -1,0 +1,26 @@
+/* tsconfig for Web Components Taipy's Visual Studio Code extension */
+{
+	"compilerOptions": {
+		"module": "ESNext",
+		"target": "es6",
+		"outDir": "../dist/webviews",
+		"lib": [
+			"es6",
+			"dom"
+		],
+		"baseUrl": ".",
+		"sourceMap": true,
+		"strict": true,   /* enable all strict type-checking options */
+		"jsx": "react-jsx",
+		"noUnusedParameters": true,  /* Report errors on unused parameters. */
+		"noEmitHelpers": true,
+		"importHelpers": true,
+	},
+	"include": [
+		"src",
+		"../shared"
+	],
+	"exclude": [
+		"node_modules",
+	]
+}
