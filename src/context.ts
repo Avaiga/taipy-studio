@@ -85,7 +85,7 @@ export class Context {
 
   async selectUri(uri: Uri): Promise<void>
   {
-    if (this.configFileUri == uri) {
+    if (this.configFileUri?.toString() == uri?.toString()) {
       return;
     }
     this.configFileUri = uri;
