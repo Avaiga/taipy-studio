@@ -26,7 +26,7 @@ export class DataNodesProvider implements TreeDataProvider<DataNodeItem> {
 
   async refresh(context: Context): Promise<void> {
     const dataNodeEntries: object[] = context.getDataNodes();
-    commands.executeCommand('setContext', 'taipy.numberOfDataNodes', dataNodeEntries.length);
+    commands.executeCommand('setContext', 'taipy:numberOfDataNodes', dataNodeEntries.length);
     const dataNodes: DataNodeItem[] = dataNodeEntries.map(entry => new DataNodeItem(entry[0], entry));
     this.dataNodes = dataNodes;
     this._onDidChangeTreeData.fire(undefined);

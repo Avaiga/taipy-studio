@@ -1,33 +1,26 @@
-import { commands, Event, EventEmitter, FileCreateEvent, FileRenameEvent, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from 'vscode';
+import { commands, Event, EventEmitter, FileCreateEvent, FileRenameEvent, TreeDataProvider, TreeItem, TreeItemLabel, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from 'vscode';
 import { Context } from '../context';
-import { configFileExt } from '../utils';
+import { lstatSync } from 'fs';
+
+const configFileExt = ".toml";
 
 class ConfigFileItem extends TreeItem
 {
-  private uri: Uri;
-
-  public constructor(context: Context, uri: Uri)
+  public constructor(baseName: string, uri: Uri, path: string, dir: string|null = null)
   {
-    super("", TreeItemCollapsibleState.None);
-    this.setUri(uri);
-  }
-  public setUri(uri: Uri)
-  {
-    this.label = uri.path.substring(uri.path.lastIndexOf("/") + 1)
-    this.uri = uri;
+    super(baseName, TreeItemCollapsibleState.None);
+    this.resourceUri = uri;
+    this.tooltip = path;
     this.command = {
       command: "taipy.selectConfigFile",
       title: "Select file",
       arguments: [uri]
     };
   }
-  public getUri(): Uri
-  {
-    return this.uri;
-  }
 }
 
-class ConfigFilesProvider implements TreeDataProvider<ConfigFileItem>
+class ConfigFilesProvider
+implements TreeDataProvider<ConfigFileItem>
 {
   private _onDidChangeTreeData: EventEmitter<ConfigFileItem | undefined> = new EventEmitter<ConfigFileItem | undefined>();
 	readonly onDidChangeTreeData: Event<ConfigFileItem | undefined> = this._onDidChangeTreeData.event;
@@ -45,18 +38,7 @@ class ConfigFilesProvider implements TreeDataProvider<ConfigFileItem>
 
   public getChildren(element?: ConfigFileItem): Thenable<ConfigFileItem[]>
   {
-    /*
-    if (!this.configUris) {
-      vscode.window.showInformationMessage('No configuration files in empty workspace');
-      return Promise.resolve([]);
-    }
-    */
-
-    if (element) {
-      return Promise.resolve([]);
-    } else {
-      return Promise.resolve(this.items);
-    }
+    return Promise.resolve(element ? [] : this.items);
   }
 
   public treeDataChanged(): void
@@ -65,75 +47,82 @@ class ConfigFilesProvider implements TreeDataProvider<ConfigFileItem>
   }
 }
 
-export class ConfigFilesView
-{
+export class ConfigFilesView {
   private view: TreeView<ConfigFileItem>;
   private dataProvider: ConfigFilesProvider;
+  /* TODO: Timer in place to detect file renaming, that appears
+   *  like file creation followed by file removal.
+   *  The idea is to delay the creation detection to after a removal
+   *  was detected, so we can keep the original file selected, if
+   *  it was.
+   *  That kind of worked, but not always :-(
+  private timeout?: NodeJS.Timer = null;
+  private lastCreatedUri?: Uri = null;
+  */
 
-  constructor(context: Context, id: string)
-  {
+  constructor(context: Context, id: string) {
     this.dataProvider = new ConfigFilesProvider();
     this.view = window.createTreeView(id, { treeDataProvider: this.dataProvider });
-    workspace.onDidCreateFiles(this._onDidCreateFiles, this);
-    //vscode.workspace.onDidDeleteFiles(this._onDidDeleteFiles, this);
-    workspace.onDidRenameFiles(this._onDidRenameFiles, this);
-    this.refresh(context);
+    this.refresh();
   }
 
-  async refresh(context: Context): Promise<void>
+  async refresh(): Promise<void>
   {
-    const configUris: ConfigFileItem[] = []
+    const configItems: ConfigFileItem[] = []
     const uris: Uri[] = await workspace.findFiles(`**/*${configFileExt}`, "**/node_modules/**");
-    /* TODO
-     * Sort and spot duplicates(in different folders)
-     * File may have the same name, in different folders.
-     * Item label will then differ:
-     *   - config.tom        : in root_folder
-     *   - config.tmp (src/) : in root_folder/src
-     * Tooltip may reveal the actual file path (relative to root folder)
-     */
+    const root: string = workspace.workspaceFolders[0].uri.toString();
+    let baseDescs: Record<string, object[]> = {}
     uris.forEach(uri => {
-      configUris.push(new ConfigFileItem(context, uri))
+      let path: string = uri.toString();
+      let lastSepIndex: number = path.lastIndexOf("/");
+      const baseName: string = path.substring(lastSepIndex + 1, path.length - configFileExt.length);
+      // Drop first workspace folder name
+      // TODO: Note that this works properly only when the workspace has
+      // a single folder, and that the configuration files are located
+      // within these folders.
+      const rootFolder: string = workspace.workspaceFolders[0].uri.toString();
+      if (path.startsWith(rootFolder)) {
+        path = path.substring(rootFolder.length);
+      }
+      lastSepIndex = path.lastIndexOf("/")
+      const fileDesc = {
+        uri: uri,
+        label: baseName,
+        path: path,
+        dir: lastSepIndex == -1 ? "" : path.substring(0, lastSepIndex)
+      }
+      if (baseName in baseDescs) {
+        baseDescs[baseName].push(fileDesc)
+      } else {
+        baseDescs[baseName] = [fileDesc]
+      }
+      
     });
-    this.dataProvider.items = configUris;
-    commands.executeCommand('setContext', 'taipy:numberOfConfigFiles', configUris.length);
+    Object.keys(baseDescs).sort().forEach((base: string) => {
+      const desc = baseDescs[base];
+      if (desc.length > 1) {
+        // Find common prefix to all paths for that base
+        const dirs: string[] = desc.map(d => d["dir"]);
+        let prefix: string = dirs[0];
+        dirs.slice(1).forEach((d: string) => {
+          while (prefix && (d.substring(0, prefix.length) != prefix)) {
+            prefix = prefix.substring(0, prefix.length - 1);
+            if (!prefix) {
+              break;
+            }
+          }
+        });
+        const pl: number = prefix.length;
+        desc.forEach(d => {
+          const dir = d['dir'].substring(pl);
+          configItems.push(new ConfigFileItem(base, d['uri'], d['path'], dir))
+        });
+      } else {
+        configItems.push(new ConfigFileItem(base, desc[0]['uri'], desc[0]['path']))
+      }
+    });
+    this.dataProvider.items = configItems;
+    commands.executeCommand('setContext', 'taipy:numberOfConfigFiles', configItems.length);
     this.dataProvider.treeDataChanged();
   }
-
-  private _onDidCreateFiles(event: FileCreateEvent): void {
-    /* TODO
-    let updateData = false;
-    for (let f of event.files) {
-      if (f.path.endsWith(configFileExt)) {
-        this.dataProvider.addUri(f);
-        updateData = true;
-      }
-    }
-    if (updateData) {
-      this.dataProvider.treeDataChanged();
-    }
-    */
-  }
-
-  private _onDidRenameFiles(event: FileRenameEvent): void
-  {
-    /* TODO
-     * Renaming may add or remove config files from lookup
-     */
-    let updateData = false;
-    for (const f of event.files) {
-      const uriPath = f.oldUri.path
-      this.dataProvider.items.forEach(item => {
-        if (item.getUri().path == uriPath) {
-          item.setUri(f.newUri);
-          updateData = true;
-        }
-      });
-    }
-    if (updateData) {
-      this.dataProvider.treeDataChanged();
-    }
-  }
-
 }
-

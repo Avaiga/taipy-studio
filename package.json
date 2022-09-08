@@ -22,6 +22,14 @@
       {
         "command": "taipy.hello",
         "title": "Hello Taipy"
+      },
+      {
+        "command": "taipy.refreshConfigs",
+        "title": "Refresh",
+        "icon": {
+          "light": "assets/light/refresh.svg",
+          "dark": "assets/dark/refresh.svg"
+        }
       }
     ],
     "viewsContainers": {
@@ -60,11 +68,25 @@
       {
         "view": "taipy-configs",
         "contents": "No Taipy config files were found."
+      },
+      {
+        "view": "taipy-config-datanodes",
+        "contents": "No selected configuration, or the configuration has no data nodes."
       }
-    ]
+    ],
+    "menus": {
+        "view/title": [
+          {
+            "command": "taipy.refreshConfigs",
+            "when": "view == taipy-configs",
+            "group": "navigation"
+          }
+      ]
+    }
   },
   "scripts": {
     "build": "webpack --mode development",
+    "watch": "webpack watch --mode development",
     "vscode:package": "vsce package",
     "package": "rm -rf *.vsix && npm run webpack && vsce package"
   },
@@ -83,6 +105,7 @@
     "mocha": "^10.0.0",
     "path": "^0.12.7",
     "ts-loader": "^9.2.6",
+    "tslib": "^2.4.0",
     "typescript": "^4.5.5",
     "webpack": "^5.69.1",
     "webpack-cli": "^4.9.2"

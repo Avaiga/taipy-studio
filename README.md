@@ -21,22 +21,48 @@ This extension makes it possible to configure a Taipy application by providing
 the appropriate settings to a configuration file that is exposed in a series
 of areas grouped in the **Taipy Configuration** panel.
 
-## Pre-requisites
+## Prerequisites
 
-Node.js
+The only prerequisites for building and testing this Visual Studio Code extension
+are Node.js and the `npm` command line interface.
 
-## Installation
+Installers that will install both can be found [here](https://nodejs.org/en/download/).
 
-- Install `npm` modules:
+
+## Installation for development
+
+The extension is made of two separate parts: the VSCode integration part, and
+the views that are facing end users (called web views).
+
+- Install the required `npm` modules for VSCode integration:
   ```
   npm i
   ```
 
+- Install the required `npm` modules for the web views:
+  ```
+  cd webviews
+  npm i
+  ```
+  
+
 ## Debugging
 
-- Run a compilation process in the background to watch for code changes:
+- Build the extension:
   ```
-  tsc -watch 
+  npm run build 
+  ```
+
+- Run a compilation process in the background to watch for code changes in the extension:
+  ```
+  npm run watch 
+  ```
+
+- In another terminal, run a compilation process in the background to watch for code
+  changes in the web views:
+  ```
+  cd webviews
+  npm run watch 
   ```
 
 ### Notes on debugging:
@@ -70,11 +96,12 @@ Node.js
 
 ## Notes on implementation
 
-### Panels
+### Panels and views
 
 - The **Taipy Configuration** window is a sidebar, implemented as a View Container.<br/>
   - Implementation class: `ConfigPanel` (providers/ConfigView.tsx).
   - Identifier: 'taipy-config-panel' (package.json and CONFIG_PANEL_ID in constants.ts).
+
 - The **Config Files** view lets you select or create a new configuration file.<br/>
   - Implementation class: `ConfigFilesView` (providers/ConfigFilesView.tsx).
   - Identifier: 'taipy-config-files' (package.json and CONFIG_FILES_ID in constants.ts).

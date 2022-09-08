@@ -22,7 +22,7 @@ export class Context {
   {
     // Configuration files
     this.configFilesView = new ConfigFilesView(this, "taipy-configs");
-    commands.registerCommand('taipy.refreshConfigs', () => this.configFilesView.refresh(this));
+    commands.registerCommand('taipy.refreshConfigs', () => this.configFilesView.refresh());
     commands.registerCommand("taipy.selectConfigFile", (uri: Uri) => this.selectUri(uri));
     // Data Nodes
     this.dataNodesProvider = new DataNodesProvider(this);
@@ -36,12 +36,13 @@ export class Context {
       CONFIG_DETAILS_ID,
       this.configDetailsView
     ));
+
     this.fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
     const self = this;
     this.fileSystemWatcher.onDidChange(uri => this.onFileChange(uri));
     this.fileSystemWatcher.onDidCreate(uri => this.onFileCreateDelete(uri));
     this.fileSystemWatcher.onDidDelete(uri => this.onFileCreateDelete(uri));
-   }
+  }
 
   private async onFileChange(uri: Uri): Promise<void> {
     if (uri && this.configFileUri?.toString() == uri.toString()) {
@@ -51,16 +52,14 @@ export class Context {
   }
 
   private async onFileCreateDelete(uri: Uri): Promise<void> {
-    this.configFilesView.refresh(this);
+    this.configFilesView.refresh();
   }
 
   getDataNodes(): object[]
   {
     const dataNodes = this.configContent ? this.configContent["DATA_NODE"] : null;
     if (!dataNodes) {
-      if (dataNodes === undefined) {
-        window.showWarningMessage(`Toml file should have a "DATA_NODE" section`)
-      }
+      // window.showWarningMessage(`Toml file should have a "DATA_NODE" section`)
       return [];
     }
     const result = [];
@@ -74,17 +73,6 @@ export class Context {
     return result;
   }
 
-  private async readConfig(uri: Uri): Promise<void> {
-    if (uri) {
-      const toml = await workspace.fs.readFile(uri);
-      try {
-        this.configContent = parse(toml.toString());
-      } catch (e) {
-        window.showWarningMessage("TOML parsing", e.message);
-      }
-    }
-  }
-
   async selectUri(uri: Uri): Promise<void>
   {
     if (this.configFileUri?.toString() == uri?.toString()) {
@@ -95,8 +83,23 @@ export class Context {
     this.dataNodesProvider.refresh(this);
   }
 
-  async selectDataNode(name: string, dataNode: object): Promise<void>
+  private async selectDataNode(name: string, dataNode: object): Promise<void>
   {
     this.configDetailsView.setDataNodeContent(name, dataNode[1]["storage_type"], dataNode[1]["scope"]);
   }
+
+  private async readConfig(uri: Uri): Promise<void> {
+    if (uri) {
+      const toml = await workspace.fs.readFile(uri);
+      try {
+        this.configContent = parse(toml.toString());
+      } catch (e) {
+        window.showWarningMessage("TOML parsing", e.message);
+      }
+    }
+    else {
+      this.configContent = null;
+    }
+  }
+
 } 
