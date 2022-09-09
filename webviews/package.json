@@ -8,7 +8,8 @@
     "Other"
   ],
   "scripts": {
-    "build": "webpack --mode development"
+    "build": "webpack --mode development",
+    "watch": "webpack watch --mode development"
   },
   "devDependencies": {
     "@types/node": "^16.11.57",
