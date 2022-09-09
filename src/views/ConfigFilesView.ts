@@ -1,6 +1,5 @@
-import { commands, Event, EventEmitter, FileCreateEvent, FileRenameEvent, TreeDataProvider, TreeItem, TreeItemLabel, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from 'vscode';
+import { commands, Event, EventEmitter, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from 'vscode';
 import { Context } from '../context';
-import { lstatSync } from 'fs';
 
 const configFileExt = ".toml";
 
@@ -11,6 +10,7 @@ class ConfigFileItem extends TreeItem
     super(baseName, TreeItemCollapsibleState.None);
     this.resourceUri = uri;
     this.tooltip = path;
+    this.description = dir;
     this.command = {
       command: "taipy.selectConfigFile",
       title: "Select file",

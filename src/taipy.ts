@@ -11,7 +11,7 @@ export async function activate(vsContext: ExtensionContext) {
 					? workspace.workspaceFolders[0].uri.fsPath
 					: undefined;
 			window.showInformationMessage("Hello Taipy!")
-			console.log(`### FLE ###: RootPath=${rootPath}`)
+			console.log(`### Info ###: RootPath=${rootPath}`)
 		}
 	));
 	commands.executeCommand('setContext', 'taipy.numberOfConfigs', 0);
