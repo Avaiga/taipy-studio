@@ -1,4 +1,11 @@
-import { commands, ExtensionContext, FileSystemWatcher, Uri, window, workspace } from "vscode";
+import {
+  commands,
+  ExtensionContext,
+  FileSystemWatcher,
+  Uri,
+  window,
+  workspace,
+} from "vscode";
 import { parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
@@ -6,6 +13,8 @@ import { DataNodesProvider } from "./providers/DataNodesProvider";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { CONFIG_DETAILS_ID } from "./constants";
 import { configFileExt } from "./utils";
+
+const dataNodeKeySort = (a: string, b: string) => a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1;
 
 export class Context {
   static create(vsContext: ExtensionContext): void {
@@ -18,30 +27,36 @@ export class Context {
   private configDetailsView: ConfigDetailsView;
   private fileSystemWatcher: FileSystemWatcher;
 
-  private constructor(vsContext: ExtensionContext)
-  {
+  private constructor(vsContext: ExtensionContext) {
     // Configuration files
     this.configFilesView = new ConfigFilesView(this, "taipy-configs");
-    commands.registerCommand('taipy.refreshConfigs', () => this.configFilesView.refresh());
-    commands.registerCommand("taipy.selectConfigFile", (uri: Uri) => this.selectUri(uri));
+    commands.registerCommand("taipy.refreshConfigs", this.configFilesView.refresh, this.configFilesView);
+    commands.registerCommand("taipy.selectConfigFile", this.selectUri, this);
     // Data Nodes
     this.dataNodesProvider = new DataNodesProvider(this);
-    commands.registerCommand('taipy.refreshDataNodes', () => this.dataNodesProvider.refresh(this));
-    window.registerTreeDataProvider("taipy-config-datanodes", this.dataNodesProvider);
-    commands.registerCommand("taipy.selectDataNode",
-      (name: string, dataNode: object) => this.selectDataNode(name, dataNode));
+    commands.registerCommand("taipy.refreshDataNodes", () =>
+      this.dataNodesProvider.refresh(this)
+    );
+    window.registerTreeDataProvider(
+      "taipy-config-datanodes",
+      this.dataNodesProvider
+    );
+    commands.registerCommand("taipy.selectDataNode", this.selectDataNode, this);
     // Details
     this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri, {});
-    vsContext.subscriptions.push(window.registerWebviewViewProvider(
-      CONFIG_DETAILS_ID,
-      this.configDetailsView
-    ));
+    vsContext.subscriptions.push(
+      window.registerWebviewViewProvider(
+        CONFIG_DETAILS_ID,
+        this.configDetailsView
+      )
+    );
 
-    this.fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
-    const self = this;
-    this.fileSystemWatcher.onDidChange(uri => this.onFileChange(uri));
-    this.fileSystemWatcher.onDidCreate(uri => this.onFileCreateDelete(uri));
-    this.fileSystemWatcher.onDidDelete(uri => this.onFileCreateDelete(uri));
+    this.fileSystemWatcher = workspace.createFileSystemWatcher(
+      `**/*${configFileExt}`
+    );
+    this.fileSystemWatcher.onDidChange(this.onFileChange, this);
+    this.fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
+    this.fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
   }
 
   private async onFileChange(uri: Uri): Promise<void> {
@@ -55,26 +70,20 @@ export class Context {
     this.configFilesView.refresh();
   }
 
-  getDataNodes(): object[]
-  {
-    const dataNodes = this.configContent ? this.configContent["DATA_NODE"] : null;
-    if (!dataNodes) {
-      // window.showWarningMessage(`Toml file should have a "DATA_NODE" section`)
-      return [];
-    }
+  getDataNodes(): object[] {
+    const dataNodes = this.configContent
+      ? this.configContent["DATA_NODE"]
+      : null;
     const result = [];
-    // Sort keys so that 'default' is always the first entry.
-    const keys = Object.keys(dataNodes).sort((a, b) =>
-      (a === b) ? 0
-        : ((a === "default") ? -1 : ((b === "default") ? 1 : ((a > b) ? 1 : -1))));
-    keys.forEach(key => {
-      result.push([key, dataNodes[key]])
-    })
+    if (dataNodes) {
+      // Sort keys so that 'default' is always the first entry.
+      const keys = Object.keys(dataNodes).sort(dataNodeKeySort);
+      keys.forEach((key) => result.push([key, dataNodes[key]]));
+    }
     return result;
   }
 
-  async selectUri(uri: Uri): Promise<void>
-  {
+  async selectUri(uri: Uri): Promise<void> {
     if (this.configFileUri?.toString() == uri?.toString()) {
       return;
     }
@@ -83,9 +92,12 @@ export class Context {
     this.dataNodesProvider.refresh(this);
   }
 
-  private async selectDataNode(name: string, dataNode: object): Promise<void>
-  {
-    this.configDetailsView.setDataNodeContent(name, dataNode[1]["storage_type"], dataNode[1]["scope"]);
+  private async selectDataNode(name: string, dataNode: object): Promise<void> {
+    this.configDetailsView.setDataNodeContent(
+      name,
+      dataNode[1]["storage_type"],
+      dataNode[1]["scope"]
+    );
   }
 
   private async readConfig(uri: Uri): Promise<void> {
@@ -96,10 +108,8 @@ export class Context {
       } catch (e) {
         window.showWarningMessage("TOML parsing", e.message);
       }
-    }
-    else {
+    } else {
       this.configContent = null;
     }
   }
-
-} 
+}

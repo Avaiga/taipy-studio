@@ -21,11 +21,11 @@
     "commands": [
       {
         "command": "taipy.hello",
-        "title": "Hello Taipy"
+        "title": "%extension.commands.taipy.hello%"
       },
       {
         "command": "taipy.refreshConfigs",
-        "title": "Refresh",
+        "title": "%extension.commands.taipy.refreshConfigs%",
         "icon": {
           "light": "assets/light/refresh.svg",
           "dark": "assets/dark/refresh.svg"
@@ -36,7 +36,7 @@
       "activitybar": [
         {
           "id": "taipy-config-panel",
-          "title": "Taipy Configs",
+          "title": "%extension.viewsContainers.activitybar.taipy-config-panel%",
           "icon": "assets/TaipyLogoBW.svg"
         }
       ]
@@ -45,21 +45,21 @@
       "taipy-config-panel": [
         {
           "id": "taipy-configs",
-          "name": "Config files"
+          "name": "%extension.views.taipy-config-panel.taipy-configs%"
         },
         {
           "id": "taipy-config-datanodes",
-          "name": "Data Nodes",
+          "name": "%extension.views.taipy-config-panel.taipy-config-datanodes%",
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
           "id": "taipy-config-auth",
-          "name": "Auth"
+          "name": "%extension.views.taipy-config-panel.taipy-config-auth%"
         },
         {
           "type": "webview",
           "id": "taipy-config-details",
-          "name": "Details",
+          "name": "%extension.views.taipy-config-panel.taipy-config-details%",
           "icon": "assets/TaipyLogoBW.svg"
         }
       ]
@@ -67,28 +67,30 @@
     "viewsWelcome": [
       {
         "view": "taipy-configs",
-        "contents": "No Taipy config files were found."
+        "contents": "%extension.viewsWelcome.taipy-configs%"
       },
       {
         "view": "taipy-config-datanodes",
-        "contents": "No selected configuration, or the configuration has no data nodes."
+        "contents": "%extension.viewsWelcome.taipy-config-datanodes%"
       }
     ],
     "menus": {
-        "view/title": [
-          {
-            "command": "taipy.refreshConfigs",
-            "when": "view == taipy-configs",
-            "group": "navigation"
-          }
+      "view/title": [
+        {
+          "command": "taipy.refreshConfigs",
+          "when": "view == taipy-configs",
+          "group": "navigation"
+        }
       ]
     }
   },
   "scripts": {
-    "build": "webpack --mode development",
-    "watch": "webpack watch --mode development",
+    "build-this": "webpack --mode development",
+    "watch-this": "webpack watch --mode development",
     "vscode:package": "vsce package",
-    "package": "rm -rf *.vsix && npm run webpack && vsce package"
+    "package": "rm -rf *.vsix && npm run build && vsce package",
+    "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
+    "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\""
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",
@@ -98,20 +100,22 @@
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
     "@vscode/test-electron": "^2.1.2",
+    "concurrently": "^7.4.0",
     "dotenv-webpack": "^8.0.1",
-    "electron": "^20.0.3",
+    "electron": "^20.1.3",
     "eslint": "^8.9.0",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",
     "path": "^0.12.7",
     "ts-loader": "^9.2.6",
     "tslib": "^2.4.0",
-    "typescript": "^4.5.5",
+    "typescript": "^4.8.3",
     "webpack": "^5.69.1",
     "webpack-cli": "^4.9.2"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
-    "@vscode/codicons": "^0.0.32"
+    "@vscode/codicons": "^0.0.32",
+    "vscode-nls": "^5.2.0"
   }
 }
