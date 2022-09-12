@@ -1,4 +1,5 @@
 import { useEffect, lazy, useState, Suspense } from "react";
+
 import { ViewMessage } from "../../shared/messages";
 import {
   DataNodeDetailsId,
@@ -7,8 +8,8 @@ import {
   NoDetailsProps,
 } from "../../shared/views";
 
-const NoDetails = lazy(() => import("./components/NoDetails"));
-const DataNodeDetails = lazy(() => import("./components/DataNodeDetails"));
+const NoDetails = lazy(() => import(/* webpackChunkName: "NoDetails" */"./components/NoDetails"));
+const DataNodeDetails = lazy(() => import(/* webpackChunkName: "DataNodeDetails" */"./components/DataNodeDetails"));
 
 const Loading = () => <div>Loading...</div>;
 
@@ -17,9 +18,9 @@ const WebView = () => {
 
   useEffect(() => {
     // Manage Post Message reception
-    window.addEventListener("message", (event) => {
-      setMessage(event.data as ViewMessage);
-    });
+    const messageListener = (event: MessageEvent) => setMessage(event.data as ViewMessage);
+    window.addEventListener("message", messageListener);
+    return () => window.removeEventListener("message", messageListener);
   }, []);
 
   if (message) {

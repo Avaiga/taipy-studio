@@ -2,7 +2,6 @@ import { ExtensionContext, workspace, commands, window } from "vscode";
 import { Context } from "./context";
 
 export async function activate(vsContext: ExtensionContext) {
-
 	vsContext.subscriptions.push(commands.registerCommand(
 		"taipy.hello",
 		() => {
