@@ -2,6 +2,7 @@
 'use strict';
 
 const path = require('path');
+const copyPlugin = require("copy-webpack-plugin");
 
 /**@type {import('webpack').Configuration}*/
 // @ts-ignore
@@ -25,7 +26,14 @@ const config = {
     extensions: ['.ts', '.js', '.tsx'],
   },
   plugins: [
-      // @ts-ignore
+      new copyPlugin({
+        patterns: [
+          {
+            from: path.resolve(__dirname, "node_modules/@vscode/codicons/dist"),
+            to: "@vscode/codicons/dist"
+          }
+        ]
+      })
   ],
   module: {
     rules: [
@@ -38,11 +46,6 @@ const config = {
           }
         ]
       },
-      {
-        test: /\.css$/,
-        exclude: /node_modules/,
-        use: [ 'style-loader', 'css-loader']
-      }
     ]
   }
 };

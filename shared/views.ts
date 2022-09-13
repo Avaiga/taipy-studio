@@ -12,3 +12,4 @@ export interface DataNodeDetailsProps {
 
 export const webviewsLibraryDir = "webviews";
 export const webviewsLibraryName = "taipy-webviews.js";
+export const containerId = "taipy-web-root";
