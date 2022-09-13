@@ -1,6 +1,6 @@
 import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
 import { getNonce } from "../utils";
-import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
+import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName, containerId } from "../../shared/views";
 
 export class ConfigDetailsView implements WebviewViewProvider {
 	private _view: WebviewView;
@@ -57,8 +57,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
 		// CSS file to handle styling
 		const styleUri = webview.asWebviewUri(this.joinPaths("views", "config-panel.css"));
 
-		//vscode-icon file from codicon lib
-		const codiconsUri = webview.asWebviewUri(this.joinPaths("assets", "codicon.css"));
+		const codiconsUri = webview.asWebviewUri(this.joinPaths('@vscode/codicons', 'dist', 'codicon.css'));
 
 		// Use a nonce to only allow a specific script to be run.
 		const nonce = getNonce();
@@ -72,13 +71,12 @@ export class ConfigDetailsView implements WebviewViewProvider {
 											style-src ${webview.cspSource} 'unsafe-inline';
 											script-src 'nonce-${nonce}';">             
 								<meta name="viewport" content="width=device-width, initial-scale=1.0">
+								<link href="${styleUri}" rel="stylesheet" />
 								<link href="${codiconsUri}" rel="stylesheet" />
-								<link href="${styleUri}" rel="stylesheet">
-								<script nonce="${nonce}">window.VS_NONCE="${nonce}";</script>
 								<script nonce="${nonce}" defer type="text/javascript" src="${scriptUri}"></script>
 								</head>
 							<body>
-								<div id="taipy-web-root"></div>
+								<div id="${containerId}"></div>
 							</body>
             </html>`;
 	}
