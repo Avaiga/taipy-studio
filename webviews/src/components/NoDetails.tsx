@@ -1,8 +1,5 @@
+import { NoDetailsProps } from "../../../shared/views";
 import Button from "./Button";
-
-interface NoDetailsProps {
-  message: string;
-}
 
 const NoDetails = ({ message }: NoDetailsProps) => {
   return (
@@ -10,7 +7,9 @@ const NoDetails = ({ message }: NoDetailsProps) => {
       <div className="icon">
         <i className="codicon codicon-clippy"></i> clippy
       </div>
-      <span className="taipy-panel-info">{message}</span>
+      <div>
+        <span className="taipy-panel-info">{message}</span>
+      </div>
       <Button></Button>
       <div className="icon">
         <i className="codicon codicon-note"></i> note

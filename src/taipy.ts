@@ -1,5 +1,6 @@
 import { ExtensionContext, workspace, commands, window } from "vscode";
 import { Context } from "./context";
+import { ConfigEditorProvider } from "./editors/ConfigEditor";
 
 export async function activate(vsContext: ExtensionContext) {
 	vsContext.subscriptions.push(commands.registerCommand(
@@ -15,6 +16,8 @@ export async function activate(vsContext: ExtensionContext) {
 	));
 	commands.executeCommand('setContext', 'taipy.numberOfConfigs', 0);
 	Context.create(vsContext);
+	// add editor
+	vsContext.subscriptions.push(ConfigEditorProvider.register(vsContext));
 }
 
 // Extension is deactivated

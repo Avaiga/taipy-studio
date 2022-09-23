@@ -8,13 +8,14 @@ declare global {
     }
 }
 
-let vscodeApi: vscodeApiRet;
+let vsCodeApi: vscodeApiRet;
 
 export const getVsCodeApi = () => {
-    if (!vscodeApi) {
-        vscodeApi = window.acquireVsCodeApi();
+    if (!vsCodeApi) {
+        vsCodeApi = window.acquireVsCodeApi();
     }
-    return vscodeApi;
+    return vsCodeApi;
 }
 
 export const postActionMessage = (id: string, msg?: string) => getVsCodeApi()?.postMessage({command: "action", id: id, msg: msg});
+export const postRefreshMessage = () => getVsCodeApi()?.postMessage({command: "refresh"});

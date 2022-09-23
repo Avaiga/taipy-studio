@@ -29,7 +29,19 @@
         "icon": {
           "light": "assets/light/refresh.svg",
           "dark": "assets/dark/refresh.svg"
-        }
+        }  
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "taipy.config.editor.diagram",
+        "displayName": "%extension.customEditors.taipy-config-editor%",
+        "selector": [
+          {
+            "filenamePattern": "*.toml"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "viewsContainers": {
@@ -90,6 +102,7 @@
     "vscode:package": "vsce package",
     "package": "rm -rf *.vsix && npm run build && vsce package",
     "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
+    "prod": "concurrently -n vscode,webviews \"webpack --mode production\" \"cd webviews && webpack --mode production\"",
     "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\""
   },
   "devDependencies": {

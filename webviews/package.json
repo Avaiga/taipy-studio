@@ -27,7 +27,15 @@
     "webpack-cli": "^4.9.2"
   },
   "dependencies": {
+    "@projectstorm/react-diagrams": "^6.7.4",
+    "fast-deep-equal": "^3.1.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "recursive-diff": "^1.0.8"
+  },
+  "overrides": {
+    "@projectstorm/react-canvas-core": {
+      "react": "$react"
+    }
   }
 }

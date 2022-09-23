@@ -5,7 +5,7 @@ const path = require('path');
 
 /**@type {import('webpack').Configuration}*/
 // @ts-ignore
-const config = {
+const config = (env, argv) => ({
 
   entry: {"taipy-webviews": "./src/index.tsx"}, // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
   output: { // https://webpack.js.org/configuration/output/
@@ -13,7 +13,7 @@ const config = {
     filename: '[name].js',
     libraryTarget: 'umd',
   },
-  devtool: 'source-map',
+  devtool: argv.mode === "development" && 'eval-source-map',
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: ['.ts', '.js', '.tsx'],
@@ -34,5 +34,5 @@ const config = {
       },
     ]
   }
-};
+});
 module.exports = config;
