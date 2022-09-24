@@ -1,4 +1,6 @@
 import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
+import { config, MessageFormat } from "vscode-nls";
+
 import { getCspScriptSrc, getNonce } from "../utils";
 import {
   DataNodeDetailsId,
@@ -7,6 +9,10 @@ import {
   webviewsLibraryName,
   containerId,
 } from "../../shared/views";
+
+const localize = config({ messageFormat: MessageFormat.file })();
+
+const emptyContent = localize("ConfigDetailsView.emptyContent", "No selected element");
 
 export class ConfigDetailsView implements WebviewViewProvider {
   private _view: WebviewView;
@@ -22,7 +28,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
   setEmptyContent(): void {
     this._view?.webview.postMessage({
       name: NoDetailsId,
-      props: { message: "No selected element" },
+      props: { message: emptyContent },
     });
   }
 
@@ -49,6 +55,9 @@ export class ConfigDetailsView implements WebviewViewProvider {
       switch (message.command) {
         case "SHOW_WARNING_LOG":
           window.showWarningMessage(message.data.message);
+          break;
+        case "refresh":
+          this.setEmptyContent();
           break;
         case "action":
           window.showErrorMessage(

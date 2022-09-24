@@ -60,6 +60,9 @@ const Editor = ({ content }: ConfigEditorProps) => {
         }
       }
     }
+
+    oldContent.current = content;
+
     const linkModels: DefaultLinkModel[] = [];
     const nodeModels: Record<string, DefaultNodeModel> = {};
 
@@ -81,7 +84,6 @@ const Editor = ({ content }: ConfigEditorProps) => {
         nodeModels[`${nodeType}.${key}`] = node;
       });
     });
-    oldContent.current = content;
 
     // create links Tasks-dataNodes
     Object.keys(nodeModels)
