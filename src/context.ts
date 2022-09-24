@@ -9,9 +9,10 @@ import {
 import { parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
+import { selectConfigFileCmd, selectDataNodeCmd } from "./commands";
+import { CONFIG_DETAILS_ID } from "./constants";
 import { DataNodesProvider } from "./providers/DataNodesProvider";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
-import { CONFIG_DETAILS_ID } from "./constants";
 import { configFileExt } from "./utils";
 
 const dataNodeKeySort = (a: string, b: string) => a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1;
@@ -31,7 +32,7 @@ export class Context {
     // Configuration files
     this.configFilesView = new ConfigFilesView(this, "taipy-configs");
     commands.registerCommand("taipy.refreshConfigs", this.configFilesView.refresh, this.configFilesView);
-    commands.registerCommand("taipy.selectConfigFile", this.selectUri, this);
+    commands.registerCommand(selectConfigFileCmd, this.selectUri, this);
     // Data Nodes
     this.dataNodesProvider = new DataNodesProvider(this);
     commands.registerCommand("taipy.refreshDataNodes", () =>
@@ -41,7 +42,7 @@ export class Context {
       "taipy-config-datanodes",
       this.dataNodesProvider
     );
-    commands.registerCommand("taipy.selectDataNode", this.selectDataNode, this);
+    commands.registerCommand(selectDataNodeCmd, this.selectDataNode, this);
     // Details
     this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri, {});
     vsContext.subscriptions.push(

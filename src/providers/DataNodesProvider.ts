@@ -8,6 +8,7 @@ import {
 } from "vscode";
 import { config, MessageFormat } from "vscode-nls";
 
+import { selectDataNodeCmd } from "../commands";
 import { Context } from "../context";
 
 const localize = config({ messageFormat: MessageFormat.file })();
@@ -21,7 +22,7 @@ class DataNodeItem extends TreeItem {
     // TODO:Extract info from dataNode (like Scope)
     this.dataNode = dataNode;
     this.command = {
-      command: "taipy.selectDataNode",
+      command: selectDataNodeCmd,
       title: dataNodeItemTitle,
       arguments: [name, dataNode],
     };

@@ -1,13 +1,18 @@
 export const NoDetailsId = "NoDetails";
 export interface NoDetailsProps {
-    message: string;
+  message: string;
 }
 
 export const DataNodeDetailsId = "DataNodeDetails";
 export interface DataNodeDetailsProps {
-    name:string;
-    storage_type: string;
-    scope:string;
+  name: string;
+  storage_type: string;
+  scope: string;
+}
+
+export const ConfigEditorId = "ConfigEditor";
+export interface ConfigEditorProps {
+  content: any;
 }
 
 export const webviewsLibraryDir = "webviews";

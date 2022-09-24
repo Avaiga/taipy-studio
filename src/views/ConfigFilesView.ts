@@ -12,6 +12,7 @@ import {
 } from "vscode";
 import { config, MessageFormat } from "vscode-nls";
 
+import { selectConfigFileCmd } from "../commands";
 import { Context } from "../context";
 
 const localize = config({ messageFormat: MessageFormat.file })();
@@ -31,7 +32,7 @@ class ConfigFileItem extends TreeItem {
     this.tooltip = path;
     this.description = dir;
     this.command = {
-      command: "taipy.selectConfigFile",
+      command: selectConfigFileCmd,
       title: configFileItemTitle,
       arguments: [uri],
     };
@@ -88,12 +89,11 @@ export class ConfigFilesView {
       `**/*${configFileExt}`,
       "**/node_modules/**"
     );
-    const root: string = workspace.workspaceFolders[0].uri.toString();
-    let baseDescs: Record<string, object[]> = {};
+    const baseDescs: Record<string, Record<string, any>[]> = {};
     uris.forEach((uri) => {
-      let path: string = uri.toString();
-      let lastSepIndex: number = path.lastIndexOf("/");
-      const baseName: string = path.substring(
+      let path = uri.toString();
+      let lastSepIndex = path.lastIndexOf("/");
+      const baseName = path.substring(
         lastSepIndex + 1,
         path.length - configFileExt.length
       );
@@ -124,7 +124,7 @@ export class ConfigFilesView {
         const desc = baseDescs[base];
         if (desc.length > 1) {
           // Find common prefix to all paths for that base
-          const dirs: string[] = desc.map((d) => d["dir"]);
+          const dirs: string[] = desc.map((d) => d.dir);
           let prefix: string = dirs[0];
           dirs.slice(1).forEach((d: string) => {
             while (prefix && d.substring(0, prefix.length) != prefix) {
@@ -134,16 +134,16 @@ export class ConfigFilesView {
               }
             }
           });
-          const pl: number = prefix.length;
+          const pl = prefix.length;
           desc.forEach((d) => {
             const dir = d["dir"].substring(pl);
             configItems.push(
-              new ConfigFileItem(base, d["uri"], d["path"], dir)
+              new ConfigFileItem(base, d.uri, d.path, dir)
             );
           });
         } else {
           configItems.push(
-            new ConfigFileItem(base, desc[0]["uri"], desc[0]["path"])
+            new ConfigFileItem(base, desc[0].uri, desc[0].path)
           );
         }
       });

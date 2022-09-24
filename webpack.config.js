@@ -1,39 +1,43 @@
 //@ts-check
-'use strict';
+"use strict";
 
-const path = require('path');
+const path = require("path");
 const copyPlugin = require("copy-webpack-plugin");
 
 /**@type {import('webpack').Configuration}*/
 // @ts-ignore
-const config = {
+const config = (env, argv) => ({
+  target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
 
-  target: 'node', // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
-
-  entry: './src/taipy.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
-  output: { // https://webpack.js.org/configuration/output/
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'taipy.js',
-    libraryTarget: 'commonjs2',
-    devtoolModuleFilenameTemplate: '../[resource-path]'
+  entry: "./src/taipy.ts", // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
+  output: {
+    // https://webpack.js.org/configuration/output/
+    path: path.resolve(__dirname, "dist"),
+    filename: "taipy.js",
+    libraryTarget: "commonjs2",
+    devtoolModuleFilenameTemplate: "../[resource-path]",
   },
-  devtool: 'source-map',
+  devtool: argv === "development" && "source-map",
   externals: {
-    vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: ['.ts', '.js', '.tsx'],
+    extensions: [".ts", ".js", ".tsx"],
   },
   plugins: [
-      new copyPlugin({
-        patterns: [
-          {
-            from: path.resolve(__dirname, "node_modules/@vscode/codicons/dist"),
-            to: "@vscode/codicons/dist"
-          }
-        ]
-      })
+    new copyPlugin({
+      patterns: [
+        {
+          from: path.resolve(__dirname, "node_modules/@vscode/codicons/dist"),
+          to: "@vscode/codicons/dist",
+        },
+        {
+          from: path.resolve(__dirname, "css"),
+          to: "webviews",
+        }
+      ],
+    }),
   ],
   module: {
     rules: [
@@ -42,11 +46,11 @@ const config = {
         exclude: /node_modules/,
         use: [
           {
-            loader: 'ts-loader'
-          }
-        ]
+            loader: "ts-loader",
+          },
+        ],
       },
-    ]
-  }
-};
+    ],
+  },
+});
 module.exports = config;
