@@ -17,5 +17,5 @@ export const getVsCodeApi = () => {
     return vsCodeApi;
 }
 
-export const postActionMessage = (id: string, msg?: string) => getVsCodeApi()?.postMessage({command: "action", id: id, msg: msg});
+export const postActionMessage = (id: string, msg?: string, command = "action") => getVsCodeApi()?.postMessage({command: command, id: id, msg: msg});
 export const postRefreshMessage = () => getVsCodeApi()?.postMessage({command: "refresh"});

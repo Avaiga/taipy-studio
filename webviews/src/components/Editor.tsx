@@ -6,29 +6,32 @@ import createEngine, {
   DagreEngine,
   PathFindingLinkFactory,
   DefaultPortModel,
+  DefaultNodeModelOptions,
+  NodeModelListener,
 } from "@projectstorm/react-diagrams";
 import { CanvasWidget } from "@projectstorm/react-canvas-core";
 import * as deepEqual from "fast-deep-equal";
-import { getDiff, rdiffResult } from "recursive-diff";
+import { getDiff } from "recursive-diff";
 
 import { ConfigEditorProps } from "../../../shared/views";
+import { postActionMessage } from "./utils";
+import { DataNode, Pipeline, Scenario, Task, TaskInputs, TaskOutputs } from "../../../shared/names";
+
+const InPortName = "In";
+const OutPortName = "Out";
 
 const getNodeColor = (nodeType: string) => {
   switch (nodeType) {
-    case "DATA_NODE":
+    case DataNode:
       return "red";
-    case "JOB":
-      return "pink";
-    case "PIPELINE":
+    case Pipeline:
       return "purple";
-    case "SCENARIO":
+    case Scenario:
       return "blue";
-    case "TAIPY":
-      return "yellow";
-    case "TASK":
+    case Task:
       return "green";
     default:
-      return "rgb(192,0,255)";
+      return "pink";
   }
 };
 
@@ -43,115 +46,255 @@ const dagreEngine = new DagreEngine({
   includeLinks: true,
 });
 
-const Editor = ({ content }: ConfigEditorProps) => {
+const getDescendants = (nodeType: string) => {
+  switch (nodeType) {
+    case Scenario:
+      return ["", "pipelines"];
+    case Pipeline:
+      return ["", "tasks"];
+    case Task:
+      return [TaskInputs, TaskOutputs];
+  }
+  return ["", ""];
+};
+const getNodeByName = (model: DiagramModel, name: string) => model.getNodes().filter((n) => (n.getOptions() as DefaultNodeModelOptions).name == name);
+const getParentType = (nodeType: string) => {
+  switch (nodeType) {
+    case DataNode:
+      return Task;
+    case Task:
+      return Pipeline;
+    case Pipeline:
+      return Scenario;
+  }
+  return "";
+};
+const getChildType = (nodeType: string) => {
+  switch (nodeType) {
+    case Task:
+      return DataNode;
+    case Pipeline:
+      return Task;
+    case Scenario:
+      return Pipeline;
+  }
+  return "";
+};
+const getChildTypeWithBackLink = (nodeType: string) => (nodeType == DataNode ? Task : "");
+const getChildrenNodes = (toml: any, parentType: string, filter?: string) => {
+  const nodes = toml[parentType];
+  if (nodes) {
+    const parents = Object.keys(nodes);
+    let childrenKey = "";
+    switch (parentType) {
+      case Task:
+        childrenKey = "outputs";
+        break;
+      case Pipeline:
+        childrenKey = "tasks";
+        break;
+      case Scenario:
+        childrenKey = "pipelines";
+        break;
+    }
+    const res = childrenKey
+      ? parents.reduce((pv, cv) => {
+          pv[cv] = nodes[cv][childrenKey];
+          return pv;
+        }, {} as any)
+      : {};
+    if (filter) {
+      parents.forEach((p) => {
+        if (res[p]) {
+          res[p] = (res[p] as string[]).filter((n) => n == filter);
+        }
+      });
+    }
+    return res;
+  }
+};
+
+const getParentNames = (content: any, ...paths: string[]) => {
+  if (paths.length && paths[0] == Task) {
+    paths.push(TaskInputs);
+    const node = paths.reduce((pv, cv) => {
+      if (pv) {
+        return pv[cv];
+      }
+    }, content);
+    return ((node || []) as string[]).map((p) => DataNode + "." + p);
+  }
+  return [];
+};
+
+const fireNodeSelected = (name: string) => postActionMessage(name, undefined, "select");
+
+const Editor = ({ toml }: ConfigEditorProps) => {
   const [model, setModel] = useState(new DiagramModel());
-  const oldContent = useRef<Record<string, any>>();
+  const oldToml = useRef<Record<string, any>>();
 
   useEffect(() => {
-    if (!content || deepEqual(content, oldContent.current)) {
+    if (!toml || deepEqual(oldToml.current, toml)) {
       return;
     }
-    if (content && oldContent.current) {
-      const diff = getDiff(content, oldContent);
+    if (toml && oldToml.current) {
+      const diff = getDiff(oldToml.current, toml, true);
       // try to be clever ...
-      if (diff.length == 1) {
-        if (diff[0].path[0] == "DATA_NODE" && diff[0].path.length > 1) {
-          const node = model.getNode(diff[0].path[1] as string);
+      if (diff.length == 2) {
+        const ops = diff.map((d) => d.op);
+        const delI = ops.indexOf("delete");
+        const addI = ops.indexOf("add");
+        if (delI > -1 && addI > -1) {
+          const pathLen = diff[addI].path.length;
+          if (pathLen == diff[delI].path.length) {
+            if (diff[addI].path.every((p, i) => i == pathLen - 1 || p == diff[delI].path[i])) {
+              if (diff[addI].path[pathLen - 1] == diff[delI].path[pathLen - 1]) {
+                // Change in links
+              } else {
+                // Change in name
+                const oldNodes = getNodeByName(model, diff[delI].path.join("."));
+                if (oldNodes.length == 1) {
+                  const node = new DefaultNodeModel({
+                    name: diff[addI].path.join("."),
+                    color: getNodeColor(diff[addI].path[0] as string),
+                  });
+                  node.setPosition(oldNodes[0].getPosition());
+                  node.registerListener({ selectionChanged: () => fireNodeSelected(diff[addI].path.join(".")) } as NodeModelListener);
+
+                  const inPort = oldNodes[0].getPort(InPortName);
+                  if (inPort) {
+                    const port = node.addInPort(InPortName);
+                    model
+                      .getLinks()
+                      .filter((l) => l.getTargetPort() === inPort)
+                      .forEach((l) => model.removeLink(l));
+                    const parentType = getParentType(diff[addI].path[0] as string);
+                    const parentNames = [];
+                    if (parentType) {
+                      const nodes = getChildrenNodes(toml, parentType, diff[addI].path[pathLen - 1] as string);
+                      parentNames.push(
+                        ...Object.keys(nodes)
+                          .filter((p) => nodes[p].length)
+                          .map((p) => parentType + "." + p)
+                      );
+                    }
+                    parentNames.push(...getParentNames(toml, ...(diff[addI].path as string[])));
+                    if (parentNames.length) {
+                      parentNames.forEach((p) => {
+                        const pNodes = getNodeByName(model, p);
+                        if (pNodes.length == 1) {
+                          model.addLink((pNodes[0].getPort(OutPortName) as DefaultPortModel).link(port));
+                        }
+                      });
+                    }
+                  }
+
+                  const outPort = oldNodes[0].getPort(OutPortName);
+                  if (outPort) {
+                    const port = node.addOutPort(OutPortName);
+                    const childType = getChildTypeWithBackLink(diff[addI].path[0] as string);
+                    model
+                      .getLinks()
+                      .filter((l) => l.getSourcePort() === outPort)
+                      .forEach((l) => {
+                        if (childType) {
+                          model.removeLink(l);
+                        } else {
+                          l.setSourcePort(port);
+                        }
+                      });
+                    if (childType) {
+                      const children = toml[childType];
+                      if (children) {
+                        const childrenNames: string[] = [];
+                        const nodeName = diff[addI].path[pathLen - 1] as string;
+                        Object.keys(children).filter((t) => {
+                          const inputs = ((children[t][TaskInputs] || []) as string[]).filter((n) => n == nodeName);
+                          if (inputs.length) {
+                            childrenNames.push(t);
+                          }
+                        });
+                        childrenNames.forEach((t) => {
+                          const pNodes = getNodeByName(model, childType + "." + t);
+                          if (pNodes.length == 1) {
+                            model.addLink(port.link(pNodes[0].getPort(InPortName) as DefaultPortModel));
+                          }
+                        });
+                      }
+                    }
+                  }
+                  model.removeNode(oldNodes[0]);
+                  model.addNode(node);
+
+                  oldToml.current = toml;
+                  return;
+                }
+              }
+            }
+          }
         }
       }
     }
 
-    oldContent.current = content;
+    oldToml.current = toml;
 
     const linkModels: DefaultLinkModel[] = [];
     const nodeModels: Record<string, DefaultNodeModel> = {};
 
-    Object.keys(content).forEach((nodeType, tIdx) => {
+    Object.keys(toml).forEach((nodeType, tIdx) => {
       if (nodeType == "TAIPY" || nodeType == "JOB") {
         return;
       }
-      Object.keys(content[nodeType]).forEach((key, nIdx) => {
+      Object.keys(toml[nodeType]).forEach((key, nIdx) => {
         if (key == "default") {
           return;
         }
+        const name = `${nodeType}.${key}`;
         const node = new DefaultNodeModel({
-          name: `${nodeType}.${key}`,
+          name: name,
           color: getNodeColor(nodeType),
         });
         node.setPosition(150, 100 + 100 * tIdx + 10 * nIdx);
-        node.addInPort("In");
-        node.addOutPort("Out");
-        nodeModels[`${nodeType}.${key}`] = node;
+        node.addInPort(InPortName);
+        node.addOutPort(OutPortName);
+        node.registerListener({ selectionChanged: () => fireNodeSelected(name) } as NodeModelListener);
+        nodeModels[name] = node;
       });
     });
 
-    // create links Tasks-dataNodes
-    Object.keys(nodeModels)
-      .filter((key) => key.startsWith("TASK."))
-      .forEach((key) => {
-        (content.TASK[key.substring(5)].inputs || []).forEach(
-          (dnKey: string) => {
-            const node = nodeModels["DATA_NODE." + dnKey];
-            if (node) {
-              linkModels.push(
-                (
-                  node.getPort("Out") as DefaultPortModel
-                ).link<DefaultLinkModel>(
-                  nodeModels[key].getPort("In") as DefaultPortModel
-                )
-              );
+    // create links Tasks-DataNodes, Pipeline-Tasks, Scenario-Pipelines
+    const nodeTypes = [Task, Pipeline, Scenario];
+    Object.keys(nodeModels).forEach((key) => {
+      nodeTypes.forEach((nodeType) => {
+        if (key.startsWith(nodeType + ".")) {
+          const nameLen = nodeType.length + 1;
+          const childType = getChildType(nodeType);
+          if (childType) {
+            const descendants = getDescendants(nodeType);
+            if (descendants[0]) {
+              (toml[nodeType][key.substring(nameLen)][descendants[0]] || []).forEach((dnKey: string) => {
+                const node = nodeModels[childType + "." + dnKey];
+                if (node) {
+                  linkModels.push(
+                    (node.getPort(OutPortName) as DefaultPortModel).link<DefaultLinkModel>(nodeModels[key].getPort(InPortName) as DefaultPortModel)
+                  );
+                }
+              });
+            }
+            if (descendants[1]) {
+              (toml[nodeType][key.substring(nameLen)][descendants[1]] || []).forEach((dnKey: string) => {
+                const node = nodeModels[childType + "." + dnKey];
+                if (node) {
+                  linkModels.push(
+                    (nodeModels[key].getPort(OutPortName) as DefaultPortModel).link<DefaultLinkModel>(node.getPort(InPortName) as DefaultPortModel)
+                  );
+                }
+              });
             }
           }
-        );
-        (content.TASK[key.substring(5)].outputs || []).forEach(
-          (dnKey: string) => {
-            const node = nodeModels["DATA_NODE." + dnKey];
-            if (node) {
-              linkModels.push(
-                (
-                  nodeModels[key].getPort("Out") as DefaultPortModel
-                ).link<DefaultLinkModel>(node.getPort("In") as DefaultPortModel)
-              );
-            }
-          }
-        );
+        }
       });
-
-    // create links Pipeline-Tasks
-    Object.keys(nodeModels)
-      .filter((key) => key.startsWith("PIPELINE."))
-      .forEach((key) => {
-        (content.PIPELINE[key.substring(9)].tasks || []).forEach(
-          (tskKey: string) => {
-            const node = nodeModels["TASK." + tskKey];
-            if (node) {
-              linkModels.push(
-                (
-                  nodeModels[key].getPort("Out") as DefaultPortModel
-                ).link<DefaultLinkModel>(node.getPort("In") as DefaultPortModel)
-              );
-            }
-          }
-        );
-      });
-
-    // create links Scenario-Pipelines
-    Object.keys(nodeModels)
-      .filter((key) => key.startsWith("SCENARIO."))
-      .forEach((key) => {
-        (content.SCENARIO[key.substring(9)].pipelines || []).forEach(
-          (tskKey: string) => {
-            const node = nodeModels["PIPELINE." + tskKey];
-            if (node) {
-              linkModels.push(
-                (
-                  nodeModels[key].getPort("Out") as DefaultPortModel
-                ).link<DefaultLinkModel>(node.getPort("In") as DefaultPortModel)
-              );
-            }
-          }
-        );
-      });
+    });
 
     const dModel = new DiagramModel();
     dModel.addAll(...Object.values(nodeModels), ...linkModels);
@@ -159,13 +302,10 @@ const Editor = ({ content }: ConfigEditorProps) => {
 
     setTimeout(() => {
       dagreEngine.redistribute(dModel);
-      engine
-        .getLinkFactories()
-        .getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME)
-        .calculateRoutingMatrix();
+      engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
       engine.repaintCanvas();
     }, 500);
-  }, [content]);
+  }, [toml]);
 
   engine.setModel(model);
 
