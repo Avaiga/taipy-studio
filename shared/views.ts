@@ -12,7 +12,7 @@ export interface DataNodeDetailsProps {
 
 export const ConfigEditorId = "ConfigEditor";
 export interface ConfigEditorProps {
-  content: any;
+  toml: any;
 }
 
 export const webviewsLibraryDir = "webviews";
