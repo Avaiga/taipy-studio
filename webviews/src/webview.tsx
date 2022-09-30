@@ -31,8 +31,11 @@ const WebView = () => {
 
   useEffect(() => {
     // Manage Post Message reception
-    const messageListener = (event: MessageEvent) =>
-      setMessage(event.data as ViewMessage);
+    const messageListener = (event: MessageEvent) =>{
+      if (event.data.viewId) {
+        setMessage(event.data as ViewMessage);;
+      }
+    }
     window.addEventListener("message", messageListener);
     return () => window.removeEventListener("message", messageListener);
   }, []);
@@ -42,7 +45,7 @@ const WebView = () => {
   }, [message]);
   
   if (message) {
-    switch (message.name) {
+    switch (message.viewId) {
       case NoDetailsId:
         return (
           <Suspense fallback={<Loading />}>

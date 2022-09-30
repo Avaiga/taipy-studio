@@ -15,7 +15,6 @@
       "preLaunchTask": "",
       "request": "launch",
       "type": "extensionHost",
-      "debugWebviews": true,
       "resolveSourceMapLocations": [
         "${workspaceFolder}/dist/**",
         "!**/node_modules/**"

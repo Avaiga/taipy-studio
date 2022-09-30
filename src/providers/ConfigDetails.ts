@@ -8,7 +8,11 @@ import {
   webviewsLibraryDir,
   webviewsLibraryName,
   containerId,
+  DataNodeDetailsProps,
+  NoDetailsProps,
 } from "../../shared/views";
+import { Action, Refresh } from "../../shared/commands";
+import { ViewMessage } from "../../shared/messages";
 
 const localize = config({ messageFormat: MessageFormat.file })();
 
@@ -27,16 +31,16 @@ export class ConfigDetailsView implements WebviewViewProvider {
 
   setEmptyContent(): void {
     this._view?.webview.postMessage({
-      name: NoDetailsId,
-      props: { message: emptyContent },
-    });
+      viewId: NoDetailsId,
+      props: { message: emptyContent } as NoDetailsProps,
+    } as ViewMessage);
   }
 
-  setDataNodeContent(name: string, storage_type: string, scope: string): void {
+  setConfigNodeContent(name: string, storage_type: string, scope: string): void {
     this._view?.webview.postMessage({
-      name: DataNodeDetailsId,
-      props: { name: name, storage_type: storage_type, scope: scope },
-    });
+      viewId: DataNodeDetailsId,
+      props: { name: name, storage_type: storage_type, scope: scope } as DataNodeDetailsProps,
+    } as ViewMessage);
   }
 
   refresh(context: any): void {
@@ -56,10 +60,10 @@ export class ConfigDetailsView implements WebviewViewProvider {
         case "SHOW_WARNING_LOG":
           window.showWarningMessage(message.data.message);
           break;
-        case "refresh":
+        case Refresh:
           this.setEmptyContent();
           break;
-        case "action":
+        case Action:
           window.showErrorMessage(
             "Action from webview",
             message.id,
@@ -85,7 +89,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
     );
     // CSS file to handle styling
     const styleUri = webview.asWebviewUri(
-      this.joinPaths("views", "config-panel.css")
+      this.joinPaths(webviewsLibraryDir, "config-panel.css")
     );
 
     const codiconsUri = webview.asWebviewUri(

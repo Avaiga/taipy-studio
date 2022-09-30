@@ -13,7 +13,7 @@ const config = (env, argv) => ({
   output: {
     // https://webpack.js.org/configuration/output/
     path: path.resolve(__dirname, "dist"),
-    filename: "taipy.js",
+    filename: "taipy-studio.js",
     libraryTarget: "commonjs2",
     devtoolModuleFilenameTemplate: "../[resource-path]",
   },
@@ -23,7 +23,8 @@ const config = (env, argv) => ({
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: [".ts", ".js", ".tsx"],
+    mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
+    extensions: [".ts", ".js"],
   },
   plugins: [
     new copyPlugin({

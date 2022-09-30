@@ -1,3 +1,4 @@
+import { DataNode } from "shared/names";
 
 export const ELEMENT_IDS = {
     TRIGGER_MESSAGE_BUTTON: "trigger-show-message-button"

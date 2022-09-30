@@ -1,6 +1,6 @@
 {
-  "name": "taipy-extension-web",
-  "displayName": "taipy-extension-web",
+  "name": "taipy-studio-webviews",
+  "displayName": "taipy-studio-webviews",
   "description": "Components for Visual Studio Code extension for Taipy",
   "publisher": "Avaiga",
   "version": "0.0.1",

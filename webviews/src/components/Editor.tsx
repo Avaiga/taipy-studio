@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import createEngine, {
   DefaultNodeModel,
   DefaultLinkModel,
@@ -8,14 +8,17 @@ import createEngine, {
   DefaultPortModel,
   DefaultNodeModelOptions,
   NodeModelListener,
+  LinkModel,
 } from "@projectstorm/react-diagrams";
 import { CanvasWidget } from "@projectstorm/react-canvas-core";
 import * as deepEqual from "fast-deep-equal";
 import { getDiff } from "recursive-diff";
 
-import { ConfigEditorProps } from "../../../shared/views";
-import { postActionMessage } from "./utils";
+import { ConfigEditorProps, perspectiveRootId } from "../../../shared/views";
+import { postActionMessage, postPositionsMessage } from "./utils";
 import { DataNode, Pipeline, Scenario, Task, TaskInputs, TaskOutputs } from "../../../shared/names";
+import { Relayout, Select } from "../../../shared/commands";
+import { Positions } from "../../../shared/messages";
 
 const InPortName = "In";
 const OutPortName = "Out";
@@ -23,16 +26,27 @@ const OutPortName = "Out";
 const getNodeColor = (nodeType: string) => {
   switch (nodeType) {
     case DataNode:
-      return "red";
-    case Pipeline:
-      return "purple";
-    case Scenario:
-      return "blue";
+      if (window.taipyConfig?.colors?.datanode) {
+        return window.taipyConfig.colors.datanode;
+      }
+      break;
     case Task:
-      return "green";
-    default:
-      return "pink";
+      if (window.taipyConfig?.colors?.task) {
+        return window.taipyConfig.colors.task;
+      }
+      break;
+    case Pipeline:
+      if (window.taipyConfig?.colors?.pipeline) {
+        return window.taipyConfig.colors.pipeline;
+      }
+      break;
+    case Scenario:
+      if (window.taipyConfig?.colors?.scenario) {
+        return window.taipyConfig.colors.scenario;
+      }
+      break;
   }
+  return "pink";
 };
 
 const engine = createEngine();
@@ -46,7 +60,21 @@ const dagreEngine = new DagreEngine({
   includeLinks: true,
 });
 
-const getDescendants = (nodeType: string) => {
+export const getChildType = (nodeType: string) => {
+  switch (nodeType) {
+    case Task:
+      return DataNode;
+    case Pipeline:
+      return Task;
+    case Scenario:
+      return Pipeline;
+  }
+  return "";
+};
+
+export const getChildTypeWithBackLink = (nodeType: string) => (nodeType == DataNode ? Task : "");
+
+export const getDescendants = (nodeType: string) => {
   switch (nodeType) {
     case Scenario:
       return ["", "pipelines"];
@@ -57,6 +85,7 @@ const getDescendants = (nodeType: string) => {
   }
   return ["", ""];
 };
+
 const getNodeByName = (model: DiagramModel, name: string) => model.getNodes().filter((n) => (n.getOptions() as DefaultNodeModelOptions).name == name);
 const getParentType = (nodeType: string) => {
   switch (nodeType) {
@@ -69,18 +98,7 @@ const getParentType = (nodeType: string) => {
   }
   return "";
 };
-const getChildType = (nodeType: string) => {
-  switch (nodeType) {
-    case Task:
-      return DataNode;
-    case Pipeline:
-      return Task;
-    case Scenario:
-      return Pipeline;
-  }
-  return "";
-};
-const getChildTypeWithBackLink = (nodeType: string) => (nodeType == DataNode ? Task : "");
+const getParentLinkKey = (nodeType: string) => (nodeType == Task ? TaskInputs : "");
 const getChildrenNodes = (toml: any, parentType: string, filter?: string) => {
   const nodes = toml[parentType];
   if (nodes) {
@@ -113,7 +131,6 @@ const getChildrenNodes = (toml: any, parentType: string, filter?: string) => {
     return res;
   }
 };
-
 const getParentNames = (content: any, ...paths: string[]) => {
   if (paths.length && paths[0] == Task) {
     paths.push(TaskInputs);
@@ -127,17 +144,55 @@ const getParentNames = (content: any, ...paths: string[]) => {
   return [];
 };
 
-const fireNodeSelected = (name: string) => postActionMessage(name, undefined, "select");
+const getLinkName = (link: LinkModel) =>
+  "LINK." +
+  (link.getSourcePort().getNode() as DefaultNodeModel).getOptions().name +
+  "." +
+  (link.getTargetPort().getNode() as DefaultNodeModel).getOptions().name;
 
-const Editor = ({ toml }: ConfigEditorProps) => {
+const fireNodeSelected = (nodeType: string, name: string) => postActionMessage(nodeType, name, Select);
+const cachePositions = (model: DiagramModel) => {
+  const pos = model.getNodes().reduce((ps, node) => {
+    const pNode = node as DefaultNodeModel;
+    const nodeName = (node as DefaultNodeModel).getOptions().name;
+    const pos = pNode.getPosition();
+    if (nodeName && pos) {
+      ps[nodeName] = [[pos.x, pos.y]];
+    }
+    return ps;
+  }, {} as Positions);
+  const posL = model.getLinks().reduce((ps, link) => {
+    const linkName = getLinkName(link);
+    const points = link.getPoints();
+    if (linkName && points) {
+      ps[linkName] = points.reduce((a, p) => {
+        a.push([p.getPosition().x, p.getPosition().y]);
+        return a;
+      }, [] as Array<[number, number]>);
+    }
+    return ps;
+  }, pos);
+  postPositionsMessage(posL);
+};
+const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
   const [model, setModel] = useState(new DiagramModel());
   const oldToml = useRef<Record<string, any>>();
+  const oldPerspId = useRef<string>();
+
+  // @ts-ignore
+  const relayout = useCallback((evt: any, dModel?: DiagramModel) => {
+    dModel = dModel || model;
+    dagreEngine.redistribute(dModel);
+    engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
+    engine.repaintCanvas();
+    cachePositions(dModel);
+  }, [model]);
 
   useEffect(() => {
-    if (!toml || deepEqual(oldToml.current, toml)) {
+    if (!toml || (perspectiveId == oldPerspId.current && deepEqual(oldToml.current, toml))) {
       return;
     }
-    if (toml && oldToml.current) {
+    if (toml && oldToml.current && perspectiveId == oldPerspId.current) {
       const diff = getDiff(oldToml.current, toml, true);
       // try to be clever ...
       if (diff.length == 2) {
@@ -159,7 +214,9 @@ const Editor = ({ toml }: ConfigEditorProps) => {
                     color: getNodeColor(diff[addI].path[0] as string),
                   });
                   node.setPosition(oldNodes[0].getPosition());
-                  node.registerListener({ selectionChanged: () => fireNodeSelected(diff[addI].path.join(".")) } as NodeModelListener);
+                  node.registerListener({
+                    selectionChanged: () => fireNodeSelected(diff[addI].path[0] as string, diff[addI].path[pathLen - 1] as string),
+                  } as NodeModelListener);
 
                   const inPort = oldNodes[0].getPort(InPortName);
                   if (inPort) {
@@ -236,7 +293,53 @@ const Editor = ({ toml }: ConfigEditorProps) => {
       }
     }
 
+    if (perspectiveId != perspectiveRootId) {
+      let [nodeType, nodeName] = perspectiveId.split(".");
+      const res: any = {};
+      const queue: string[] = [];
+      const doneNodes: Set<string> = new Set();
+      while (true) {
+        if (!nodeType || !nodeName) {
+          break;
+        }
+        if (!doneNodes.has(nodeType + "." + nodeName)) {
+          doneNodes.add(nodeType + "." + nodeName);
+          const node = toml[nodeType] && toml[nodeType][nodeName];
+          if (node) {
+            res[nodeType] = res[nodeType] || {};
+            res[nodeType][nodeName] = node;
+            const childType = getChildType(nodeType);
+            if (childType) {
+              getDescendants(nodeType).forEach(
+                (k) =>
+                  k &&
+                  node[k] &&
+                  (node[k] as string[]).forEach((n) => {
+                    queue.push(childType + "." + n);
+                  })
+              );
+            }
+            const childType2 = getChildTypeWithBackLink(nodeType);
+            const linkKey = getParentLinkKey(childType2);
+            if (childType2 && linkKey) {
+              Object.keys(toml[childType2]).forEach((k) => {
+                if (((toml[childType2][k][linkKey] || []) as string[]).some((n) => n == nodeName)) {
+                  queue.push(childType2 + "." + k);
+                }
+              });
+            }
+          }
+        }
+        [nodeType, nodeName] = (queue.shift() || "").split(".");
+      }
+      delete res[perspectiveId.split(".")[0]];
+      if (Object.keys(res).length) {
+        toml = res;
+      }
+    }
+
     oldToml.current = toml;
+    oldPerspId.current = perspectiveId;
 
     const linkModels: DefaultLinkModel[] = [];
     const nodeModels: Record<string, DefaultNodeModel> = {};
@@ -257,7 +360,7 @@ const Editor = ({ toml }: ConfigEditorProps) => {
         node.setPosition(150, 100 + 100 * tIdx + 10 * nIdx);
         node.addInPort(InPortName);
         node.addOutPort(OutPortName);
-        node.registerListener({ selectionChanged: () => fireNodeSelected(name) } as NodeModelListener);
+        node.registerListener({ selectionChanged: () => fireNodeSelected(nodeType, key) } as NodeModelListener);
         nodeModels[name] = node;
       });
     });
@@ -300,16 +403,44 @@ const Editor = ({ toml }: ConfigEditorProps) => {
     dModel.addAll(...Object.values(nodeModels), ...linkModels);
     setModel(dModel);
 
-    setTimeout(() => {
-      dagreEngine.redistribute(dModel);
-      engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
-      engine.repaintCanvas();
-    }, 500);
-  }, [toml]);
+    if (positions && Object.keys(positions).length) {
+      dModel.getNodes().forEach((node) => {
+        const dNode = node as DefaultNodeModel;
+        const nodeName = dNode.getOptions().name;
+        if (nodeName) {
+          const pos = positions[nodeName];
+          if (pos && Array.isArray(pos[0])) {
+            dNode.setPosition(pos[0][0], pos[0][1]);
+          }
+        }
+      });
+      dModel.getLinks().forEach((link) => {
+        const linkName = getLinkName(link);
+        if (linkName) {
+          const pos = positions[linkName];
+          if (pos) {
+            link.setPoints(pos.map((p) => link.point(p[0], p[1])));
+          }
+        }
+      });
+    } else {
+      setTimeout(() => {
+        relayout(undefined, dModel);
+      }, 500);
+    }
+  }, [toml, positions]);
 
   engine.setModel(model);
 
-  return <CanvasWidget engine={engine} className="diagram-root" />;
+  return (
+    <div className="diagram-root">
+      <div className="diagram-buttons icon" title="re-layout" onClick={relayout}>
+          <i className="codicon codicon-layout"></i>
+      </div>
+      <div>{perspectiveId != perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>
+      <CanvasWidget engine={engine} className="diagram-widget" />
+    </div>
+  );
 };
 
 export default Editor;
