@@ -37,6 +37,11 @@
         "command": "taipy.show.perpective",
         "title": "%extension.commands.taipy.show.perpective%",
         "icon": "${type-hierarchy}"
+      },
+      {
+        "command": "taipy.show.file.perpective",
+        "title": "%extension.commands.taipy.show.perpective%",
+        "icon": "${type-hierarchy}"
       }
     ],
     "customEditors": [
@@ -133,6 +138,10 @@
         {
           "command": "taipy.show.perpective",
           "when": "view == taipy-config-pipelines || view == taipy-config-scenarii"
+        },
+        {
+          "command": "taipy.show.file.perpective",
+          "when": "view == taipy-configs"
         }
       ]
     },

@@ -2,12 +2,12 @@ import { commands, ExtensionContext, FileSystemWatcher, Range, TextEditorRevealT
 import { parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
-import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd, showPerspectiveEditorCmd } from "./commands";
+import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
 import { CONFIG_DETAILS_ID } from "./constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { configFileExt } from "./utils";
-import { ConfigNode, ConfigNodesProvider, DataNodeItem, PipelineItem, ScenarioItem, TaskItem } from "./providers/ConfigNodesProvider";
-import { PerspectiveContentProvider, PerspectiveScheme, getPerspectiveUri } from "./contentProviders/PerpectiveContentProvider";
+import { ConfigItem, ConfigNodesProvider, DataNodeItem, PipelineItem, ScenarioItem, TaskItem } from "./providers/ConfigNodesProvider";
+import { PerspectiveContentProvider, PerspectiveScheme, getPerspectiveUri, isUriEqual, getOriginalUri } from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
 
 const configNodeKeySort = (a: string, b: string) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
@@ -19,7 +19,7 @@ export class Context {
   private configFileUri: Uri | null = null;
   private configContent: object = null;
   private configFilesView: ConfigFilesView;
-  private treeProviders: ConfigNodesProvider<TreeItem & ConfigNode>[] = [];
+  private treeProviders: ConfigNodesProvider<ConfigItem>[] = [];
   private treeViews: TreeView<TreeItem>[] = [];
   private configDetailsView: ConfigDetailsView;
   private fileSystemWatcher: FileSystemWatcher;
@@ -32,27 +32,28 @@ export class Context {
     // global Commands
     commands.registerCommand(selectConfigNodeCmd, this.selectConfigNode, this);
     commands.registerCommand(revealConfigNodeCmd, this.revealConfigNode, this);
+    commands.registerCommand("taipy.show.file.perpective", this.showFilePerspective, this);
     commands.registerCommand("taipy.show.perpective", this.showPerspective, this);
     // Perspective Provider
     vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, new PerspectiveContentProvider()));
     // Data Nodes
     const datanodesProvider = new ConfigNodesProvider(this, DataNodeItem);
-    commands.registerCommand("taipy.refreshDataNodes", () => datanodesProvider.refresh(this), this);
+    commands.registerCommand("taipy.refreshDataNodes", () => datanodesProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(datanodesProvider);
     this.treeViews.push(window.createTreeView("taipy-config-datanodes", { treeDataProvider: datanodesProvider }));
     // Task
     const tasksProvider = new ConfigNodesProvider(this, TaskItem);
-    commands.registerCommand("taipy.refreshTasks", () => tasksProvider.refresh(this), this);
+    commands.registerCommand("taipy.refreshTasks", () => tasksProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(tasksProvider);
     this.treeViews.push(window.createTreeView("taipy-config-tasks", { treeDataProvider: tasksProvider }));
     // Pipelines
     const pipelinesProvider = new ConfigNodesProvider(this, PipelineItem);
-    commands.registerCommand("taipy.refreshPipelines", () => pipelinesProvider.refresh(this), this);
+    commands.registerCommand("taipy.refreshPipelines", () => pipelinesProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(pipelinesProvider);
     this.treeViews.push(window.createTreeView("taipy-config-pipelines", { treeDataProvider: pipelinesProvider }));
     // Scenarii
     const scenariiProvider = new ConfigNodesProvider(this, ScenarioItem);
-    commands.registerCommand("taipy.refreshScenarii", () => scenariiProvider.refresh(this), this);
+    commands.registerCommand("taipy.refreshScenarii", () => scenariiProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(scenariiProvider);
     this.treeViews.push(window.createTreeView("taipy-config-scenarii", { treeDataProvider: scenariiProvider }));
     // Details
@@ -68,13 +69,15 @@ export class Context {
   private async onFileChange(uri: Uri): Promise<void> {
     if (uri && this.configFileUri?.toString() == uri.toString()) {
       await this.readConfig(uri);
-      this.treeProviders.forEach((p) => p.refresh(this));
+      this.treeProviders.forEach((p) => p.refresh(this, uri));
     }
   }
 
   private async onFileCreateDelete(uri: Uri): Promise<void> {
     this.configFilesView.refresh();
   }
+
+  getConfigUri = () => this.configFileUri;
 
   getConfigNodes(nodeType: string): object[] {
     const configNodes = this.configContent ? this.configContent[nodeType] : null;
@@ -88,12 +91,12 @@ export class Context {
   }
 
   async selectUri(uri: Uri): Promise<void> {
-    if (this.configFileUri?.toString() == uri?.toString()) {
+    if (isUriEqual(uri, this.configFileUri)) {
       return;
     }
     this.configFileUri = uri;
     await this.readConfig(uri);
-    this.treeProviders.forEach((p) => p.refresh(this));
+    this.treeProviders.forEach((p) => p.refresh(this, uri));
   }
 
   private async selectConfigNode(nodeType: string, name: string, configNode: object): Promise<void> {
@@ -102,8 +105,7 @@ export class Context {
   }
 
   private revealConfigNode(docUri: Uri, nodeType: string, name: string) {
-    const uriString = docUri.toString();
-    if (uriString == this.configFileUri?.toString()) {
+    if (isUriEqual(docUri, this.configFileUri)) {
       const providerIndex = this.treeProviders.findIndex((p) => p.getNodeType() == nodeType);
       if (providerIndex > -1) {
         const item = this.treeProviders[providerIndex].getItem(name);
@@ -112,7 +114,7 @@ export class Context {
         }
       }
   }
-    const editors = window.visibleTextEditors.filter((te) => te.document.uri.toString() == uriString);
+    const editors = window.visibleTextEditors.filter((te) => isUriEqual(docUri, te.document.uri));
     if (editors.length) {
       const doc = editors[0].document;
       const section = nodeType + "." + name;
@@ -130,14 +132,17 @@ export class Context {
     }
   }
 
-  private showPerspective(item: TreeItem & ConfigNode) {
-    commands.executeCommand("vscode.openWith", getPerspectiveUri(this.configFileUri, item.getType() + "." + item.label), ConfigEditorProvider.viewType);
-    //commands.executeCommand(showPerspectiveEditorCmd, getPerspectiveUri(this.configFileUri, item.getType() + "." + item.label), item.getType(), item.label)
+  private showFilePerspective(item: TreeItem) {
+    commands.executeCommand("vscode.openWith", item.resourceUri, ConfigEditorProvider.viewType);
+  }
+
+  private showPerspective(item: TreeItem) {
+    commands.executeCommand("vscode.openWith", getPerspectiveUri(item.resourceUri, item.contextValue + "." + item.label), ConfigEditorProvider.viewType);
   }
 
   private async readConfig(uri: Uri): Promise<void> {
     if (uri) {
-      const toml = await workspace.fs.readFile(uri);
+      const toml = await workspace.fs.readFile(getOriginalUri(uri));
       try {
         this.configContent = parse(toml.toString());
       } catch (e) {

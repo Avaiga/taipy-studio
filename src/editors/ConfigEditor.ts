@@ -19,8 +19,8 @@ import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, web
 import { Refresh, Select, SetPositions } from "../../shared/commands";
 import { getCspScriptSrc, getNonce } from "../utils";
 import { Positions, ViewMessage } from "../../shared/messages";
-import { revealConfigNodeCmd, showPerspectiveEditorCmd } from "../commands";
-import { getOriginalUri, getPerspectiveFromUri } from "../contentProviders/PerpectiveContentProvider";
+import { revealConfigNodeCmd } from "../commands";
+import { getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
 
 interface EditorCache {
   positions: Positions;
@@ -34,7 +34,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const provider = new ConfigEditorProvider(context, context.extensionUri);
     const providerRegistration = window.registerCustomEditorProvider(ConfigEditorProvider.viewType, provider);
     commands.registerCommand("taipy.clearConfigCache", provider.clearCache, provider);
-    commands.registerCommand(showPerspectiveEditorCmd, provider.showPerspective, provider);
 
     return providerRegistration;
   }
@@ -82,10 +81,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   }
 
   private async updateWebview(uri: Uri) {
-    console.log("updateWebview", uri.scheme, uri.query);
     const uriStr = uri.toString();
     const originalUri = getOriginalUri(uri).toString();
-    const panels = this.panelsByUri[uriStr];
+    const panels = this.panelsByUri[originalUri];
     if (panels) {
       const perspectiveId = getPerspectiveFromUri(uri);
       console.log("updateWebview: perspectiveId", perspectiveId);
@@ -100,10 +98,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     }
   }
 
-  private showPerspective(uri: Uri, nodeType: string, nodeName: string) {
-    this.updateWebview(uri);
-  }
-
   /**
    * Called when our custom editor is opened.
    *
@@ -115,14 +109,14 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       enableScripts: true,
     };
     this.setToml(document);
-    const uri = document.uri.toString();
-    let panels = this.panelsByUri[uri];
+    const originalUri = getOriginalUri(document.uri).toString();
+    let panels = this.panelsByUri[originalUri];
     if (!panels) {
       panels = [];
-      this.panelsByUri[uri] = panels;
+      this.panelsByUri[originalUri] = panels;
     }
     panels.push(webviewPanel);
-    webviewPanel.onDidDispose(() => this.panelsByUri[uri] || (this.panelsByUri[uri] = this.panelsByUri[uri].filter(p => p !== webviewPanel)));
+    webviewPanel.onDidDispose(() => this.panelsByUri[originalUri] || (this.panelsByUri[originalUri] = this.panelsByUri[originalUri].filter(p => p !== webviewPanel)));
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
     // Hook up event handlers so that we can synchronize the webview with the text document.
@@ -134,8 +128,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     // editors (this happens for example when you split a custom editor)
 
     const changeDocumentSubscription = workspace.onDidChangeTextDocument((e) => {
-      if (e.document.uri.toString() === uri) {
-        this.setToml(document);
+      if (isUriEqual(document.uri, e.document.uri)) {
+        this.setToml(e.document);
         this.updateWebview(document.uri);
       }
     }, this);

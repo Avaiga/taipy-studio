@@ -21,80 +21,52 @@ const taskItemTitle = localize("TaskItem.title", "Select task");
 const pipelineItemTitle = localize("PipelineItem.title", "Select pipeline");
 const scenarioItemTitle = localize("ScenarioItem.title", "Select scenario");
 
-export interface ConfigNode {
-  getType: () => string;
+const getTitleFromType = (nodeType: string) => {
+  switch (nodeType) {
+    case DataNode:
+      return dataNodeItemTitle;
+    case Task:
+      return taskItemTitle;
+    case Pipeline:
+      return pipelineItemTitle;
+    case Scenario:
+      return scenarioItemTitle;
+  }
+  return "";
 }
-export class DataNodeItem extends TreeItem implements ConfigNode {
-  private dataNode: object;
-  constructor(name: string, dataNode: object) {
+
+export abstract class ConfigItem extends TreeItem {
+  getNodeType = () => "";
+  constructor(name: string, uri: Uri, dataNode: object) {
     super(name, TreeItemCollapsibleState.None);
-    // TODO:Extract info from dataNode (like Scope)
-    this.dataNode = dataNode;
+    this.resourceUri = uri;
+    this.contextValue = this.getNodeType();
     this.command = {
       command: selectConfigNodeCmd,
-      title: dataNodeItemTitle,
-      arguments: [this.getType(), name, dataNode],
+      title: getTitleFromType(this.getNodeType()),
+      arguments: [this.getNodeType(), name, dataNode],
     };
   }
-  getType() {
-    return DataNode;
-  }
+}
+export class DataNodeItem extends ConfigItem {
+  getNodeType = () => DataNode;
 }
 
-export class TaskItem extends TreeItem implements ConfigNode {
-  private task: object;
-  constructor(name: string, task: object) {
-    super(name, TreeItemCollapsibleState.None);
-    // TODO:Extract info from task (like Scope)
-    this.task = task;
-    this.command = {
-      command: selectConfigNodeCmd,
-      title: taskItemTitle,
-      arguments: [this.getType(), name, task],
-    };
-  }
-  getType() {
-    return Task;
-  }
+export class TaskItem extends ConfigItem {
+  getNodeType = () => Task;
 }
 
-export class PipelineItem extends TreeItem implements ConfigNode {
-  private pipeline: object;
-  constructor(name: string, pipeline: object) {
-    super(name, TreeItemCollapsibleState.None);
-    // TODO:Extract info from task (like Scope)
-    this.pipeline = pipeline;
-    this.command = {
-      command: selectConfigNodeCmd,
-      title: pipelineItemTitle,
-      arguments: [this.getType(), name, pipeline],
-    };
-  }
-  getType() {
-    return Pipeline;
-  }
+export class PipelineItem extends ConfigItem {
+  getNodeType = () => Pipeline;
 }
 
-export class ScenarioItem extends TreeItem implements ConfigNode {
-  private scenario: object;
-  constructor(name: string, scenario: object) {
-    super(name, TreeItemCollapsibleState.None);
-    // TODO:Extract info from task (like Scope)
-    this.scenario = scenario;
-    this.command = {
-      command: selectConfigNodeCmd,
-      title: scenarioItemTitle,
-      arguments: [this.getType(), name, scenario],
-    };
-  }
-  getType() {
-    return Scenario;
-  }
+export class ScenarioItem extends ConfigItem {
+  getNodeType = () => Scenario;
 }
 
-type TreeNodeCtor<T extends TreeItem & ConfigNode> = new (name: string, node: object) => T;
+type TreeNodeCtor<T extends ConfigItem> = new (name: string, uri: Uri, node: object) => T;
 
-export class ConfigNodesProvider<T extends TreeItem & ConfigNode> implements TreeDataProvider<T> {
+export class ConfigNodesProvider<T extends ConfigItem> implements TreeDataProvider<T> {
   private _onDidChangeTreeData: EventEmitter<T | undefined> =
     new EventEmitter<T | undefined>();
   readonly onDidChangeTreeData: Event<T | undefined> =
@@ -105,20 +77,15 @@ export class ConfigNodesProvider<T extends TreeItem & ConfigNode> implements Tre
   private configItems: T[] = [];
 
   constructor(context: Context, nodeCtor: TreeNodeCtor<T>) {
-    this.nodeType = new nodeCtor("", {}).getType();
+    this.nodeType = new nodeCtor(undefined, undefined, undefined).getNodeType();
     this.nodeCtor = nodeCtor;
-    this.refresh(context);
+    this.refresh(context, context.getConfigUri());
   }
 
-  async refresh(context: Context): Promise<void> {
+  async refresh(context: Context, uri: Uri): Promise<void> {
     const configNodeEntries: object[] = context.getConfigNodes(this.nodeType);
-    commands.executeCommand(
-      "setContext",
-      "taipy:numberOfDataNodes",
-      configNodeEntries.length
-    );
     const configNodes: T[] = configNodeEntries.map(
-      (entry) => new this.nodeCtor(entry[0], entry[1])
+      (entry) => new this.nodeCtor(entry[0], uri, entry[1])
     );
     this.configItems = configNodes;
     this._onDidChangeTreeData.fire(undefined);

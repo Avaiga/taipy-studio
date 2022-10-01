@@ -1,5 +1,4 @@
-import { userInfo } from "os";
-import { CancellationToken, Event, EventEmitter, ProviderResult, TextDocumentContentProvider, Uri, workspace } from "vscode";
+import { CancellationToken, EventEmitter, ProviderResult, TextDocumentContentProvider, Uri, workspace } from "vscode";
 
 import { perspectiveRootId } from "../../shared/views";
 
@@ -8,7 +7,7 @@ const OriginalSchemeKey = "originalscheme";
 const perspectiveKey = "perspective";
 
 export const getPerspectiveUri = (uri: Uri, perspectiveId: string): Uri =>
-  Uri.from({
+  uri || Uri.from({
     ...uri,
     scheme: PerspectiveScheme,
     query: OriginalSchemeKey + "=" + uri.scheme + "&" + perspectiveKey + "=" + perspectiveId + (uri.query ? "&" + uri.query : ""),
@@ -31,9 +30,13 @@ export const getOriginalUri = (uri: Uri): Uri => {
   return uri;
 };
 
-export const isUriEqual = (uri: Uri, otherUri: Uri): boolean =>
-  uri.scheme == otherUri.scheme ? uri.toString() == otherUri.toString() : getOriginalUri(uri).toString() == getOriginalUri(otherUri).toString();
-
+export const isUriEqual = (uri: Uri, otherUri?: Uri): boolean => {
+  if (uri && otherUri) {
+    return uri.scheme == otherUri.scheme ? uri.toString() == otherUri.toString() : getOriginalUri(uri).toString() == getOriginalUri(otherUri).toString();
+  }
+  return false;
+}
+  
 export const getPerspectiveFromUri = (uri: Uri): string =>
   uri.scheme == PerspectiveScheme
     ? uri.query
