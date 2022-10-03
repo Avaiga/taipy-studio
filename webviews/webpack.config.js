@@ -13,7 +13,7 @@ const config = (env, argv) => ({
     filename: '[name].js',
     libraryTarget: 'umd',
   },
-  devtool: argv.mode === "development" && 'eval-source-map',
+  devtool: argv.mode === "development" && 'inline-source-map',
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: ['.ts', '.js', '.tsx'],

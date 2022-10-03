@@ -5,10 +5,8 @@
 		"target": "es6",
 		"outDir": "dist",
 		"lib": [
-			"es6",
-			"dom"
+			"es6"
 		],
-		"baseUrl": ".",
 		"sourceMap": true,
 		"strict": false,   /* enable all strict type-checking options */
 		"noUnusedParameters": false,  /* Report errors on unused parameters. */

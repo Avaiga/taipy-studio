@@ -36,10 +36,10 @@ export class ConfigDetailsView implements WebviewViewProvider {
     } as ViewMessage);
   }
 
-  setConfigNodeContent(name: string, storage_type: string, scope: string): void {
+  setConfigNodeContent(name: string, node: any): void {
     this._view?.webview.postMessage({
       viewId: DataNodeDetailsId,
-      props: { name: name, storage_type: storage_type, scope: scope } as DataNodeDetailsProps,
+      props: { name: name, node: node } as DataNodeDetailsProps,
     } as ViewMessage);
   }
 

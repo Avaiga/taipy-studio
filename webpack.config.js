@@ -17,13 +17,13 @@ const config = (env, argv) => ({
     libraryTarget: "commonjs2",
     devtoolModuleFilenameTemplate: "../[resource-path]",
   },
-  devtool: argv === "development" && "source-map",
+  devtool: argv.mode === "development" && "source-map",
   externals: {
     vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
+    //mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
     extensions: [".ts", ".js"],
   },
   plugins: [

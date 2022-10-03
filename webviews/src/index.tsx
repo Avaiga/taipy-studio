@@ -10,6 +10,7 @@ declare global {
   interface Window {
       taipyConfig: {
           colors: Record<string, string>;
+          icons: Record<string, string>;
       };
       [key: string]: unknown;
   }

@@ -1,43 +1,26 @@
-import { DataNode, Pipeline, Scenario, Task, TaskInputs, TaskOutputs } from "../../../shared/names";
+import { DataNode, Pipeline, PipelineTasks, Scenario, ScenarioPipelines, Task, TaskInputs, TaskOutputs } from "../../../shared/names";
 import { perspectiveRootId } from "../../../shared/views";
 
-export const getChildType = (nodeType: string) => {
-  switch (nodeType) {
-    case Task:
-      return DataNode;
-    case Pipeline:
-      return Task;
-    case Scenario:
-      return Pipeline;
-  }
-  return "";
+const childType: Record<string, string> = {
+  [Task]: DataNode,
+  [Pipeline]: Task,
+  [Scenario]: Pipeline,
 };
+export const getChildType = (nodeType: string) => childType[nodeType] || "";
 
 export const getChildTypeWithBackLink = (nodeType: string) => (nodeType == DataNode ? Task : "");
-
-export const getDescendants = (nodeType: string) => {
-  switch (nodeType) {
-    case Scenario:
-      return ["", "pipelines"];
-    case Pipeline:
-      return ["", "tasks"];
-    case Task:
-      return [TaskInputs, TaskOutputs];
-  }
-  return ["", ""];
+const descendants: Record<string, [string, string]> = {
+  [Scenario]: ["", ScenarioPipelines],
+  [Pipeline]: ["", PipelineTasks],
+  [Task]: [TaskInputs, TaskOutputs],
 };
-
-export const getParentType = (nodeType: string) => {
-  switch (nodeType) {
-    case DataNode:
-      return Task;
-    case Task:
-      return Pipeline;
-    case Pipeline:
-      return Scenario;
-  }
-  return "";
+export const getDescendants = (nodeType: string) => descendants[nodeType] || ["", ""];
+const parentType: Record<string, string> = {
+  [DataNode]: Task,
+  [Task]: Pipeline,
+  [Pipeline]: Scenario,
 };
+export const getParentType = (nodeType: string) => parentType[nodeType] || "";
 const getParentLinkKey = (nodeType: string) => (nodeType == Task ? TaskInputs : "");
 
 export const getParentNames = (content: any, ...paths: string[]) => {

@@ -15,10 +15,10 @@ import { config, MessageFormat } from "vscode-nls";
 
 import { selectConfigFileCmd } from "../commands";
 import { Context } from "../context";
+import { configFileExt } from "../utils";
 
 const localize = config({ messageFormat: MessageFormat.file })();
 
-const configFileExt = ".toml";
 const configFileItemTitle = localize("ConfigFileItem.title", "Select file");
 
 class ConfigFileItem extends TreeItem {

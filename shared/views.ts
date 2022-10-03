@@ -8,8 +8,7 @@ export interface NoDetailsProps {
 export const DataNodeDetailsId = "DataNodeDetails";
 export interface DataNodeDetailsProps {
   name: string;
-  storage_type: string;
-  scope: string;
+  node: NodeType;
 }
 
 export const ConfigEditorId = "ConfigEditor";
@@ -18,6 +17,8 @@ export interface ConfigEditorProps {
   perspectiveId: string;
   positions: Positions;
 }
+
+export type NodeType = Record<string, string |string[]>;
 
 export const perspectiveRootId = "__root__";
 

@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, FileSystemWatcher, Range, TextEditorRevealType, TreeItem, TreeView, Uri, window, workspace } from "vscode";
+import { commands, ExtensionContext, Range, TextEditorRevealType, TreeItem, TreeView, Uri, window, workspace } from "vscode";
 import { parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
@@ -7,7 +7,7 @@ import { CONFIG_DETAILS_ID } from "./constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { configFileExt } from "./utils";
 import { ConfigItem, ConfigNodesProvider, DataNodeItem, PipelineItem, ScenarioItem, TaskItem } from "./providers/ConfigNodesProvider";
-import { PerspectiveContentProvider, PerspectiveScheme, getPerspectiveUri, isUriEqual, getOriginalUri } from "./contentProviders/PerpectiveContentProvider";
+import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri } from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
 
 const configNodeKeySort = (a: string, b: string) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
@@ -22,7 +22,6 @@ export class Context {
   private treeProviders: ConfigNodesProvider<ConfigItem>[] = [];
   private treeViews: TreeView<TreeItem>[] = [];
   private configDetailsView: ConfigDetailsView;
-  private fileSystemWatcher: FileSystemWatcher;
 
   private constructor(vsContext: ExtensionContext) {
     // Configuration files
@@ -32,7 +31,6 @@ export class Context {
     // global Commands
     commands.registerCommand(selectConfigNodeCmd, this.selectConfigNode, this);
     commands.registerCommand(revealConfigNodeCmd, this.revealConfigNode, this);
-    commands.registerCommand("taipy.show.file.perpective", this.showFilePerspective, this);
     commands.registerCommand("taipy.show.perpective", this.showPerspective, this);
     // Perspective Provider
     vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, new PerspectiveContentProvider()));
@@ -40,30 +38,33 @@ export class Context {
     const datanodesProvider = new ConfigNodesProvider(this, DataNodeItem);
     commands.registerCommand("taipy.refreshDataNodes", () => datanodesProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(datanodesProvider);
-    this.treeViews.push(window.createTreeView("taipy-config-datanodes", { treeDataProvider: datanodesProvider }));
+    this.treeViews.push(window.createTreeView("taipy-config-datanodes", { treeDataProvider: datanodesProvider, dragAndDropController: datanodesProvider }));
     // Task
     const tasksProvider = new ConfigNodesProvider(this, TaskItem);
     commands.registerCommand("taipy.refreshTasks", () => tasksProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(tasksProvider);
-    this.treeViews.push(window.createTreeView("taipy-config-tasks", { treeDataProvider: tasksProvider }));
+    this.treeViews.push(window.createTreeView("taipy-config-tasks", { treeDataProvider: tasksProvider, dragAndDropController: tasksProvider }));
     // Pipelines
     const pipelinesProvider = new ConfigNodesProvider(this, PipelineItem);
     commands.registerCommand("taipy.refreshPipelines", () => pipelinesProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(pipelinesProvider);
-    this.treeViews.push(window.createTreeView("taipy-config-pipelines", { treeDataProvider: pipelinesProvider }));
+    this.treeViews.push(window.createTreeView("taipy-config-pipelines", { treeDataProvider: pipelinesProvider, dragAndDropController: pipelinesProvider }));
     // Scenarii
     const scenariiProvider = new ConfigNodesProvider(this, ScenarioItem);
     commands.registerCommand("taipy.refreshScenarii", () => scenariiProvider.refresh(this, this.configFileUri), this);
     this.treeProviders.push(scenariiProvider);
-    this.treeViews.push(window.createTreeView("taipy-config-scenarii", { treeDataProvider: scenariiProvider }));
+    this.treeViews.push(window.createTreeView("taipy-config-scenarii", { treeDataProvider: scenariiProvider, dragAndDropController: scenariiProvider }));
+    // Dispose when finished
+    vsContext.subscriptions.push(...this.treeViews);
     // Details
     this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri, {});
     vsContext.subscriptions.push(window.registerWebviewViewProvider(CONFIG_DETAILS_ID, this.configDetailsView));
 
-    this.fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
-    this.fileSystemWatcher.onDidChange(this.onFileChange, this);
-    this.fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
-    this.fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
+    const fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
+    fileSystemWatcher.onDidChange(this.onFileChange, this);
+    fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
+    fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
+    vsContext.subscriptions.push(fileSystemWatcher);
   }
 
   private async onFileChange(uri: Uri): Promise<void> {
@@ -100,8 +101,7 @@ export class Context {
   }
 
   private async selectConfigNode(nodeType: string, name: string, configNode: object): Promise<void> {
-    console.log("selectConfigNode", nodeType, name, configNode);
-    this.configDetailsView.setConfigNodeContent(name, configNode["storage_type"], configNode["scope"]);
+    this.configDetailsView.setConfigNodeContent(name, configNode);
   }
 
   private revealConfigNode(docUri: Uri, nodeType: string, name: string) {
@@ -113,7 +113,7 @@ export class Context {
           this.treeViews[providerIndex].reveal(item, { select: true });
         }
       }
-  }
+    }
     const editors = window.visibleTextEditors.filter((te) => isUriEqual(docUri, te.document.uri));
     if (editors.length) {
       const doc = editors[0].document;
@@ -132,12 +132,8 @@ export class Context {
     }
   }
 
-  private showFilePerspective(item: TreeItem) {
-    commands.executeCommand("vscode.openWith", item.resourceUri, ConfigEditorProvider.viewType);
-  }
-
   private showPerspective(item: TreeItem) {
-    commands.executeCommand("vscode.openWith", getPerspectiveUri(item.resourceUri, item.contextValue + "." + item.label), ConfigEditorProvider.viewType);
+    commands.executeCommand("vscode.openWith", item.resourceUri, ConfigEditorProvider.viewType);
   }
 
   private async readConfig(uri: Uri): Promise<void> {

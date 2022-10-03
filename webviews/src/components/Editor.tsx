@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { DragEvent, useCallback, useEffect, useRef, useState } from "react";
 import createEngine, {
   DefaultNodeModel,
   DefaultLinkModel,
@@ -15,9 +15,9 @@ import * as deepEqual from "fast-deep-equal";
 import { getDiff } from "recursive-diff";
 
 import { ConfigEditorProps, perspectiveRootId } from "../../../shared/views";
-import { postActionMessage, postPositionsMessage } from "./utils";
+import { postActionMessage, postPositionsMessage, postRefreshMessage } from "./utils";
 import { applyPerspective, getChildType, getChildTypeWithBackLink, getDescendants, getParentNames, getParentType } from "./tomlUtils";
-import { DataNode, Pipeline, Scenario, Task, TaskInputs } from "../../../shared/names";
+import { Pipeline, PipelineTasks, Scenario, ScenarioPipelines, Task, TaskInputs, TaskOutputs } from "../../../shared/names";
 import { Select } from "../../../shared/commands";
 import { Positions } from "../../../shared/messages";
 import { getNodeColor } from "./config";
@@ -37,22 +37,16 @@ const dagreEngine = new DagreEngine({
 });
 
 const getNodeByName = (model: DiagramModel, name: string) => model.getNodes().filter((n) => (n.getOptions() as DefaultNodeModelOptions).name == name);
+const childrenNodesKey: Record<string, string> = {
+  [Task]: TaskOutputs,
+  [Pipeline]: PipelineTasks,
+  [Scenario]: ScenarioPipelines,
+};
 const getChildrenNodes = (toml: any, parentType: string, filter?: string) => {
   const nodes = toml[parentType];
   if (nodes) {
     const parents = Object.keys(nodes);
-    let childrenKey = "";
-    switch (parentType) {
-      case Task:
-        childrenKey = "outputs";
-        break;
-      case Pipeline:
-        childrenKey = "tasks";
-        break;
-      case Scenario:
-        childrenKey = "pipelines";
-        break;
-    }
+    const childrenKey = childrenNodesKey[parentType];
     const res = childrenKey
       ? parents.reduce((pv, cv) => {
           pv[cv] = nodes[cv][childrenKey];
@@ -104,14 +98,27 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
   const oldToml = useRef<Record<string, any>>();
   const oldPerspId = useRef<string>();
 
-  // @ts-ignore
-  const relayout = useCallback((evt: any, dModel?: DiagramModel) => {
-    dModel = dModel || model;
-    dagreEngine.redistribute(dModel);
-    engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
-    engine.repaintCanvas();
-    cachePositions(dModel);
-  }, [model]);
+  const relayout = useCallback(
+    // @ts-ignore
+    (evt: any, dModel?: DiagramModel) => {
+      dModel = dModel || model;
+      dagreEngine.redistribute(dModel);
+      engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
+      engine.repaintCanvas();
+      cachePositions(dModel);
+    },
+    [model]
+  );
+
+  const onDragOver = useCallback((evt: DragEvent) => {
+    evt.preventDefault();
+    console.log("onDragOver", evt, evt.dataTransfer);
+  }, []);
+
+  const onDrop = useCallback((evt: DragEvent) => {
+    evt.preventDefault();
+    console.log("onDrop", evt, evt.dataTransfer);
+  }, []);
 
   toml = applyPerspective(toml, perspectiveId);
 
@@ -312,12 +319,26 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
     }
   }, [toml, positions]);
 
+  useEffect(() => {
+    window.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      console.log((e as any).dataTransfer.getData("vscode/test"));
+    });
+  }, []);
+
   engine.setModel(model);
 
   return (
-    <div className="diagram-root">
-      <div className="diagram-buttons icon" title="re-layout" onClick={relayout}>
+    <div className="diagram-root" onDragOver={onDragOver} onDrop={onDrop}>
+      <div className="diagram-button icon" title="re-layout" onClick={relayout}>
           <i className="codicon codicon-layout"></i>
+      </div>
+      <div className="diagram-button icon" title="refresh" onClick={postRefreshMessage}>
+          <i className="codicon codicon-refresh"></i>
       </div>
       <div>{perspectiveId != perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>
       <CanvasWidget engine={engine} className="diagram-widget" />

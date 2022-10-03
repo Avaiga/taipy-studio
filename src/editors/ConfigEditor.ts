@@ -3,10 +3,18 @@ import {
   CancellationToken,
   commands,
   CustomTextEditorProvider,
+  DataTransfer,
   Disposable,
+  DocumentDropEdit,
+  DocumentDropEditProvider,
   ExtensionContext,
+  languages,
+  Position,
+  ProviderResult,
   Range,
+  SnippetString,
   TextDocument,
+  TextEdit,
   Uri,
   Webview,
   WebviewPanel,
@@ -15,12 +23,13 @@ import {
   WorkspaceEdit,
 } from "vscode";
 
-import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
-import { Refresh, Select, SetPositions } from "../../shared/commands";
-import { getCspScriptSrc, getNonce } from "../utils";
-import { Positions, ViewMessage } from "../../shared/messages";
+import { configFileExt, getCspScriptSrc, getNonce } from "../utils";
 import { revealConfigNodeCmd } from "../commands";
-import { getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
+import { getNodeFromUri, getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
+import { Refresh, Select, SetPositions } from "../../shared/commands";
+import { Positions, ViewMessage } from "../../shared/messages";
+import { getPropertyToDropType } from "../../shared/names";
+import { ConfigEditorId, ConfigEditorProps, containerId, perspectiveRootId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
 
 interface EditorCache {
   positions: Positions;
@@ -29,10 +38,12 @@ interface EditorCache {
 interface ProviderCache {
   [key: string]: EditorCache;
 }
-export class ConfigEditorProvider implements CustomTextEditorProvider {
+export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentDropEditProvider {
   public static register(context: ExtensionContext): Disposable {
-    const provider = new ConfigEditorProvider(context, context.extensionUri);
-    const providerRegistration = window.registerCustomEditorProvider(ConfigEditorProvider.viewType, provider);
+    const provider = new ConfigEditorProvider(context);
+    const providerRegistration = window.registerCustomEditorProvider(ConfigEditorProvider.viewType, provider, {
+      webviewOptions: { enableFindWidget: true },
+    });
     commands.registerCommand("taipy.clearConfigCache", provider.clearCache, provider);
 
     return providerRegistration;
@@ -47,10 +58,60 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   private tomlByUri: Record<string, JsonMap> = {};
   private panelsByUri: Record<string, WebviewPanel[]> = {};
 
-  constructor(private readonly context: ExtensionContext, private readonly uri: Uri) {
+  constructor(private readonly context: ExtensionContext) {
     this.vsContext = context;
     this.extensionPath = context.extensionUri;
     this.cache = context.workspaceState.get(ConfigEditorProvider.cacheName, {} as ProviderCache);
+    context.subscriptions.push(languages.registerDocumentDropEditProvider({ scheme: "*", pattern: "**/*" + configFileExt }, this));
+  }
+
+  provideDocumentDropEdits(document: TextDocument, position: Position, dataTransfer: DataTransfer, token: CancellationToken): ProviderResult<DocumentDropEdit> {
+    console.log("provideDocumentDropEdits", dataTransfer, document.uri);
+    if (!dataTransfer || token.isCancellationRequested) {
+      return undefined;
+    }
+    const urlList = (dataTransfer.get("text/uri-list")?.value as string) || "";
+    const uris: Uri[] = [];
+    urlList.split("\n").forEach((u) => {
+      try {
+        u && uris.push(Uri.parse(u, true));
+      } catch {
+        console.warn("provideDocumentDropEdits: Cannot parse ", u);
+      }
+    });
+    const dropEdit = new DocumentDropEdit("");
+    if (uris.length) {
+      if (isUriEqual(uris[0], document.uri)) {
+        const [nodeType, nodeName] = getPerspectiveFromUri(uris[0]).split(".", 2);
+        const properties = getPropertyToDropType(nodeType);
+        if (nodeName) {
+          const line = document.lineAt(position.line);
+          const lineProperty = line.text.split("=", 2)[0];
+          console.log("property", lineProperty);
+          if (properties.some((p) => p == lineProperty.trim())) {
+            const endPos = line.text.lastIndexOf("]");
+            const startPos = line.text.indexOf("[", lineProperty.length + 1);
+            console.log("positions", line.text.at(position.character), startPos, endPos, position.character);
+            if (position.character <= endPos && position.character > startPos) {
+              const lastChar = line.text.substring(0, position.character).trim().at(-1);
+              console.log("lastChar", lastChar);
+              if (lastChar == '"' || lastChar == "'" || lastChar == "[" || lastChar == ",") {
+                dropEdit.insertText = (lastChar == '"' || lastChar == "'" ? ", " : "") + '"' + nodeName + '"' + (lastChar == "," ? ", " : "");
+              }
+            }
+          }
+        }
+      } else {
+        const node = getNodeFromUri(uris[0]);
+        if (node) {
+          console.log("another file", node);
+          const lines: string[] = ["", "[" + getPerspectiveFromUri(uris[0]) + "]"];
+          node.split("\n").forEach((l) => lines.push(l && "\t" + l));
+          dropEdit.insertText = lines.join("\n");
+        }
+      }
+    }
+    return dropEdit;
   }
 
   clearCache() {
@@ -71,8 +132,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     try {
       this.tomlByUri[getOriginalUri(document.uri).toString()] = this.getDocumentAsToml(document);
     } catch (e) {
-      console.error("Could not get document as toml. Content is not valid toml", e);
-      throw new Error("Could not get document as toml. Content is not valid toml");
+      console.error("Could not get document as toml. Content is not valid toml");
+      //      throw new Error("Could not get document as toml. Content is not valid toml");
     }
   }
 
@@ -86,7 +147,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const panels = this.panelsByUri[originalUri];
     if (panels) {
       const perspectiveId = getPerspectiveFromUri(uri);
-      console.log("updateWebview: perspectiveId", perspectiveId);
       const positions = this.getCache(uriStr).positions;
       const toml = this.getToml(originalUri);
       panels.forEach((p) =>
@@ -116,7 +176,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       this.panelsByUri[originalUri] = panels;
     }
     panels.push(webviewPanel);
-    webviewPanel.onDidDispose(() => this.panelsByUri[originalUri] || (this.panelsByUri[originalUri] = this.panelsByUri[originalUri].filter(p => p !== webviewPanel)));
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
     // Hook up event handlers so that we can synchronize the webview with the text document.
@@ -136,7 +195,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
     // Receive message from the webview.
     const receiveMessageSubscription = webviewPanel.webview.onDidReceiveMessage((e) => {
-      //console.log("onDidReceiveMessage", e);
       switch (e.command) {
         case Select:
           this.revealSection(document.uri, e.id, e.msg);
@@ -150,14 +208,15 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       }
     }, this);
 
-    // Make sure we get rid of the listener when our editor is closed.
+    // clean-up when our editor is closed.
     webviewPanel.onDidDispose(() => {
+      this.panelsByUri[originalUri] || (this.panelsByUri[originalUri] = this.panelsByUri[originalUri].filter((p) => p !== webviewPanel));
       document.isClosed && changeDocumentSubscription.dispose();
       receiveMessageSubscription.dispose();
     });
   }
 
-  private async setPositions(docUri: Uri, positions: Positions) {
+  private setPositions(docUri: Uri, positions: Positions) {
     let modified = false;
     const id = getPerspectiveFromUri(docUri);
     let pos = this.setPositionsCache(docUri.toString());
@@ -169,7 +228,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       }, pos);
     }
     if (modified) {
-      await this.context.workspaceState.update(ConfigEditorProvider.cacheName, this.cache);
+      this.context.workspaceState.update(ConfigEditorProvider.cacheName, this.cache);
     }
   }
 

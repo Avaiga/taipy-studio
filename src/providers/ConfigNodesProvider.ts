@@ -1,9 +1,14 @@
+
+import { JsonMap, stringify } from "@iarna/toml";
 import {
-  commands,
+  CancellationToken,
+  DataTransfer,
+  DataTransferItem,
   Event,
   EventEmitter,
   ProviderResult,
   TreeDataProvider,
+  TreeDragAndDropController,
   TreeItem,
   TreeItemCollapsibleState,
   Uri,
@@ -12,40 +17,41 @@ import { config, MessageFormat } from "vscode-nls";
 
 import { selectConfigNodeCmd } from "../commands";
 import { Context } from "../context";
+import { getPerspectiveUri } from "../contentProviders/PerpectiveContentProvider";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
 
 const localize = config({ messageFormat: MessageFormat.file })();
 
-const dataNodeItemTitle = localize("DataNodeItem.title", "Select data node");
-const taskItemTitle = localize("TaskItem.title", "Select task");
-const pipelineItemTitle = localize("PipelineItem.title", "Select pipeline");
-const scenarioItemTitle = localize("ScenarioItem.title", "Select scenario");
-
-const getTitleFromType = (nodeType: string) => {
-  switch (nodeType) {
-    case DataNode:
-      return dataNodeItemTitle;
-    case Task:
-      return taskItemTitle;
-    case Pipeline:
-      return pipelineItemTitle;
-    case Scenario:
-      return scenarioItemTitle;
-  }
-  return "";
+const titles = {
+  [DataNode]: localize("DataNodeItem.title", "Select data node"),
+  [Task]: localize("TaskItem.title", "Select task"),
+  [Pipeline]: localize("PipelineItem.title", "Select pipeline"),
+  [Scenario]: localize("ScenarioItem.title", "Select scenario")
 }
+const getTitleFromType = (nodeType: string) => titles[nodeType] || "Select Something";
+
+const mimeTypes = {
+  [DataNode]: ["text/url-list"],
+  [Task]: ["text/url-list"],
+  [Pipeline]: ["text/url-list"],
+}
+const getMimeTypeFromType = (nodeType: string) => mimeTypes[nodeType] || [];
 
 export abstract class ConfigItem extends TreeItem {
   getNodeType = () => "";
-  constructor(name: string, uri: Uri, dataNode: object) {
+  node: JsonMap;
+  constructor(name: string, node: JsonMap) {
     super(name, TreeItemCollapsibleState.None);
-    this.resourceUri = uri;
     this.contextValue = this.getNodeType();
+    this.node = node;
     this.command = {
       command: selectConfigNodeCmd,
       title: getTitleFromType(this.getNodeType()),
-      arguments: [this.getNodeType(), name, dataNode],
+      arguments: [this.getNodeType(), name, node],
     };
+  }
+  setResourceUri = (uri: Uri) => {
+    this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, stringify(this.node));
   }
 }
 export class DataNodeItem extends ConfigItem {
@@ -64,9 +70,9 @@ export class ScenarioItem extends ConfigItem {
   getNodeType = () => Scenario;
 }
 
-type TreeNodeCtor<T extends ConfigItem> = new (name: string, uri: Uri, node: object) => T;
+type TreeNodeCtor<T extends ConfigItem> = new (name: string, node: object) => T;
 
-export class ConfigNodesProvider<T extends ConfigItem> implements TreeDataProvider<T> {
+export class ConfigNodesProvider<T extends ConfigItem> implements TreeDataProvider<T>, TreeDragAndDropController<T> {
   private _onDidChangeTreeData: EventEmitter<T | undefined> =
     new EventEmitter<T | undefined>();
   readonly onDidChangeTreeData: Event<T | undefined> =
@@ -77,15 +83,34 @@ export class ConfigNodesProvider<T extends ConfigItem> implements TreeDataProvid
   private configItems: T[] = [];
 
   constructor(context: Context, nodeCtor: TreeNodeCtor<T>) {
-    this.nodeType = new nodeCtor(undefined, undefined, undefined).getNodeType();
+    this.nodeType = new nodeCtor(undefined, undefined).getNodeType();
     this.nodeCtor = nodeCtor;
+    this.dragMimeTypes = getMimeTypeFromType(this.nodeType);
     this.refresh(context, context.getConfigUri());
+  }
+
+  dropMimeTypes: readonly string[];
+  dragMimeTypes: readonly string[];
+  handleDrag?(source: T[], treeDataTransfer: DataTransfer, token: CancellationToken): ProviderResult<void> {
+    const uris: Uri[] = [];
+    source.forEach(s => {
+      if (s.resourceUri) {
+        uris.push(s.resourceUri);
+      }
+    })
+		treeDataTransfer.set("text/url-list", new DataTransferItem(uris.map(u => u.toString()).join("\n")));
+	}
+  handleDrop?(target: T, dataTransfer: DataTransfer, token: CancellationToken): ProviderResult<void> {
   }
 
   async refresh(context: Context, uri: Uri): Promise<void> {
     const configNodeEntries: object[] = context.getConfigNodes(this.nodeType);
     const configNodes: T[] = configNodeEntries.map(
-      (entry) => new this.nodeCtor(entry[0], uri, entry[1])
+      (entry) => {
+        const item = new this.nodeCtor(entry[0], entry[1]);
+        item.setResourceUri(uri);
+        return item;
+      }
     );
     this.configItems = configNodes;
     this._onDidChangeTreeData.fire(undefined);

@@ -26,22 +26,17 @@
       {
         "command": "taipy.refreshConfigs",
         "title": "%extension.commands.taipy.refreshConfigs%",
-        "icon": "${refresh}"
+        "icon": "$(refresh)"
       },
       {
         "command": "taipy.clearConfigCache",
         "title": "%extension.commands.taipy.clearConfigCache%",
-        "icon": "${clear-all}"
+        "icon": "$(clear-all)"
       },
       {
         "command": "taipy.show.perpective",
         "title": "%extension.commands.taipy.show.perpective%",
-        "icon": "${type-hierarchy}"
-      },
-      {
-        "command": "taipy.show.file.perpective",
-        "title": "%extension.commands.taipy.show.perpective%",
-        "icon": "${type-hierarchy}"
+        "icon": "$(type-hierarchy)"
       }
     ],
     "customEditors": [
@@ -137,11 +132,7 @@
       "view/item/context": [
         {
           "command": "taipy.show.perpective",
-          "when": "view == taipy-config-pipelines || view == taipy-config-scenarii"
-        },
-        {
-          "command": "taipy.show.file.perpective",
-          "when": "view == taipy-configs"
+          "when": "view == taipy-configs || view == taipy-config-pipelines || view == taipy-config-scenarii"
         }
       ]
     },
