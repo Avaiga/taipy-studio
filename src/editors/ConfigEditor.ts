@@ -10,11 +10,8 @@ import {
   ExtensionContext,
   languages,
   Position,
-  ProviderResult,
   Range,
-  SnippetString,
   TextDocument,
-  TextEdit,
   Uri,
   Webview,
   WebviewPanel,
@@ -23,13 +20,14 @@ import {
   WorkspaceEdit,
 } from "vscode";
 
-import { configFileExt, getCspScriptSrc, getNonce } from "../utils";
+import { configFileExt, getCspScriptSrc, getNonce, textUriListMime } from "../utils";
 import { revealConfigNodeCmd } from "../commands";
 import { getNodeFromUri, getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
 import { Refresh, Select, SetPositions } from "../../shared/commands";
 import { Positions, ViewMessage } from "../../shared/messages";
 import { getPropertyToDropType } from "../../shared/names";
 import { ConfigEditorId, ConfigEditorProps, containerId, perspectiveRootId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
+import { TaipyStudioSettingsName } from "../constants";
 
 interface EditorCache {
   positions: Positions;
@@ -38,6 +36,7 @@ interface EditorCache {
 interface ProviderCache {
   [key: string]: EditorCache;
 }
+
 export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentDropEditProvider {
   public static register(context: ExtensionContext): Disposable {
     const provider = new ConfigEditorProvider(context);
@@ -49,28 +48,33 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     return providerRegistration;
   }
 
-  private static readonly cacheName = "taipy.editor.cache.";
+  private static readonly cacheName = "taipy.editor.cache";
   static readonly viewType = "taipy.config.editor.diagram";
 
   private readonly extensionPath: Uri;
-  private readonly vsContext: ExtensionContext;
   private cache: ProviderCache;
   private tomlByUri: Record<string, JsonMap> = {};
   private panelsByUri: Record<string, WebviewPanel[]> = {};
 
   constructor(private readonly context: ExtensionContext) {
-    this.vsContext = context;
     this.extensionPath = context.extensionUri;
     this.cache = context.workspaceState.get(ConfigEditorProvider.cacheName, {} as ProviderCache);
-    context.subscriptions.push(languages.registerDocumentDropEditProvider({ scheme: "*", pattern: "**/*" + configFileExt }, this));
+    context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: "**/*" + configFileExt }, this));
   }
 
-  provideDocumentDropEdits(document: TextDocument, position: Position, dataTransfer: DataTransfer, token: CancellationToken): ProviderResult<DocumentDropEdit> {
-    console.log("provideDocumentDropEdits", dataTransfer, document.uri);
+  async provideDocumentDropEdits(document: TextDocument, position: Position, dataTransfer: DataTransfer, token: CancellationToken): Promise<DocumentDropEdit | undefined> {
+    const enabled = workspace.getConfiguration(TaipyStudioSettingsName, document).get("editor.drop.enabled", true);
+    if (!enabled) {
+      return undefined;
+    }
+
     if (!dataTransfer || token.isCancellationRequested) {
       return undefined;
     }
-    const urlList = (dataTransfer.get("text/uri-list")?.value as string) || "";
+    const urlList = await dataTransfer.get(textUriListMime)?.asString();
+    if (!urlList) {
+      return undefined;
+    }
     const uris: Uri[] = [];
     urlList.split("\n").forEach((u) => {
       try {
@@ -79,36 +83,34 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         console.warn("provideDocumentDropEdits: Cannot parse ", u);
       }
     });
+    if (!uris.length) {
+      return undefined;
+    }
     const dropEdit = new DocumentDropEdit("");
-    if (uris.length) {
-      if (isUriEqual(uris[0], document.uri)) {
-        const [nodeType, nodeName] = getPerspectiveFromUri(uris[0]).split(".", 2);
-        const properties = getPropertyToDropType(nodeType);
-        if (nodeName) {
-          const line = document.lineAt(position.line);
-          const lineProperty = line.text.split("=", 2)[0];
-          console.log("property", lineProperty);
-          if (properties.some((p) => p == lineProperty.trim())) {
-            const endPos = line.text.lastIndexOf("]");
-            const startPos = line.text.indexOf("[", lineProperty.length + 1);
-            console.log("positions", line.text.at(position.character), startPos, endPos, position.character);
-            if (position.character <= endPos && position.character > startPos) {
-              const lastChar = line.text.substring(0, position.character).trim().at(-1);
-              console.log("lastChar", lastChar);
-              if (lastChar == '"' || lastChar == "'" || lastChar == "[" || lastChar == ",") {
-                dropEdit.insertText = (lastChar == '"' || lastChar == "'" ? ", " : "") + '"' + nodeName + '"' + (lastChar == "," ? ", " : "");
-              }
+    if (isUriEqual(uris[0], document.uri)) {
+      // TODO handle multi-uris case (but you can't drag more than one treeItem ...)
+      const [nodeType, nodeName] = getPerspectiveFromUri(uris[0]).split(".", 2);
+      const properties = getPropertyToDropType(nodeType);
+      if (nodeName) {
+        const line = document.lineAt(position.line);
+        const lineProperty = line.text.split("=", 2)[0];
+        if (properties.some((p) => p == lineProperty.trim())) {
+          const endPos = line.text.lastIndexOf("]");
+          const startPos = line.text.indexOf("[", lineProperty.length + 1);
+          if (position.character <= endPos && position.character > startPos) {
+            const lastChar = line.text.substring(0, position.character).trim().at(-1);
+            if (lastChar == '"' || lastChar == "'" || lastChar == "[" || lastChar == ",") {
+              dropEdit.insertText = (lastChar == '"' || lastChar == "'" ? ", " : "") + '"' + nodeName + '"' + (lastChar == "," ? ", " : "");
             }
           }
         }
-      } else {
-        const node = getNodeFromUri(uris[0]);
-        if (node) {
-          console.log("another file", node);
-          const lines: string[] = ["", "[" + getPerspectiveFromUri(uris[0]) + "]"];
-          node.split("\n").forEach((l) => lines.push(l && "\t" + l));
-          dropEdit.insertText = lines.join("\n");
-        }
+      }
+    } else {
+      const node = getNodeFromUri(uris[0]);
+      if (node) {
+        const lines: string[] = ["", "[" + getPerspectiveFromUri(uris[0]) + "]"];
+        node.split("\n").forEach((l) => lines.push(l && "\t" + l));
+        dropEdit.insertText = lines.join("\n");
       }
     }
     return dropEdit;
@@ -116,7 +118,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
 
   clearCache() {
     this.cache = {};
-    this.vsContext.workspaceState.update(ConfigEditorProvider.cacheName, this.cache);
+    this.context.workspaceState.update(ConfigEditorProvider.cacheName, this.cache);
   }
 
   private getCache(docUri: string): EditorCache {
@@ -149,12 +151,19 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       const perspectiveId = getPerspectiveFromUri(uri);
       const positions = this.getCache(uriStr).positions;
       const toml = this.getToml(originalUri);
-      panels.forEach((p) =>
-        p.webview.postMessage({
-          viewId: ConfigEditorId,
-          props: { toml: toml, perspectiveId: perspectiveId, positions: positions } as ConfigEditorProps,
-        } as ViewMessage)
-      );
+      const panelsToRemove: number[] = [];
+      panels.forEach((p, idx) => {
+        try {
+          p.webview.postMessage({
+            viewId: ConfigEditorId,
+            props: { toml: toml, perspectiveId: perspectiveId, positions: positions } as ConfigEditorProps,
+          } as ViewMessage);
+        } catch (e) {
+          console.log("Looks like this panelView was disposed.", e.message || e);
+          panelsToRemove.push(idx);
+        }
+      });
+      panelsToRemove.reverse().forEach(idx => this.panelsByUri[originalUri].splice(idx));
     }
   }
 
@@ -176,7 +185,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       this.panelsByUri[originalUri] = panels;
     }
     panels.push(webviewPanel);
-    webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
+    webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
 
     // Hook up event handlers so that we can synchronize the webview with the text document.
     //
@@ -237,7 +246,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     return Uri.joinPath(this.extensionPath, "dist", ...pathSegments);
   }
 
-  private getHtmlForWebview(webview: Webview) {
+  private getHtmlForWebview(webview: Webview, document: TextDocument) {
     // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
     // Script to handle user action
     const scriptUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, webviewsLibraryName));
@@ -246,7 +255,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
 
     const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
 
-    const config = workspace.getConfiguration("taipyStudio");
+    const config = workspace.getConfiguration(TaipyStudioSettingsName, document);
     const configObj = ["diagram.datanode.color", "diagram.task.color", "diagram.pipeline.color", "diagram.scenario.color"].reduce(
       (pv, cv) => {
         if (cv.endsWith(".color")) {

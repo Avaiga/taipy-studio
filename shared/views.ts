@@ -7,6 +7,7 @@ export interface NoDetailsProps {
 
 export const DataNodeDetailsId = "DataNodeDetails";
 export interface DataNodeDetailsProps {
+  nodeType: string;
   name: string;
   node: NodeType;
 }

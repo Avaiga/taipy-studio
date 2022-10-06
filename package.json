@@ -11,7 +11,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:taipy.hello",
+    "onCustomEditor:taipy.config.editor.diagram",
     "onView:taipy-config",
     "onLanguage:toml",
     "workspaceContains:**/*.toml"
@@ -48,6 +48,7 @@
             "filenamePattern": "*.toml"
           }
         ],
+        
         "priority": "default"
       }
     ],
@@ -139,28 +140,38 @@
     "configuration": {
       "title": "Taipy Studio",
       "properties": {
+        "taipyStudio.editor.drop.enabled": {
+          "type": "boolean",
+          "default": "true",
+          "description": "%config.editor.drop.enabled%"
+        },
+        "taipyStudio.editor.reveal.enabled": {
+          "type": "boolean",
+          "default": "true",
+          "description": "%config.editor.reveal.enabled%"
+        },
         "taipyStudio.diagram.datanode.color": {
           "type": "string",
           "format": "color-hex",
-          "default": "#FF0000",
+          "default": "#283282",
           "description": "%config.diagram.datanode.color.desc%"
         },
         "taipyStudio.diagram.task.color": {
           "type": "string",
           "format": "color-hex",
-          "default": "#008000",
+          "default": "#ff462b",
           "description": "%config.diagram.task.color.desc%"
         },
         "taipyStudio.diagram.pipeline.color": {
           "type": "string",
           "format": "color-hex",
-          "default": "#800080",
+          "default": "#08a87d",
           "description": "%config.diagram.pipeline.color.desc%"
         },
         "taipyStudio.diagram.scenario.color": {
           "type": "string",
           "format": "color-hex",
-          "default": "#0000FF",
+          "default": "#f0faff",
           "description": "%config.diagram.scenario.color.desc%"
         }
       }

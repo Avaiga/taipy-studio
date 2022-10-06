@@ -19,3 +19,6 @@
 .diagram-widget {
     grid-column: 1 / 4
 }
+.diagram-widget>div {
+    height: 100%
+}

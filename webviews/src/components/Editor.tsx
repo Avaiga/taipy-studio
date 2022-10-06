@@ -110,14 +110,9 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
     [model]
   );
 
-  const onDragOver = useCallback((evt: DragEvent) => {
-    evt.preventDefault();
-    console.log("onDragOver", evt, evt.dataTransfer);
-  }, []);
-
   const onDrop = useCallback((evt: DragEvent) => {
     evt.preventDefault();
-    console.log("onDrop", evt, evt.dataTransfer);
+    console.log("editor.onDrop", evt, evt.dataTransfer);
   }, []);
 
   toml = applyPerspective(toml, perspectiveId);
@@ -319,21 +314,10 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
     }
   }, [toml, positions]);
 
-  useEffect(() => {
-    window.addEventListener("dragover", (e) => {
-      e.preventDefault();
-    });
-
-    window.addEventListener("drop", (e) => {
-      e.preventDefault();
-      console.log((e as any).dataTransfer.getData("vscode/test"));
-    });
-  }, []);
-
   engine.setModel(model);
 
   return (
-    <div className="diagram-root" onDragOver={onDragOver} onDrop={onDrop}>
+    <div className="diagram-root" >
       <div className="diagram-button icon" title="re-layout" onClick={relayout}>
           <i className="codicon codicon-layout"></i>
       </div>
@@ -341,7 +325,9 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
           <i className="codicon codicon-refresh"></i>
       </div>
       <div>{perspectiveId != perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>
-      <CanvasWidget engine={engine} className="diagram-widget" />
+      <div onDrop={onDrop} className="diagram-widget" >
+        <CanvasWidget engine={engine} />
+      </div>
     </div>
   );
 };

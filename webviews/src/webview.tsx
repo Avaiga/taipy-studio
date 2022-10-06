@@ -55,7 +55,7 @@ const WebView = () => {
   return (
     <>
       <div className="icon" title="refresh" onClick={postRefreshMessage}>
-          <i className="codicon codicon-refresh"></i>
+        <i className="codicon codicon-refresh"></i>
       </div>
       <Loading />
     </>

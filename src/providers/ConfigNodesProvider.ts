@@ -1,4 +1,3 @@
-
 import { JsonMap, stringify } from "@iarna/toml";
 import {
   CancellationToken,
@@ -26,98 +25,105 @@ const titles = {
   [DataNode]: localize("DataNodeItem.title", "Select data node"),
   [Task]: localize("TaskItem.title", "Select task"),
   [Pipeline]: localize("PipelineItem.title", "Select pipeline"),
-  [Scenario]: localize("ScenarioItem.title", "Select scenario")
-}
+  [Scenario]: localize("ScenarioItem.title", "Select scenario"),
+};
 const getTitleFromType = (nodeType: string) => titles[nodeType] || "Select Something";
 
-const mimeTypes = {
-  [DataNode]: ["text/url-list"],
-  [Task]: ["text/url-list"],
-  [Pipeline]: ["text/url-list"],
+const treeViewIdFromTypes = {
+  [DataNode]: "taipy-config-datanodes",
+  [Task]: "taipy-config-tasks",
+  [Pipeline]: "taipy-config-pipelines",
+  [Scenario]: "taipy-config-scenarii",
+};
+export const getTreeViewIdFromType = (nodeType: string) => treeViewIdFromTypes[nodeType] || "";
+const getMimeTypeFromType = (nodeType: string) => "application/vnd.code.tree." + getTreeViewIdFromType(nodeType);
+
+const commandIdFromTypes = {
+  [DataNode]: "taipy.refreshDataNodes",
+  [Task]: "taipy.refreshTasks",
+  [Pipeline]: "taipy.refreshPipelines",
+  [Scenario]: "taipy.refreshScenarii",
 }
-const getMimeTypeFromType = (nodeType: string) => mimeTypes[nodeType] || [];
+export const getCommandIdFromType = (nodeType: string) => commandIdFromTypes[nodeType];
 
 export abstract class ConfigItem extends TreeItem {
-  getNodeType = () => "";
-  node: JsonMap;
-  constructor(name: string, node: JsonMap) {
+  abstract getNodeType();
+  constructor(name: string, private readonly node: JsonMap) {
     super(name, TreeItemCollapsibleState.None);
     this.contextValue = this.getNodeType();
-    this.node = node;
+  }
+  setResourceUri(uri: Uri) {
+    this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, typeof this.node == "object" ? stringify(this.node): ("" + this.node));
     this.command = {
       command: selectConfigNodeCmd,
-      title: getTitleFromType(this.getNodeType()),
-      arguments: [this.getNodeType(), name, node],
+      title: getTitleFromType(this.contextValue),
+      arguments: [this.contextValue, this.label, this.node, this.resourceUri],
     };
-  }
-  setResourceUri = (uri: Uri) => {
-    this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, stringify(this.node));
-  }
+  };
+  getNode() {return this.node}
 }
 export class DataNodeItem extends ConfigItem {
-  getNodeType = () => DataNode;
+  getNodeType() {
+    return DataNode;
+  }
 }
 
 export class TaskItem extends ConfigItem {
-  getNodeType = () => Task;
+  getNodeType() {
+    return Task;
+  }
 }
 
 export class PipelineItem extends ConfigItem {
-  getNodeType = () => Pipeline;
+  getNodeType() {
+    return Pipeline;
+  }
 }
 
 export class ScenarioItem extends ConfigItem {
-  getNodeType = () => Scenario;
+  getNodeType() {
+    return Scenario;
+  }
 }
 
-type TreeNodeCtor<T extends ConfigItem> = new (name: string, node: object) => T;
+export type TreeNodeCtor<T extends ConfigItem> = new (name: string, node: object) => T;
 
-export class ConfigNodesProvider<T extends ConfigItem> implements TreeDataProvider<T>, TreeDragAndDropController<T> {
-  private _onDidChangeTreeData: EventEmitter<T | undefined> =
-    new EventEmitter<T | undefined>();
-  readonly onDidChangeTreeData: Event<T | undefined> =
-    this._onDidChangeTreeData.event;
-  
-  private nodeType: string;
-  private nodeCtor: TreeNodeCtor<T>;
+export class ConfigNodesProvider<T extends ConfigItem = ConfigItem> implements TreeDataProvider<T>, TreeDragAndDropController<T> {
+  private _onDidChangeTreeData: EventEmitter<T | undefined> = new EventEmitter<T | undefined>();
+  readonly onDidChangeTreeData: Event<T | undefined> = this._onDidChangeTreeData.event;
+
   private configItems: T[] = [];
+  private nodeType: string;
 
-  constructor(context: Context, nodeCtor: TreeNodeCtor<T>) {
+  constructor(context: Context, private readonly nodeCtor: TreeNodeCtor<T> ) {
     this.nodeType = new nodeCtor(undefined, undefined).getNodeType();
-    this.nodeCtor = nodeCtor;
-    this.dragMimeTypes = getMimeTypeFromType(this.nodeType);
+    this.dragMimeTypes = [getMimeTypeFromType(this.nodeType)];
     this.refresh(context, context.getConfigUri());
   }
 
   dropMimeTypes: readonly string[];
   dragMimeTypes: readonly string[];
   handleDrag?(source: T[], treeDataTransfer: DataTransfer, token: CancellationToken): ProviderResult<void> {
-    const uris: Uri[] = [];
-    source.forEach(s => {
-      if (s.resourceUri) {
-        uris.push(s.resourceUri);
-      }
-    })
-		treeDataTransfer.set("text/url-list", new DataTransferItem(uris.map(u => u.toString()).join("\n")));
-	}
-  handleDrop?(target: T, dataTransfer: DataTransfer, token: CancellationToken): ProviderResult<void> {
+    // This need to be present so that drag can be initiated from treeviews
+  }
+
+  getNodeForUri(uri: string) {
+    return this.configItems.find(i => i.resourceUri.toString() == uri);
   }
 
   async refresh(context: Context, uri: Uri): Promise<void> {
     const configNodeEntries: object[] = context.getConfigNodes(this.nodeType);
-    const configNodes: T[] = configNodeEntries.map(
-      (entry) => {
-        const item = new this.nodeCtor(entry[0], entry[1]);
-        item.setResourceUri(uri);
-        return item;
-      }
-    );
+    const configNodes: T[] = configNodeEntries.map((entry) => {
+      const item = new this.nodeCtor(entry[0], entry[1]);
+      item.setResourceUri(uri);
+      return item;
+    });
     this.configItems = configNodes;
     this._onDidChangeTreeData.fire(undefined);
   }
 
   getItem(nodeName: string) {
-    return this.configItems.find(n => n.label == nodeName);
+    return this.configItems.find((n) => n.label == nodeName);
   }
 
   getNodeType() {

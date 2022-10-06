@@ -12,8 +12,7 @@ const schemeParams: Record<string, string[]> = {
 
 export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node: string): Uri =>
   uri &&
-  Uri.from({
-    ...uri,
+  uri.with({
     scheme: PerspectiveScheme,
     query:
       OriginalSchemeKey +
@@ -32,11 +31,11 @@ export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node: string)
 
 const getOriginalScheme = (uri: Uri) =>
   (uri &&
-    uri.query
+    (uri.query
       .split("&")
       .find((p) => p.startsWith(OriginalSchemeKey + "="))
-      ?.split("=")[1]) ||
-  uri.scheme ||
+      ?.split("=")[1] ||
+      uri.scheme)) ||
   "file";
 
 export const getOriginalUri = (uri: Uri): Uri => {
@@ -47,7 +46,7 @@ export const getOriginalUri = (uri: Uri): Uri => {
         .split("&")
         .filter((p) => !params.some((s) => p.startsWith(s + "=")))
         .join("&");
-      return Uri.from({ ...uri, scheme: getOriginalScheme(uri), query: query });
+      return uri.with({ scheme: getOriginalScheme(uri), query: query });
     }
   }
   return uri;
@@ -62,13 +61,14 @@ export const isUriEqual = (uri: Uri, otherUri?: Uri): boolean => {
 
 const getParamFromUri = (uri: Uri, name: string, defaultValue: string | undefined) => {
   const res =
-    ((uri &&
+    (uri &&
       Object.keys(schemeParams).some((s) => s == uri.scheme) &&
       uri.query
         .split("&")
         .find((p) => p.startsWith(name + "="))
         ?.split("=")[1]) ||
-    undefined) || defaultValue;
+    undefined ||
+    defaultValue;
   if (res) {
     return decodeURIComponent(res);
   }

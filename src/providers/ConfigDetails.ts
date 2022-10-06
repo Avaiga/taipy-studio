@@ -23,8 +23,6 @@ export class ConfigDetailsView implements WebviewViewProvider {
 
   constructor(
     private readonly extensionPath: Uri,
-    private data: any,
-    private view: any = null
   ) {
     this.setEmptyContent();
   }
@@ -36,10 +34,10 @@ export class ConfigDetailsView implements WebviewViewProvider {
     } as ViewMessage);
   }
 
-  setConfigNodeContent(name: string, node: any): void {
+  setConfigNodeContent(nodeType: string, name: string, node: any): void {
     this._view?.webview.postMessage({
       viewId: DataNodeDetailsId,
-      props: { name: name, node: node } as DataNodeDetailsProps,
+      props: { nodeType, name, node } as DataNodeDetailsProps,
     } as ViewMessage);
   }
 

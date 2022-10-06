@@ -11,7 +11,7 @@ const NoDetails = ({ message }: NoDetailsProps) => {
         <span className="taipy-panel-info">{message}</span>
       </div>
       <Button></Button>
-      <div className="icon">
+      <div className="icon" draggable>
         <i className="codicon codicon-note"></i> note
       </div>
     </div>
