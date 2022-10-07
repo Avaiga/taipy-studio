@@ -138,7 +138,7 @@
       ],
       "webview/context": [
         {
-          "command": "taipy.show.perpective",
+          "command": "taipy.hello",
           "when": "webviewId == 'taipy.config.editor.diagram' && webviewSection == 'taipy.node'"
         }
       ]
