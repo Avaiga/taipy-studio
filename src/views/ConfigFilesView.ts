@@ -1,8 +1,6 @@
 import {
   commands,
-  Event,
   EventEmitter,
-  ExtensionContext,
   ProviderResult,
   TreeDataProvider,
   TreeItem,
@@ -62,6 +60,13 @@ interface ConfigFilesCache {
   lastSelectedUri?: string;
 }
 
+interface FileDesc {
+  uri: Uri;
+  label: string;
+  path: string;
+  dir: string;
+}
+
 export class ConfigFilesView {
   private view: TreeView<ConfigFileItem>;
   private dataProvider: ConfigFilesProvider;
@@ -86,7 +91,7 @@ export class ConfigFilesView {
   async refresh(lastSelectedUri?: string): Promise<void> {
     const configItems: ConfigFileItem[] = [];
     const uris: Uri[] = await workspace.findFiles(`**/*${configFileExt}`, "**/node_modules/**");
-    const baseDescs: Record<string, Array<Record<string, any>>> = {};
+    const baseDescs: Record<string, Array<FileDesc>> = {};
     uris.forEach((uri) => {
       let path = uri.path;
       let lastSepIndex = path.lastIndexOf("/");

@@ -112,9 +112,9 @@ export class ConfigNodesProvider<T extends ConfigItem = ConfigItem> implements T
   }
 
   async refresh(context: Context, uri: Uri): Promise<void> {
-    const configNodeEntries: object[] = context.getConfigNodes(this.nodeType);
-    const configNodes: T[] = configNodeEntries.map((entry) => {
-      const item = new this.nodeCtor(entry[0], entry[1]);
+    const configNodeEntries = context.getConfigNodes(this.nodeType);
+    const configNodes: T[] = configNodeEntries.map(([key, node]) => {
+      const item = new this.nodeCtor(key, node);
       item.setResourceUri(uri);
       return item;
     });

@@ -17,6 +17,7 @@
     "workspaceContains:**/*.toml"
   ],
   "main": "./dist/taipy-studio.js",
+  "l10n": "./10n",
   "contributes": {
     "commands": [
       {
@@ -48,7 +49,6 @@
             "filenamePattern": "*.toml"
           }
         ],
-        
         "priority": "default"
       }
     ],
@@ -135,6 +135,12 @@
           "command": "taipy.show.perpective",
           "when": "view == taipy-configs || view == taipy-config-pipelines || view == taipy-config-scenarii"
         }
+      ],
+      "webview/context": [
+        {
+          "command": "taipy.show.perpective",
+          "when": "webviewId == 'taipy.config.editor.diagram' && webviewSection == 'taipy.node'"
+        }
       ]
     },
     "configuration": {
@@ -212,6 +218,7 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "@vscode/codicons": "^0.0.32",
+    "@vscode/l10n-dev": "^0.0.12",
     "vscode-nls": "^5.2.0"
   }
 }

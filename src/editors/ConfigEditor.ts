@@ -230,9 +230,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     const id = getPerspectiveFromUri(docUri);
     let pos = this.setPositionsCache(docUri.toString());
     if (positions) {
-      pos = Object.keys(positions).reduce((pv, cv) => {
+      pos = Object.entries(positions).reduce((pv, [k, v]) => {
         modified = true;
-        pv[cv] = positions[cv];
+        pv[k] = v;
         return pv;
       }, pos);
     }

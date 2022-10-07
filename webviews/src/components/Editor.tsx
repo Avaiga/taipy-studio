@@ -9,8 +9,9 @@ import createEngine, {
   DefaultNodeModelOptions,
   NodeModelListener,
   LinkModel,
+  NodeModel,
 } from "@projectstorm/react-diagrams";
-import { CanvasWidget } from "@projectstorm/react-canvas-core";
+import { CanvasWidget, BaseEvent, BaseEntityEvent } from "@projectstorm/react-canvas-core";
 import * as deepEqual from "fast-deep-equal";
 import { getDiff } from "recursive-diff";
 
@@ -51,7 +52,7 @@ const getChildrenNodes = (toml: any, parentType: string, filter?: string) => {
       ? parents.reduce((pv, cv) => {
           pv[cv] = nodes[cv][childrenKey];
           return pv;
-        }, {} as any)
+        }, {} as Record<string, string[]>)
       : {};
     if (filter) {
       parents.forEach((p) => {
@@ -69,11 +70,29 @@ const getLinkName = (link: LinkModel) =>
   "." +
   (link.getTargetPort().getNode() as DefaultNodeModel).getOptions().name;
 
+const getNodeAndLinksPositions = (node: DefaultNodeModel, positions: Positions = {}) => {
+  const nodeName = node.getOptions().name;
+  const pos = node.getPosition();
+  if (nodeName && pos) {
+    positions[nodeName] = [[pos.x, pos.y]];
+  }
+  Object.values(node.getPorts()).forEach((port) =>
+    Object.values(port.getLinks()).forEach((l) => {
+      const linkName = getLinkName(l);
+      const points = l.getPoints();
+      if (linkName && points) {
+        positions[linkName] = points.map((p) => [p.getPosition().x, p.getPosition().y]);
+      }
+    })
+  );
+  return positions;
+};
+
 const fireNodeSelected = (nodeType: string, name: string) => postActionMessage(nodeType, name, Select);
 const cachePositions = (model: DiagramModel) => {
   const pos = model.getNodes().reduce((ps, node) => {
     const pNode = node as DefaultNodeModel;
-    const nodeName = (node as DefaultNodeModel).getOptions().name;
+    const nodeName = pNode.getOptions().name;
     const pos = pNode.getPosition();
     if (nodeName && pos) {
       ps[nodeName] = [[pos.x, pos.y]];
@@ -84,15 +103,23 @@ const cachePositions = (model: DiagramModel) => {
     const linkName = getLinkName(link);
     const points = link.getPoints();
     if (linkName && points) {
-      ps[linkName] = points.reduce((a, p) => {
-        a.push([p.getPosition().x, p.getPosition().y]);
-        return a;
-      }, [] as Array<[number, number]>);
+      ps[linkName] = points.map((p) => [p.getPosition().x, p.getPosition().y]);
     }
     return ps;
   }, pos);
   postPositionsMessage(posL);
 };
+
+const nodeListener = {
+  selectionChanged: (e: BaseEvent) => {
+    const parts = (e as BaseEntityEvent<DefaultNodeModel>).entity.getOptions().name?.split(".", 2) || [];
+    if (parts.length > 1) {
+      fireNodeSelected(parts[0], parts[1]);
+    }
+  },
+  positionChanged: (e: BaseEvent) => postPositionsMessage(getNodeAndLinksPositions((e as BaseEntityEvent<DefaultNodeModel>).entity)),
+} as NodeModelListener;
+
 const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
   const [model, setModel] = useState(new DiagramModel());
   const oldToml = useRef<Record<string, any>>();
@@ -118,6 +145,7 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
   toml = applyPerspective(toml, perspectiveId);
 
   useEffect(() => {
+    model.getNodes().forEach(node => engine.getNodeElement(node).setAttribute("data-vscode-context", '{"webviewSection": "taipy.node", "preventDefaultContextMenuItems": false}'));
     if (!toml || (perspectiveId == oldPerspId.current && deepEqual(oldToml.current, toml))) {
       return;
     }
@@ -158,11 +186,13 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
                     const parentNames = [];
                     if (parentType) {
                       const nodes = getChildrenNodes(toml, parentType, diff[addI].path[pathLen - 1] as string);
-                      parentNames.push(
-                        ...Object.keys(nodes)
-                          .filter((p) => nodes[p].length)
-                          .map((p) => parentType + "." + p)
-                      );
+                      if (nodes) {
+                        parentNames.push(
+                          ...Object.entries(nodes)
+                            .filter(([_, node]) => node.length)
+                            .map(([p]) => parentType + "." + p)
+                        );
+                      }
                     }
                     parentNames.push(...getParentNames(toml, ...(diff[addI].path as string[])));
                     if (parentNames.length) {
@@ -190,13 +220,12 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
                         }
                       });
                     if (childType) {
-                      const children = toml[childType];
+                      const children = toml[childType] as Record<string, Record<string, string[]>>;
                       if (children) {
                         const childrenNames: string[] = [];
                         const nodeName = diff[addI].path[pathLen - 1] as string;
-                        Object.keys(children).filter((t) => {
-                          const inputs = ((children[t][TaskInputs] || []) as string[]).filter((n) => n == nodeName);
-                          if (inputs.length) {
+                        Object.entries(children).forEach(([t, c]) => {
+                          if ((c[TaskInputs] || []).some((n) => n == nodeName)) {
                             childrenNames.push(t);
                           }
                         });
@@ -241,46 +270,43 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
           name: name,
           color: getNodeColor(nodeType),
         });
+        
         node.setPosition(150, 100 + 100 * tIdx + 10 * nIdx);
         node.addInPort(InPortName);
         node.addOutPort(OutPortName);
-        node.registerListener({ selectionChanged: () => fireNodeSelected(nodeType, key) } as NodeModelListener);
+        node.registerListener(nodeListener);
         nodeModels[name] = node;
       });
     });
 
     // create links Tasks-DataNodes, Pipeline-Tasks, Scenario-Pipelines
     const nodeTypes = [Task, Pipeline, Scenario];
-    Object.keys(nodeModels).forEach((key) => {
-      nodeTypes.forEach((nodeType) => {
-        if (key.startsWith(nodeType + ".")) {
-          const nameLen = nodeType.length + 1;
+    Object.entries(nodeModels).forEach(([key, nodeModel]) => {
+      nodeTypes
+        .filter((nt) => key.startsWith(nt + "."))
+        .forEach((nodeType) => {
+          const parentNode = toml[nodeType][key.split(".", 2)[1]];
           const childType = getChildType(nodeType);
           if (childType) {
             const descendants = getDescendants(nodeType);
             if (descendants[0]) {
-              (toml[nodeType][key.substring(nameLen)][descendants[0]] || []).forEach((dnKey: string) => {
+              (parentNode[descendants[0]] || []).forEach((dnKey: string) => {
                 const node = nodeModels[childType + "." + dnKey];
                 if (node) {
-                  linkModels.push(
-                    (node.getPort(OutPortName) as DefaultPortModel).link<DefaultLinkModel>(nodeModels[key].getPort(InPortName) as DefaultPortModel)
-                  );
+                  linkModels.push((node.getPort(OutPortName) as DefaultPortModel).link<DefaultLinkModel>(nodeModel.getPort(InPortName) as DefaultPortModel));
                 }
               });
             }
             if (descendants[1]) {
-              (toml[nodeType][key.substring(nameLen)][descendants[1]] || []).forEach((dnKey: string) => {
+              (parentNode[descendants[1]] || []).forEach((dnKey: string) => {
                 const node = nodeModels[childType + "." + dnKey];
                 if (node) {
-                  linkModels.push(
-                    (nodeModels[key].getPort(OutPortName) as DefaultPortModel).link<DefaultLinkModel>(node.getPort(InPortName) as DefaultPortModel)
-                  );
+                  linkModels.push((nodeModel.getPort(OutPortName) as DefaultPortModel).link<DefaultLinkModel>(node.getPort(InPortName) as DefaultPortModel));
                 }
               });
             }
           }
-        }
-      });
+        });
     });
 
     const dModel = new DiagramModel();
@@ -317,15 +343,15 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
   engine.setModel(model);
 
   return (
-    <div className="diagram-root" >
+    <div className="diagram-root">
       <div className="diagram-button icon" title="re-layout" onClick={relayout}>
-          <i className="codicon codicon-layout"></i>
+        <i className="codicon codicon-layout"></i>
       </div>
       <div className="diagram-button icon" title="refresh" onClick={postRefreshMessage}>
-          <i className="codicon codicon-refresh"></i>
+        <i className="codicon codicon-refresh"></i>
       </div>
       <div>{perspectiveId != perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>
-      <div onDrop={onDrop} className="diagram-widget" >
+      <div onDrop={onDrop} className="diagram-widget">
         <CanvasWidget engine={engine} />
       </div>
     </div>

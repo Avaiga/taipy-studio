@@ -20,7 +20,7 @@ import {
 import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri } from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
 
-const configNodeKeySort = (a: string, b: string) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
+const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
 
 interface NodeSelectionCache {
   fileUri?: string;
@@ -111,18 +111,13 @@ export class Context {
     return this.configFileUri;
   }
 
-  getConfigNodes(nodeType: string): object[] {
+  getConfigNodes(nodeType: string): Array<[string, any]> {
     const configNodes = this.configContent ? this.configContent[nodeType] : null;
-    const result = [];
-    if (configNodes) {
-      // Sort keys so that 'default' is always the first entry.
-      const keys = Object.keys(configNodes).sort(configNodeKeySort);
-      keys.forEach((key) => result.push([key, configNodes[key]]));
-    }
-    return result;
-  }
+    // Sort keys so that 'default' is always the first entry.
+    return Object.entries(configNodes || {}).sort(configNodeKeySort).map(a => a);
+}
 
-  async selectUri(uri: Uri): Promise<void> {
+async selectUri(uri: Uri): Promise<void> {
     if (isUriEqual(uri, this.configFileUri)) {
       return;
     }
