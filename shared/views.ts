@@ -17,6 +17,7 @@ export interface ConfigEditorProps {
   toml: any;
   perspectiveId: string;
   positions: Positions;
+  baseUri: string;
 }
 
 export type NodeType = Record<string, string |string[]>;

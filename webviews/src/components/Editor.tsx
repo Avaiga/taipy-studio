@@ -9,7 +9,6 @@ import createEngine, {
   DefaultNodeModelOptions,
   NodeModelListener,
   LinkModel,
-  NodeModel,
 } from "@projectstorm/react-diagrams";
 import { CanvasWidget, BaseEvent, BaseEntityEvent } from "@projectstorm/react-canvas-core";
 import * as deepEqual from "fast-deep-equal";
@@ -120,7 +119,18 @@ const nodeListener = {
   positionChanged: (e: BaseEvent) => postPositionsMessage(getNodeAndLinksPositions((e as BaseEntityEvent<DefaultNodeModel>).entity)),
 } as NodeModelListener;
 
-const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
+const getPerspectiveUri = (node: DefaultNodeModel, baseUri: string) => {
+  const [scheme, rest] = baseUri.split(":", 2);
+  const [path, rest2] = (rest || "").split("?", 2);
+  const [query, fragment] = (rest2 || "").split("#", 2);
+  const queryParams = query.split("&");
+  queryParams.push("taipy-originalscheme=" + scheme);
+  queryParams.push("taipy-perspective=" + node.getOptions().name);
+  const newFragment = fragment ? ("#" + fragment): "";
+  return `taipy-perspective:${path}?${queryParams.join("&")}${newFragment}`; 
+}
+
+const Editor = ({ toml, positions, perspectiveId, baseUri }: ConfigEditorProps) => {
   const [model, setModel] = useState(new DiagramModel());
   const oldToml = useRef<Record<string, any>>();
   const oldPerspId = useRef<string>();
@@ -145,7 +155,7 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
   toml = applyPerspective(toml, perspectiveId);
 
   useEffect(() => {
-    model.getNodes().forEach(node => engine.getNodeElement(node).setAttribute("data-vscode-context", '{"webviewSection": "taipy.node", "preventDefaultContextMenuItems": false}'));
+    model.getNodes().forEach(node => engine.getNodeElement(node).setAttribute("data-vscode-context", '{"webviewSection": "taipy.node", "preventDefaultContextMenuItems": true, "resourceUri": "' + getPerspectiveUri(node as DefaultNodeModel, baseUri)  + '"}'));
     if (!toml || (perspectiveId == oldPerspId.current && deepEqual(oldToml.current, toml))) {
       return;
     }
@@ -338,7 +348,7 @@ const Editor = ({ toml, positions, perspectiveId }: ConfigEditorProps) => {
         relayout(undefined, dModel);
       }, 500);
     }
-  }, [toml, positions]);
+  }, [toml, positions, baseUri]);
 
   engine.setModel(model);
 

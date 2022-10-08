@@ -14,7 +14,8 @@
     "onCustomEditor:taipy.config.editor.diagram",
     "onView:taipy-config",
     "onLanguage:toml",
-    "workspaceContains:**/*.toml"
+    "workspaceContains:**/*.toml",
+    "onFileSystem:taipy-perspective"
   ],
   "main": "./dist/taipy-studio.js",
   "l10n": "./10n",
@@ -138,7 +139,7 @@
       ],
       "webview/context": [
         {
-          "command": "taipy.hello",
+          "command": "taipy.show.perpective",
           "when": "webviewId == 'taipy.config.editor.diagram' && webviewSection == 'taipy.node'"
         }
       ]

@@ -156,7 +156,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         try {
           p.webview.postMessage({
             viewId: ConfigEditorId,
-            props: { toml: toml, perspectiveId: perspectiveId, positions: positions } as ConfigEditorProps,
+            props: { toml: toml, perspectiveId: perspectiveId, positions: positions, baseUri: originalUri } as ConfigEditorProps,
           } as ViewMessage);
         } catch (e) {
           console.log("Looks like this panelView was disposed.", e.message || e);

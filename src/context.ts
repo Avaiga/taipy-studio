@@ -175,7 +175,8 @@ async selectUri(uri: Uri): Promise<void> {
   }
 
   private showPerspective(item: TreeItem) {
-    commands.executeCommand("vscode.openWith", item.resourceUri, ConfigEditorProvider.viewType);
+    const uri = typeof item.resourceUri == "string" ? Uri.parse(item.resourceUri) : item.resourceUri;
+    commands.executeCommand("vscode.openWith", uri, ConfigEditorProvider.viewType);
   }
 
   private async readConfig(uri: Uri): Promise<void> {

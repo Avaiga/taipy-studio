@@ -2,7 +2,6 @@ import { JsonMap, stringify } from "@iarna/toml";
 import {
   CancellationToken,
   DataTransfer,
-  DataTransferItem,
   Event,
   EventEmitter,
   ProviderResult,
