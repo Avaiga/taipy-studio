@@ -13,3 +13,5 @@ export const getCspScriptSrc = (nonce: string) => {
     (process.env.NODE_ENV == "development" ? " 'unsafe-eval'" : "")
   );
 };
+
+export const textUriListMime = "text/uri-list";

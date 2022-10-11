@@ -1,28 +1,12 @@
 import { useEffect, lazy, useState, Suspense } from "react";
 
 import { ViewMessage } from "../../shared/messages";
-import {
-  ConfigEditorId,
-  ConfigEditorProps,
-  DataNodeDetailsId,
-  DataNodeDetailsProps,
-  NoDetailsId,
-  NoDetailsProps,
-} from "../../shared/views";
+import { ConfigEditorId, ConfigEditorProps, DataNodeDetailsId, DataNodeDetailsProps, NoDetailsId, NoDetailsProps } from "../../shared/views";
 import { postRefreshMessage } from "./components/utils";
 
-const NoDetails = lazy(
-  () => import(/* webpackChunkName: "NoDetails" */ "./components/NoDetails")
-);
-const DataNodeDetails = lazy(
-  () =>
-    import(
-      /* webpackChunkName: "DataNodeDetails" */ "./components/DataNodeDetails"
-    )
-);
-const Editor = lazy(
-  () => import(/* webpackChunkName: "Editor" */ "./components/Editor")
-);
+const NoDetails = lazy(() => import(/* webpackChunkName: "NoDetails" */ "./components/NoDetails"));
+const DataNodeDetails = lazy(() => import(/* webpackChunkName: "DataNodeDetails" */ "./components/DataNodeDetails"));
+const Editor = lazy(() => import(/* webpackChunkName: "Editor" */ "./components/Editor"));
 
 const Loading = () => <div>Loading...</div>;
 
@@ -31,8 +15,11 @@ const WebView = () => {
 
   useEffect(() => {
     // Manage Post Message reception
-    const messageListener = (event: MessageEvent) =>
-      setMessage(event.data as ViewMessage);
+    const messageListener = (event: MessageEvent) => {
+      if (event.data.viewId) {
+        setMessage(event.data as ViewMessage);
+      }
+    };
     window.addEventListener("message", messageListener);
     return () => window.removeEventListener("message", messageListener);
   }, []);
@@ -40,9 +27,9 @@ const WebView = () => {
   useEffect(() => {
     message || postRefreshMessage();
   }, [message]);
-  
+
   if (message) {
-    switch (message.name) {
+    switch (message.viewId) {
       case NoDetailsId:
         return (
           <Suspense fallback={<Loading />}>
@@ -65,7 +52,14 @@ const WebView = () => {
         break;
     }
   }
-  return <Loading />;
+  return (
+    <>
+      <div className="icon" title="refresh" onClick={postRefreshMessage}>
+        <i className="codicon codicon-refresh"></i>
+      </div>
+      <Loading />
+    </>
+  );
 };
 
 export default WebView;

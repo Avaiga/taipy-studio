@@ -1,109 +1,187 @@
-import {
-  commands,
-  ExtensionContext,
-  FileSystemWatcher,
-  Uri,
-  window,
-  workspace,
-} from "vscode";
+import { commands, ExtensionContext, Range, TextEditorRevealType, TreeDataProvider, TreeItem, TreeView, Uri, window, workspace } from "vscode";
 import { parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
-import { selectConfigFileCmd, selectDataNodeCmd } from "./commands";
-import { CONFIG_DETAILS_ID } from "./constants";
-import { DataNodesProvider } from "./providers/DataNodesProvider";
+import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
+import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { configFileExt } from "./utils";
+import {
+  ConfigItem,
+  ConfigNodesProvider,
+  DataNodeItem,
+  getCommandIdFromType,
+  getTreeViewIdFromType,
+  PipelineItem,
+  ScenarioItem,
+  TaskItem,
+  TreeNodeCtor,
+} from "./providers/ConfigNodesProvider";
+import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri } from "./contentProviders/PerpectiveContentProvider";
+import { ConfigEditorProvider } from "./editors/ConfigEditor";
 
-const dataNodeKeySort = (a: string, b: string) => a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1;
+const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
+
+interface NodeSelectionCache {
+  fileUri?: string;
+  [key: string]: string;
+}
 
 export class Context {
   static create(vsContext: ExtensionContext): void {
     new Context(vsContext);
   }
+  private static readonly cacheName = "taipy.selectedNodes.cache";
+
   private configFileUri: Uri | null = null;
   private configContent: object = null;
   private configFilesView: ConfigFilesView;
-  private dataNodesProvider: DataNodesProvider;
+  private treeProviders: ConfigNodesProvider<ConfigItem>[] = [];
+  private treeViews: TreeView<TreeItem>[] = [];
   private configDetailsView: ConfigDetailsView;
-  private fileSystemWatcher: FileSystemWatcher;
+  private selectionCache: NodeSelectionCache;
 
-  private constructor(vsContext: ExtensionContext) {
+  private constructor(private readonly vsContext: ExtensionContext) {
+    this.selectionCache = vsContext.workspaceState.get(Context.cacheName, {} as NodeSelectionCache);
     // Configuration files
-    this.configFilesView = new ConfigFilesView(this, "taipy-configs");
+    this.configFilesView = new ConfigFilesView(this, "taipy-configs", this.selectionCache.fileUri);
     commands.registerCommand("taipy.refreshConfigs", this.configFilesView.refresh, this.configFilesView);
     commands.registerCommand(selectConfigFileCmd, this.selectUri, this);
-    // Data Nodes
-    this.dataNodesProvider = new DataNodesProvider(this);
-    commands.registerCommand("taipy.refreshDataNodes", () =>
-      this.dataNodesProvider.refresh(this)
-    );
-    window.registerTreeDataProvider(
-      "taipy-config-datanodes",
-      this.dataNodesProvider
-    );
-    commands.registerCommand(selectDataNodeCmd, this.selectDataNode, this);
+    // global Commands
+    commands.registerCommand(selectConfigNodeCmd, this.selectConfigNode, this);
+    commands.registerCommand(revealConfigNodeCmd, this.revealConfigNodeInEditors, this);
+    commands.registerCommand("taipy.show.perpective", this.showPerspective, this);
+    // Perspective Provider
+    vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, new PerspectiveContentProvider()));
+    // Create Tree Views
+    this.treeViews.push(this.createTreeView(DataNodeItem));
+    this.treeViews.push(this.createTreeView(TaskItem));
+    this.treeViews.push(this.createTreeView(PipelineItem));
+    this.treeViews.push(this.createTreeView(ScenarioItem));
+    // Dispose when finished
+    vsContext.subscriptions.push(...this.treeViews);
     // Details
-    this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri, {});
-    vsContext.subscriptions.push(
-      window.registerWebviewViewProvider(
-        CONFIG_DETAILS_ID,
-        this.configDetailsView
-      )
-    );
+    this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri);
+    vsContext.subscriptions.push(window.registerWebviewViewProvider(CONFIG_DETAILS_ID, this.configDetailsView));
 
-    this.fileSystemWatcher = workspace.createFileSystemWatcher(
-      `**/*${configFileExt}`
-    );
-    this.fileSystemWatcher.onDidChange(this.onFileChange, this);
-    this.fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
-    this.fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
+    const fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
+    fileSystemWatcher.onDidChange(this.onFileChange, this);
+    fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
+    fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
+    vsContext.subscriptions.push(fileSystemWatcher);
   }
 
+  private createTreeView<T extends ConfigItem>(nodeCtor: TreeNodeCtor<T>) {
+    const provider = new ConfigNodesProvider(this, nodeCtor);
+    const nodeType = provider.getNodeType();
+    commands.registerCommand(getCommandIdFromType(nodeType), () => provider.refresh(this, this.configFileUri), this);
+    this.treeProviders.push(provider);
+    const treeView = window.createTreeView(getTreeViewIdFromType(nodeType), { treeDataProvider: provider, dragAndDropController: provider });
+    return treeView;
+  }
+
+  private revealConfigNodesInTrees() {
+    this.treeProviders.forEach((p, idx) => {
+      const nodeType = p.getNodeType();
+      const lastSelectedUri = this.selectionCache[nodeType];
+      if (lastSelectedUri) {
+        const self = this;
+        setTimeout(() => {
+          const item = p.getNodeForUri(lastSelectedUri);
+          if (item && this.treeViews[idx].visible) {
+            this.treeViews[idx].reveal(item, { select: true });
+            self.selectConfigNode(nodeType, item.label as string, item.getNode(), item.resourceUri);
+          }
+        }, 1);
+      }
+      });
+  }
   private async onFileChange(uri: Uri): Promise<void> {
     if (uri && this.configFileUri?.toString() == uri.toString()) {
       await this.readConfig(uri);
-      this.dataNodesProvider.refresh(this);
+      this.treeProviders.forEach((p) => p.refresh(this, uri));
     }
   }
 
   private async onFileCreateDelete(uri: Uri): Promise<void> {
-    this.configFilesView.refresh();
+    this.configFilesView.refresh(this.selectUri?.toString());
   }
 
-  getDataNodes(): object[] {
-    const dataNodes = this.configContent
-      ? this.configContent["DATA_NODE"]
-      : null;
-    const result = [];
-    if (dataNodes) {
-      // Sort keys so that 'default' is always the first entry.
-      const keys = Object.keys(dataNodes).sort(dataNodeKeySort);
-      keys.forEach((key) => result.push([key, dataNodes[key]]));
-    }
-    return result;
+  getConfigUri() {
+    return this.configFileUri;
   }
 
-  async selectUri(uri: Uri): Promise<void> {
-    if (this.configFileUri?.toString() == uri?.toString()) {
+  getConfigNodes(nodeType: string): Array<[string, any]> {
+    const configNodes = this.configContent ? this.configContent[nodeType] : null;
+    // Sort keys so that 'default' is always the first entry.
+    return Object.entries(configNodes || {}).sort(configNodeKeySort).map(a => a);
+}
+
+async selectUri(uri: Uri): Promise<void> {
+    if (isUriEqual(uri, this.configFileUri)) {
       return;
     }
     this.configFileUri = uri;
     await this.readConfig(uri);
-    this.dataNodesProvider.refresh(this);
+    this.treeProviders.forEach((p) => p.refresh(this, uri));
+    if (this.selectionCache.fileUri != uri.toString()) {
+      this.selectionCache.fileUri = uri.toString();
+      this.vsContext.workspaceState.update(Context.cacheName, this.selectionCache);
+    }
+    this.revealConfigNodesInTrees();
   }
 
-  private async selectDataNode(name: string, dataNode: object): Promise<void> {
-    this.configDetailsView.setDataNodeContent(
-      name,
-      dataNode[1]["storage_type"],
-      dataNode[1]["scope"]
-    );
+  private async selectConfigNode(nodeType: string, name: string, configNode: object, uri: Uri, reveal = true): Promise<void> {
+    this.configDetailsView.setConfigNodeContent(nodeType, name, configNode);
+    if (this.selectionCache[nodeType] != uri.toString()) {
+      this.selectionCache[nodeType] = uri.toString();
+      this.vsContext.workspaceState.update(Context.cacheName, this.selectionCache);
+    }
+    if (reveal) {
+      this.revealConfigNodeInEditors(uri, nodeType, name);
+    }
+  }
+
+  private revealConfigNodeInEditors(docUri: Uri, nodeType: string, name: string) {
+    if (!workspace.getConfiguration(TaipyStudioSettingsName).get("editor.reveal.enabled", true)) {
+      return;
+    }
+    if (isUriEqual(docUri, this.configFileUri)) {
+      const providerIndex = this.treeProviders.findIndex((p) => p.getNodeType() == nodeType);
+      if (providerIndex > -1) {
+        const item = this.treeProviders[providerIndex].getItem(name);
+        if (item) {
+          this.treeViews[providerIndex].reveal(item, { select: true });
+          this.selectConfigNode(nodeType, name, item.getNode(), docUri, false);
+        }
+      }
+    }
+    const editors = window.visibleTextEditors.filter((te) => isUriEqual(docUri, te.document.uri));
+    if (editors.length) {
+      const doc = editors[0].document;
+      const section = nodeType + "." + name;
+      for (let i = 0; i < doc.lineCount; i++) {
+        const line = doc.lineAt(i);
+        const p = line.text.indexOf(section);
+        if (p > -1) {
+          const range = new Range(line.range.start.translate(0, p), line.range.start.translate(0, p + section.length));
+          editors.forEach((editor) => {
+            editor.revealRange(range, TextEditorRevealType.InCenter);
+          });
+          return;
+        }
+      }
+    }
+  }
+
+  private showPerspective(item: TreeItem) {
+    const uri = typeof item.resourceUri == "string" ? Uri.parse(item.resourceUri) : item.resourceUri;
+    commands.executeCommand("vscode.openWith", uri, ConfigEditorProvider.viewType);
   }
 
   private async readConfig(uri: Uri): Promise<void> {
     if (uri) {
-      const toml = await workspace.fs.readFile(uri);
+      const toml = await workspace.fs.readFile(getOriginalUri(uri));
       try {
         this.configContent = parse(toml.toString());
       } catch (e) {

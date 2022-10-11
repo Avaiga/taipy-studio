@@ -13,17 +13,18 @@ const config = (env, argv) => ({
   output: {
     // https://webpack.js.org/configuration/output/
     path: path.resolve(__dirname, "dist"),
-    filename: "taipy.js",
+    filename: "taipy-studio.js",
     libraryTarget: "commonjs2",
     devtoolModuleFilenameTemplate: "../[resource-path]",
   },
-  devtool: argv === "development" && "source-map",
+  devtool: argv.mode === "development" && "source-map",
   externals: {
     vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: [".ts", ".js", ".tsx"],
+    //mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
+    extensions: [".ts", ".js"],
   },
   plugins: [
     new copyPlugin({

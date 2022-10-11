@@ -1,3 +1,5 @@
+import { Positions } from "./messages";
+
 export const NoDetailsId = "NoDetails";
 export interface NoDetailsProps {
   message: string;
@@ -5,15 +7,22 @@ export interface NoDetailsProps {
 
 export const DataNodeDetailsId = "DataNodeDetails";
 export interface DataNodeDetailsProps {
+  nodeType: string;
   name: string;
-  storage_type: string;
-  scope: string;
+  node: NodeType;
 }
 
 export const ConfigEditorId = "ConfigEditor";
 export interface ConfigEditorProps {
   toml: any;
+  perspectiveId: string;
+  positions: Positions;
+  baseUri: string;
 }
+
+export type NodeType = Record<string, string |string[]>;
+
+export const perspectiveRootId = "__root__";
 
 export const webviewsLibraryDir = "webviews";
 export const webviewsLibraryName = "taipy-webviews.js";

@@ -1,4 +1,6 @@
 export interface ViewMessage<T = unknown> {
-    name: string;
+    viewId: string;
     props: T;
 }
+
+export type Positions = Record<string, Array<[number, number]>>;

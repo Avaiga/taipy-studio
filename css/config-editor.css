@@ -1,3 +1,24 @@
 .diagram-root {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 1em;
+    grid-template-rows: auto 1fr;
     height: 100vh;
+}
+.diagram-button {
+    font-size: 1.5em; /* like h2*/
+    align-self: center;
+    color: var(--vscode-menu-foreground);
+}
+.diagram-button:hover {
+    color: var(--vscode-menu-selectionForeground);
+}
+.diagram-root h2 {
+    margin: unset;
+}
+.diagram-widget {
+    grid-column: 1 / 4
+}
+.diagram-widget>div {
+    height: 100%
 }

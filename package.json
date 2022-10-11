@@ -1,6 +1,6 @@
 {
-  "name": "taipy-extension",
-  "displayName": "taipy-extension",
+  "name": "taipy-studio",
+  "displayName": "Taipy Studio",
   "description": "Visual Studio Code extension for Taipy",
   "publisher": "Avaiga",
   "version": "0.0.1",
@@ -11,12 +11,14 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:taipy.hello",
+    "onCustomEditor:taipy.config.editor.diagram",
     "onView:taipy-config",
     "onLanguage:toml",
-    "workspaceContains:**/*.toml"
+    "workspaceContains:**/*.toml",
+    "onFileSystem:taipy-perspective"
   ],
-  "main": "./dist/taipy.js",
+  "main": "./dist/taipy-studio.js",
+  "l10n": "./10n",
   "contributes": {
     "commands": [
       {
@@ -26,10 +28,17 @@
       {
         "command": "taipy.refreshConfigs",
         "title": "%extension.commands.taipy.refreshConfigs%",
-        "icon": {
-          "light": "assets/light/refresh.svg",
-          "dark": "assets/dark/refresh.svg"
-        }  
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "taipy.clearConfigCache",
+        "title": "%extension.commands.taipy.clearConfigCache%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "taipy.show.perpective",
+        "title": "%extension.commands.taipy.show.perpective%",
+        "icon": "$(type-hierarchy)"
       }
     ],
     "customEditors": [
@@ -65,8 +74,24 @@
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
+          "id": "taipy-config-tasks",
+          "name": "%extension.views.taipy-config-panel.taipy-config-tasks%",
+          "when": "taipy:numberOfConfigFiles>0"
+        },
+        {
+          "id": "taipy-config-pipelines",
+          "name": "%extension.views.taipy-config-panel.taipy-config-pipelines%",
+          "when": "taipy:numberOfConfigFiles>0"
+        },
+        {
+          "id": "taipy-config-scenarii",
+          "name": "%extension.views.taipy-config-panel.taipy-config-scenarii%",
+          "when": "taipy:numberOfConfigFiles>0"
+        },
+        {
           "id": "taipy-config-auth",
-          "name": "%extension.views.taipy-config-panel.taipy-config-auth%"
+          "name": "%extension.views.taipy-config-panel.taipy-config-auth%",
+          "visibility": "collapsed"
         },
         {
           "type": "webview",
@@ -84,6 +109,18 @@
       {
         "view": "taipy-config-datanodes",
         "contents": "%extension.viewsWelcome.taipy-config-datanodes%"
+      },
+      {
+        "view": "taipy-config-tasks",
+        "contents": "%extension.viewsWelcome.taipy-config-tasks%"
+      },
+      {
+        "view": "taipy-config-pipelines",
+        "contents": "%extension.viewsWelcome.taipy-config-pipelines%"
+      },
+      {
+        "view": "taipy-config-scenarii",
+        "contents": "%extension.viewsWelcome.taipy-config-scenarii%"
       }
     ],
     "menus": {
@@ -93,13 +130,65 @@
           "when": "view == taipy-configs",
           "group": "navigation"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "taipy.show.perpective",
+          "when": "view == taipy-configs || view == taipy-config-pipelines || view == taipy-config-scenarii"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "taipy.show.perpective",
+          "when": "webviewId == 'taipy.config.editor.diagram' && webviewSection == 'taipy.node'"
+        }
       ]
+    },
+    "configuration": {
+      "title": "Taipy Studio",
+      "properties": {
+        "taipyStudio.editor.drop.enabled": {
+          "type": "boolean",
+          "default": "true",
+          "description": "%config.editor.drop.enabled%"
+        },
+        "taipyStudio.editor.reveal.enabled": {
+          "type": "boolean",
+          "default": "true",
+          "description": "%config.editor.reveal.enabled%"
+        },
+        "taipyStudio.diagram.datanode.color": {
+          "type": "string",
+          "format": "color-hex",
+          "default": "#283282",
+          "description": "%config.diagram.datanode.color.desc%"
+        },
+        "taipyStudio.diagram.task.color": {
+          "type": "string",
+          "format": "color-hex",
+          "default": "#ff462b",
+          "description": "%config.diagram.task.color.desc%"
+        },
+        "taipyStudio.diagram.pipeline.color": {
+          "type": "string",
+          "format": "color-hex",
+          "default": "#08a87d",
+          "description": "%config.diagram.pipeline.color.desc%"
+        },
+        "taipyStudio.diagram.scenario.color": {
+          "type": "string",
+          "format": "color-hex",
+          "default": "#f0faff",
+          "description": "%config.diagram.scenario.color.desc%"
+        }
+      }
     }
   },
   "scripts": {
     "build-this": "webpack --mode development",
     "watch-this": "webpack watch --mode development",
     "vscode:package": "vsce package",
+    "vscode:prepublish": "npm run prod",
     "package": "rm -rf *.vsix && npm run build && vsce package",
     "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
     "prod": "concurrently -n vscode,webviews \"webpack --mode production\" \"cd webviews && webpack --mode production\"",
@@ -130,6 +219,7 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "@vscode/codicons": "^0.0.32",
+    "@vscode/l10n-dev": "^0.0.12",
     "vscode-nls": "^5.2.0"
   }
 }
