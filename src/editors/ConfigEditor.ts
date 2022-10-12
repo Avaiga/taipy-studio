@@ -12,6 +12,7 @@ import {
   Position,
   Range,
   TextDocument,
+  TreeItem,
   Uri,
   Webview,
   WebviewPanel,
@@ -21,13 +22,28 @@ import {
 } from "vscode";
 
 import { configFileExt, getCspScriptSrc, getNonce, textUriListMime } from "../utils";
-import { revealConfigNodeCmd } from "../commands";
-import { getNodeFromUri, getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
-import { Refresh, Select, SetPositions } from "../../shared/commands";
-import { Positions, ViewMessage } from "../../shared/messages";
-import { getPropertyToDropType } from "../../shared/names";
-import { ConfigEditorId, ConfigEditorProps, containerId, perspectiveRootId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
+import { refreshPerspectiveDocumentCmd, revealConfigNodeCmd } from "../commands";
+import {
+  getCleanPerpsectiveUri,
+  getNodeFromUri,
+  getOriginalUri,
+  getPerspectiveFromUri,
+  getPerspectiveUri,
+  isUriEqual,
+} from "../contentProviders/PerpectiveContentProvider";
+import { CreateLink, CreateNode, DeleteLink, GetNodeName, Refresh, Select, SetPositions } from "../../shared/commands";
+import { EditorAddNodeMessage, Positions, ViewMessage } from "../../shared/messages";
+import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
 import { TaipyStudioSettingsName } from "../constants";
+import {
+  defaultNodeNotShown,
+  getInvalidEntityTypeForPerspective,
+  getNewNameInputError,
+  getNewNameInputPrompt,
+  getNewNameInputTitle,
+  getTomlError,
+} from "../l10n";
+import { getChildType, getDefaultContent, getDescendants, getPropertyToDropType } from "../../shared/toml";
 
 interface EditorCache {
   positions: Positions;
@@ -37,6 +53,8 @@ interface ProviderCache {
   [key: string]: EditorCache;
 }
 
+const nodeTypes = ["datanode", "task", "pipeline", "scenario"];
+
 export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentDropEditProvider {
   public static register(context: ExtensionContext): Disposable {
     const provider = new ConfigEditorProvider(context);
@@ -44,6 +62,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       webviewOptions: { enableFindWidget: true },
     });
     commands.registerCommand("taipy.clearConfigCache", provider.clearCache, provider);
+    commands.registerCommand("taipy.add.node.to.diagram", provider.addNodeToCurrentDiagram, provider);
 
     return providerRegistration;
   }
@@ -52,9 +71,12 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
   static readonly viewType = "taipy.config.editor.diagram";
 
   private readonly extensionPath: Uri;
+  // Perspective Uri => cache
   private cache: ProviderCache;
+  // original Uri => toml
   private tomlByUri: Record<string, JsonMap> = {};
-  private panelsByUri: Record<string, WebviewPanel[]> = {};
+  // original Uri => perspective Id => panels
+  private panelsByUri: Record<string, Record<string, WebviewPanel[]>> = {};
 
   constructor(private readonly context: ExtensionContext) {
     this.extensionPath = context.extensionUri;
@@ -62,7 +84,12 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: "**/*" + configFileExt }, this));
   }
 
-  async provideDocumentDropEdits(document: TextDocument, position: Position, dataTransfer: DataTransfer, token: CancellationToken): Promise<DocumentDropEdit | undefined> {
+  async provideDocumentDropEdits(
+    document: TextDocument,
+    position: Position,
+    dataTransfer: DataTransfer,
+    token: CancellationToken
+  ): Promise<DocumentDropEdit | undefined> {
     const enabled = workspace.getConfiguration(TaipyStudioSettingsName, document).get("editor.drop.enabled", true);
     if (!enabled) {
       return undefined;
@@ -116,26 +143,65 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     return dropEdit;
   }
 
-  clearCache() {
+  private clearCache() {
     this.cache = {};
     this.context.workspaceState.update(ConfigEditorProvider.cacheName, this.cache);
   }
 
-  private getCache(docUri: string): EditorCache {
-    return this.cache[docUri] || { positions: {} };
+  private getPositionsCache(perspectiveUri: string): Positions {
+    this.cache[perspectiveUri] = this.cache[perspectiveUri] || { positions: {} };
+    return this.cache[perspectiveUri].positions;
   }
 
-  private setPositionsCache(docUri: string): Positions {
-    this.cache[docUri] = this.cache[docUri] || { positions: {} };
-    return this.cache[docUri].positions;
+  private addNodeToCurrentDiagram(item: TreeItem) {
+    if (item.label == "default") {
+      window.showWarningMessage(defaultNodeNotShown);
+      return;
+    }
+    this.addNodeToActiveDiagram(item.contextValue, item.label as string);
+  }
+
+  private addNodeToActiveDiagram(nodeType: string, nodeName: string, check = false) {
+    for (let pps of Object.values(this.panelsByUri)) {
+      for (let [pId, ps] of Object.entries(pps)) {
+        const panel = ps.find((p) => p.active);
+        if (panel) {
+          if (check) {
+            const perspType = pId.split(".", 2)[0];
+            let childType = perspType;
+            while ((childType = getChildType(childType))) {
+              if (childType == nodeType) {
+                break;
+              }
+            }
+            if (!childType) {
+              window.showWarningMessage(getInvalidEntityTypeForPerspective(perspType, nodeType));
+              return;
+            }
+          }
+          try {
+            panel.webview.postMessage({
+              editorMessage: true,
+              nodeType: nodeType,
+              nodeName: nodeName,
+            } as EditorAddNodeMessage);
+          } catch (e) {
+            console.log("addNodeToCurrentDiagram: ", e.message || e);
+          }
+          return;
+        }
+      }
+    }
   }
 
   private setToml(document: TextDocument) {
     try {
       this.tomlByUri[getOriginalUri(document.uri).toString()] = this.getDocumentAsToml(document);
     } catch (e) {
-      console.error("Could not get document as toml. Content is not valid toml");
-      //      throw new Error("Could not get document as toml. Content is not valid toml");
+      const sbi = window.createStatusBarItem(ConfigEditorId);
+      sbi.text = getTomlError(document.uri.path);
+      sbi.tooltip = e.message;
+      sbi.show();
     }
   }
 
@@ -144,26 +210,23 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
   }
 
   private async updateWebview(uri: Uri) {
-    const uriStr = uri.toString();
     const originalUri = getOriginalUri(uri).toString();
-    const panels = this.panelsByUri[originalUri];
-    if (panels) {
-      const perspectiveId = getPerspectiveFromUri(uri);
-      const positions = this.getCache(uriStr).positions;
+    const panelsByPersp = this.panelsByUri[originalUri];
+    if (panelsByPersp) {
       const toml = this.getToml(originalUri);
-      const panelsToRemove: number[] = [];
-      panels.forEach((p, idx) => {
-        try {
-          p.webview.postMessage({
-            viewId: ConfigEditorId,
-            props: { toml: toml, perspectiveId: perspectiveId, positions: positions, baseUri: originalUri } as ConfigEditorProps,
-          } as ViewMessage);
-        } catch (e) {
-          console.log("Looks like this panelView was disposed.", e.message || e);
-          panelsToRemove.push(idx);
-        }
+      const positions = this.getPositionsCache(getCleanPerpsectiveUri(uri));
+      Object.entries(panelsByPersp).forEach(([perspectiveId, panels]) => {
+        panels.forEach((p) => {
+          try {
+            p.webview.postMessage({
+              viewId: ConfigEditorId,
+              props: { toml: toml, perspectiveId: perspectiveId, positions: positions, baseUri: originalUri } as ConfigEditorProps,
+            } as ViewMessage);
+          } catch (e) {
+            console.log("Looks like this panelView was disposed.", e.message || e);
+          }
+        });
       });
-      panelsToRemove.reverse().forEach(idx => this.panelsByUri[originalUri].splice(idx));
     }
   }
 
@@ -178,13 +241,11 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       enableScripts: true,
     };
     this.setToml(document);
+    const perspId = getPerspectiveFromUri(document.uri);
     const originalUri = getOriginalUri(document.uri).toString();
-    let panels = this.panelsByUri[originalUri];
-    if (!panels) {
-      panels = [];
-      this.panelsByUri[originalUri] = panels;
-    }
-    panels.push(webviewPanel);
+    this.panelsByUri[originalUri] = this.panelsByUri[originalUri] || {};
+    this.panelsByUri[originalUri][perspId] = this.panelsByUri[originalUri][perspId] || [];
+    this.panelsByUri[originalUri][perspId].push(webviewPanel);
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
 
     // Hook up event handlers so that we can synchronize the webview with the text document.
@@ -199,6 +260,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       if (isUriEqual(document.uri, e.document.uri)) {
         this.setToml(e.document);
         this.updateWebview(document.uri);
+        commands.executeCommand(refreshPerspectiveDocumentCmd, document.uri);
       }
     }, this);
 
@@ -214,21 +276,121 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         case SetPositions:
           this.setPositions(document.uri, e.positions);
           break;
+        case CreateLink:
+          this.createLink(document, e.nodeType, e.nodeName, e.property, e.targetName);
+          break;
+        case CreateNode:
+          this.createNode(document, e.nodeType, e.nodeName);
+          break;
+        case GetNodeName:
+          this.getNodeName(document, e.nodeType, e.nodeName);
+          break;
+        case DeleteLink:
+          this.deleteLink(document, e.nodeType, e.nodeName, e.property, e.targetName);
+          break;
       }
     }, this);
 
     // clean-up when our editor is closed.
     webviewPanel.onDidDispose(() => {
-      this.panelsByUri[originalUri] || (this.panelsByUri[originalUri] = this.panelsByUri[originalUri].filter((p) => p !== webviewPanel));
+      this.panelsByUri[originalUri] &&
+        this.panelsByUri[originalUri][perspId] &&
+        (this.panelsByUri[originalUri][perspId] = this.panelsByUri[originalUri][perspId].filter((p) => p !== webviewPanel));
       document.isClosed && changeDocumentSubscription.dispose();
       receiveMessageSubscription.dispose();
     });
   }
 
+  private deleteLink(document: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
+    this.createOrDeleteLink(document, nodeType, nodeName, property, targetName, false);
+  }
+
+  private createLink(document: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
+    this.createOrDeleteLink(document, nodeType, nodeName, property, targetName, true);
+  }
+
+  private createOrDeleteLink(document: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string, create: boolean) {
+    const uri = getOriginalUri(document.uri);
+    const tomlUri = uri.toString();
+    const toml = this.getToml(tomlUri);
+    const links = toml[nodeType] && toml[nodeType][nodeName] && (toml[nodeType][nodeName][property] as string[]);
+    const sectionHead = "[" + nodeType + "." + nodeName + "]";
+    let sectionFound = false;
+    let edit: WorkspaceEdit;
+    for (let i = 0; i < document.lineCount; i++) {
+      const line = document.lineAt(i);
+      const text = line.text.trim();
+      if (sectionFound) {
+        if (text.split("=", 2)[0].trim() == property) {
+          edit = new WorkspaceEdit();
+          const range = line.range.with({ start: line.range.start.with({ character: line.firstNonWhitespaceCharacterIndex }) });
+          if (create) {
+            links.push(targetName);
+          }
+          edit.replace(uri, range, stringify({ [property]: create ? links : links.filter((l) => l != targetName) }).trimEnd());
+          break;
+        }
+        if (text.startsWith("[")) {
+          //property not found in section
+          break;
+        }
+      }
+      if (!sectionFound && text == sectionHead) {
+        if (!links) {
+          edit = new WorkspaceEdit();
+          const start = i + 1 < document.lineCount ? document.lineAt(i + 1).text.substring(0, document.lineAt(i + 1).firstNonWhitespaceCharacterIndex) : "";
+          edit.insert(uri, line.range.end, "\n" + start + stringify({ [property]: create ? [targetName] : [] }).trimEnd());
+          break;
+        }
+        sectionFound = true;
+      }
+    }
+    if (edit) {
+      workspace.applyEdit(edit);
+    }
+  }
+
+  private async getNodeName(document: TextDocument, nodeType: string, nodeName: string) {
+    const entity = this.getToml(getOriginalUri(document.uri).toString())[nodeType];
+    const validateNodeName = (value: string) => {
+      if (!value || /[\s\.]/.test(value)) {
+        return getNewNameInputError(nodeType, value, true);
+      }
+      if (value && entity && Object.keys(entity).some((n) => n.toLowerCase() == value.toLowerCase())) {
+        return getNewNameInputError(nodeType, value);
+      }
+      return undefined as string;
+    };
+    const newName = await window.showInputBox({
+      prompt: getNewNameInputPrompt(nodeType),
+      title: getNewNameInputTitle(nodeType),
+      validateInput: validateNodeName,
+      value: nodeName,
+    });
+    if (newName) {
+      this.addNodeToActiveDiagram(nodeType, newName);
+    }
+  }
+
+  private createNode(document: TextDocument, nodeType: string, nodeName: string) {
+    const uri = getOriginalUri(document.uri);
+    const toml = this.getToml(uri.toString());
+    const node = toml[nodeType] && toml[nodeType][nodeName];
+    if (node) {
+      return;
+    }
+    const edit = new WorkspaceEdit();
+    edit.insert(
+      uri,
+      document.lineCount ? document.lineAt(document.lineCount - 1).range.end : new Position(0, 0),
+      "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
+    );
+    workspace.applyEdit(edit);
+  }
+
   private setPositions(docUri: Uri, positions: Positions) {
     let modified = false;
-    const id = getPerspectiveFromUri(docUri);
-    let pos = this.setPositionsCache(docUri.toString());
+    let pos = this.getPositionsCache(getCleanPerpsectiveUri(docUri));
     if (positions) {
       pos = Object.entries(positions).reduce((pv, [k, v]) => {
         modified = true;
@@ -256,19 +418,19 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
 
     const config = workspace.getConfiguration(TaipyStudioSettingsName, document);
-    const configObj = ["diagram.datanode.color", "diagram.task.color", "diagram.pipeline.color", "diagram.scenario.color"].reduce(
-      (pv, cv) => {
-        if (cv.endsWith(".color")) {
-          pv.colors[cv.split(".")[1]] = config.get(cv, "cyan");
-        }
-        return pv;
+    const configObj = nodeTypes.reduce(
+      (co, nodeType) => {
+        co["icons"][nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");
+        return co;
       },
-      { colors: {} }
+      { icons: {} }
     );
 
+    const cssVars = nodeTypes.map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";")
+      .join(" ");
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();
-    return `<html>
+    return `<html style="${cssVars}">
               <head>
                   <meta charSet="utf-8"/>
                   <meta http-equiv="Content-Security-Policy" 

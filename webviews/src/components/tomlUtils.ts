@@ -1,20 +1,8 @@
 import { DataNode, Pipeline, PipelineTasks, Scenario, ScenarioPipelines, Task, TaskInputs, TaskOutputs } from "../../../shared/names";
+import { getChildType, getDescendants } from "../../../shared/toml";
 import { perspectiveRootId } from "../../../shared/views";
 
-const childType: Record<string, string> = {
-  [Task]: DataNode,
-  [Pipeline]: Task,
-  [Scenario]: Pipeline,
-};
-export const getChildType = (nodeType: string) => childType[nodeType] || "";
-
 export const getChildTypeWithBackLink = (nodeType: string) => (nodeType == DataNode ? Task : "");
-const descendants: Record<string, [string, string]> = {
-  [Scenario]: ["", ScenarioPipelines],
-  [Pipeline]: ["", PipelineTasks],
-  [Task]: [TaskInputs, TaskOutputs],
-};
-export const getDescendants = (nodeType: string) => descendants[nodeType] || ["", ""];
 const parentType: Record<string, string> = {
   [DataNode]: Task,
   [Task]: Pipeline,
@@ -23,15 +11,14 @@ const parentType: Record<string, string> = {
 export const getParentType = (nodeType: string) => parentType[nodeType] || "";
 const getParentLinkKey = (nodeType: string) => (nodeType == Task ? TaskInputs : "");
 
-export const getParentNames = (content: any, ...paths: string[]) => {
-  if (paths.length && paths[0] == Task) {
-    paths.push(TaskInputs);
-    const node = paths.reduce((pv, cv) => {
+export const getParentNames = (content: any, nodeType: string, names: string[]) => {
+  if (nodeType == Task) {
+    const node = [nodeType, names.join("."), TaskInputs].reduce((pv, cv) => {
       if (pv) {
         return pv[cv];
       }
     }, content);
-    return ((node || []) as string[]).map((p) => DataNode + "." + p);
+    return ((node || []) as string[]).map((p) => [DataNode, p]);
   }
   return [];
 };
@@ -82,4 +69,14 @@ export const applyPerspective = (toml: any, perspectiveId: string): any => {
     }
   }
   return toml;
+};
+
+export const getNodeTypes = (perspectiveId: string) => {
+  const [nodeType, name] = perspectiveId.split(".", 2);
+  let childType = name ? nodeType : Scenario;
+  const res = name ? [] : [Scenario];
+  while ((childType = getChildType(childType))) {
+    res.push(childType);
+  }
+  return res.reverse();
 };

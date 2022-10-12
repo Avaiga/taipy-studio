@@ -10,7 +10,23 @@ const schemeParams: Record<string, string[]> = {
   [PerspectiveScheme]: [OriginalSchemeKey, PerspectiveKey, NodeKey],
 };
 
-export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node: string): Uri =>
+export const getCleanPerpsectiveUri = (uri: Uri) => {
+  if (!uri || uri.scheme != PerspectiveScheme) {
+    return uri.toString();
+  }
+  return uri
+    .with({
+      query: uri.query
+        ? uri.query
+            .split("&")
+            .filter((p) => !p.startsWith(NodeKey + "="))
+            .join("&")
+        : uri.query,
+    })
+    .toString();
+};
+
+export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node?: string): Uri =>
   uri &&
   uri.with({
     scheme: PerspectiveScheme,
@@ -22,10 +38,7 @@ export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node: string)
       PerspectiveKey +
       "=" +
       encodeURIComponent(perspectiveId) +
-      "&" +
-      NodeKey +
-      "=" +
-      encodeURIComponent(node) +
+      (node ? "&" + NodeKey + "=" + encodeURIComponent(node) : "") +
       (uri.query ? "&" + uri.query : ""),
   });
 

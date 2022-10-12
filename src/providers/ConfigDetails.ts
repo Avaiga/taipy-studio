@@ -1,36 +1,22 @@
 import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
-import { config, MessageFormat } from "vscode-nls";
 
 import { getCspScriptSrc, getNonce } from "../utils";
-import {
-  DataNodeDetailsId,
-  NoDetailsId,
-  webviewsLibraryDir,
-  webviewsLibraryName,
-  containerId,
-  DataNodeDetailsProps,
-  NoDetailsProps,
-} from "../../shared/views";
+import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName, containerId, DataNodeDetailsProps, NoDetailsProps } from "../../shared/views";
 import { Action, Refresh } from "../../shared/commands";
 import { ViewMessage } from "../../shared/messages";
-
-const localize = config({ messageFormat: MessageFormat.file })();
-
-const emptyContent = localize("ConfigDetailsView.emptyContent", "No selected element");
+import { emptyNodeDetailContent } from "../l10n";
 
 export class ConfigDetailsView implements WebviewViewProvider {
   private _view: WebviewView;
 
-  constructor(
-    private readonly extensionPath: Uri,
-  ) {
+  constructor(private readonly extensionPath: Uri) {
     this.setEmptyContent();
   }
 
   setEmptyContent(): void {
     this._view?.webview.postMessage({
       viewId: NoDetailsId,
-      props: { message: emptyContent } as NoDetailsProps,
+      props: { message: emptyNodeDetailContent } as NoDetailsProps,
     } as ViewMessage);
   }
 
@@ -62,11 +48,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
           this.setEmptyContent();
           break;
         case Action:
-          window.showErrorMessage(
-            "Action from webview",
-            message.id,
-            message.msg
-          );
+          window.showErrorMessage("Action from webview", message.id, message.msg);
           break;
         default:
           break;
@@ -82,17 +64,11 @@ export class ConfigDetailsView implements WebviewViewProvider {
   private _getHtmlForWebview(webview: Webview) {
     // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
     // Script to handle user action
-    const scriptUri = webview.asWebviewUri(
-      this.joinPaths(webviewsLibraryDir, webviewsLibraryName)
-    );
+    const scriptUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, webviewsLibraryName));
     // CSS file to handle styling
-    const styleUri = webview.asWebviewUri(
-      this.joinPaths(webviewsLibraryDir, "config-panel.css")
-    );
+    const styleUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "config-panel.css"));
 
-    const codiconsUri = webview.asWebviewUri(
-      this.joinPaths("@vscode/codicons", "dist", "codicon.css")
-    );
+    const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
 
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();

@@ -1,6 +1,6 @@
 .diagram-root {
     display: grid;
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: auto 1fr auto;
     gap: 1em;
     grid-template-rows: auto 1fr;
     height: 100vh;
@@ -12,6 +12,19 @@
 }
 .diagram-button:hover {
     color: var(--vscode-menu-selectionForeground);
+    border-radius: 30%;
+}
+.diagram-button.data_node:hover {
+    background-color: var(--taipy-datanode-color);
+}
+.diagram-button.task:hover {
+    background-color: var(--taipy-task-color);
+}
+.diagram-button.pipeline:hover {
+    background-color: var(--taipy-pipeline-color);
+}
+.diagram-button.scenario:hover {
+    background-color: var(--taipy-scenario-color);
 }
 .diagram-root h2 {
     margin: unset;
@@ -21,4 +34,10 @@
 }
 .diagram-widget>div {
     height: 100%
+}
+.diagram-icon-group {
+    display: flex;
+}
+.diagram-icon-group>div {
+    margin-left: 0.5em;
 }

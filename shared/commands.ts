@@ -3,3 +3,7 @@ export const Select= "select";
 export const Refresh = "refresh";
 export const SetPositions = "setPositions";
 export const Relayout = "relayout";
+export const CreateNode = "createNode";
+export const CreateLink = "createLink";
+export const DeleteLink = "deleteLink";
+export const GetNodeName = "getNodeName";

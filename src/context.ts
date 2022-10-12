@@ -1,8 +1,8 @@
-import { commands, ExtensionContext, Range, TextEditorRevealType, TreeDataProvider, TreeItem, TreeView, Uri, window, workspace } from "vscode";
+import { commands, ExtensionContext, Range, TextDocument, TextEditorRevealType, TreeDataProvider, TreeItem, TreeView, Uri, window, workspace } from "vscode";
 import { parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
-import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
+import { refreshPerspectiveDocumentCmd, revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
 import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { configFileExt } from "./utils";
@@ -17,8 +17,15 @@ import {
   TaskItem,
   TreeNodeCtor,
 } from "./providers/ConfigNodesProvider";
-import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri } from "./contentProviders/PerpectiveContentProvider";
+import {
+  PerspectiveContentProvider,
+  PerspectiveScheme,
+  isUriEqual,
+  getOriginalUri,
+  getPerspectiveUri,
+} from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
+import { getTomlError } from "./l10n";
 
 const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
 
@@ -40,6 +47,7 @@ export class Context {
   private treeViews: TreeView<TreeItem>[] = [];
   private configDetailsView: ConfigDetailsView;
   private selectionCache: NodeSelectionCache;
+  private perspectiveContentProvider: PerspectiveContentProvider;
 
   private constructor(private readonly vsContext: ExtensionContext) {
     this.selectionCache = vsContext.workspaceState.get(Context.cacheName, {} as NodeSelectionCache);
@@ -51,8 +59,11 @@ export class Context {
     commands.registerCommand(selectConfigNodeCmd, this.selectConfigNode, this);
     commands.registerCommand(revealConfigNodeCmd, this.revealConfigNodeInEditors, this);
     commands.registerCommand("taipy.show.perpective", this.showPerspective, this);
+    commands.registerCommand("taipy.show.perpective.from.diagram", this.showPerspectiveFromDiagram, this);
     // Perspective Provider
-    vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, new PerspectiveContentProvider()));
+    this.perspectiveContentProvider = new PerspectiveContentProvider();
+    vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, this.perspectiveContentProvider));
+    commands.registerCommand(refreshPerspectiveDocumentCmd, this.refreshPerspectiveDocument, this);
     // Create Tree Views
     this.treeViews.push(this.createTreeView(DataNodeItem));
     this.treeViews.push(this.createTreeView(TaskItem));
@@ -63,7 +74,18 @@ export class Context {
     // Details
     this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri);
     vsContext.subscriptions.push(window.registerWebviewViewProvider(CONFIG_DETAILS_ID, this.configDetailsView));
+    // Document change listener
+    workspace.onDidChangeTextDocument(
+      (e) => {
+        if (isUriEqual(this.configFileUri, e.document.uri)) {
+          this.refreshProviders(e.document);
+        }
+      },
+      this,
+      vsContext.subscriptions
+    );
 
+    // file system watcher
     const fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
     fileSystemWatcher.onDidChange(this.onFileChange, this);
     fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
@@ -94,11 +116,11 @@ export class Context {
           }
         }, 1);
       }
-      });
+    });
   }
   private async onFileChange(uri: Uri): Promise<void> {
     if (uri && this.configFileUri?.toString() == uri.toString()) {
-      await this.readConfig(uri);
+      this.readConfig(await this.getDocFromUri(uri));
       this.treeProviders.forEach((p) => p.refresh(this, uri));
     }
   }
@@ -114,18 +136,28 @@ export class Context {
   getConfigNodes(nodeType: string): Array<[string, any]> {
     const configNodes = this.configContent ? this.configContent[nodeType] : null;
     // Sort keys so that 'default' is always the first entry.
-    return Object.entries(configNodes || {}).sort(configNodeKeySort).map(a => a);
-}
+    return Object.entries(configNodes || {})
+      .sort(configNodeKeySort)
+      .map((a) => a);
+  }
 
-async selectUri(uri: Uri): Promise<void> {
+  async selectUri(uri: Uri): Promise<void> {
     if (isUriEqual(uri, this.configFileUri)) {
       return;
     }
-    this.configFileUri = uri;
-    await this.readConfig(uri);
-    this.treeProviders.forEach((p) => p.refresh(this, uri));
-    if (this.selectionCache.fileUri != uri.toString()) {
-      this.selectionCache.fileUri = uri.toString();
+    this.refreshProviders(await this.getDocFromUri(uri));
+  }
+
+  private getDocFromUri(uri: Uri): Thenable<TextDocument> {
+    return workspace.openTextDocument(getOriginalUri(uri));
+  }
+
+  private async refreshProviders(doc: TextDocument) {
+    this.configFileUri = doc.uri;
+    this.readConfig(doc);
+    this.treeProviders.forEach((p) => p.refresh(this, doc.uri));
+    if (this.selectionCache.fileUri != doc.uri.toString()) {
+      this.selectionCache.fileUri = doc.uri.toString();
       this.vsContext.workspaceState.update(Context.cacheName, this.selectionCache);
     }
     this.revealConfigNodesInTrees();
@@ -175,17 +207,26 @@ async selectUri(uri: Uri): Promise<void> {
   }
 
   private showPerspective(item: TreeItem) {
-    const uri = typeof item.resourceUri == "string" ? Uri.parse(item.resourceUri) : item.resourceUri;
-    commands.executeCommand("vscode.openWith", uri, ConfigEditorProvider.viewType);
+    commands.executeCommand("vscode.openWith", item.resourceUri, ConfigEditorProvider.viewType);
   }
 
-  private async readConfig(uri: Uri): Promise<void> {
-    if (uri) {
-      const toml = await workspace.fs.readFile(getOriginalUri(uri));
+  private refreshPerspectiveDocument(uri: Uri) {
+    this.perspectiveContentProvider.onDidChangeEmitter.fire(uri);
+  }
+
+  private showPerspectiveFromDiagram(item: { baseUri: string; perspective: string }) {
+    commands.executeCommand("vscode.openWith", getPerspectiveUri(Uri.parse(item.baseUri, true), item.perspective), ConfigEditorProvider.viewType);
+  }
+
+  private readConfig(doc: TextDocument) {
+    if (doc) {
       try {
-        this.configContent = parse(toml.toString());
+        this.configContent = parse(doc.getText());
       } catch (e) {
-        window.showWarningMessage("TOML parsing", e.message);
+        const sbi = window.createStatusBarItem(CONFIG_DETAILS_ID);
+        sbi.text = getTomlError(doc.uri.path);
+        sbi.tooltip = e.message;
+        sbi.show();
       }
     } else {
       this.configContent = null;

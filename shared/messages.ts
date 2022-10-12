@@ -3,4 +3,10 @@ export interface ViewMessage<T = unknown> {
     props: T;
 }
 
+export interface EditorAddNodeMessage {
+    editorMessage: boolean;
+    nodeType: string;
+    nodeName: string;
+}
+
 export type Positions = Record<string, Array<[number, number]>>;

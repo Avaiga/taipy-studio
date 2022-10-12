@@ -39,6 +39,16 @@
         "command": "taipy.show.perpective",
         "title": "%extension.commands.taipy.show.perpective%",
         "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "taipy.show.perpective.from.diagram",
+        "title": "%extension.commands.taipy.show.perpective%",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "taipy.add.node.to.diagram",
+        "title": "%extension.commands.taipy.add.node.to.diagram%",
+        "icon": "$(add)"
       }
     ],
     "customEditors": [
@@ -135,11 +145,15 @@
         {
           "command": "taipy.show.perpective",
           "when": "view == taipy-configs || view == taipy-config-pipelines || view == taipy-config-scenarii"
+        },
+        {
+          "command": "taipy.add.node.to.diagram",
+          "when": "view == taipy-config-datanodes || view == taipy-config-tasks || view == taipy-config-pipelines || view == taipy-config-scenarii"
         }
       ],
       "webview/context": [
         {
-          "command": "taipy.show.perpective",
+          "command": "taipy.show.perpective.from.diagram",
           "when": "webviewId == 'taipy.config.editor.diagram' && webviewSection == 'taipy.node'"
         }
       ]
@@ -163,11 +177,23 @@
           "default": "#283282",
           "description": "%config.diagram.datanode.color.desc%"
         },
+        "taipyStudio.diagram.datanode.icon": {
+          "type": "string",
+          "format": "icon",
+          "default": "eye",
+          "description": "%config.diagram.datanode.icon.desc%"
+        },
         "taipyStudio.diagram.task.color": {
           "type": "string",
           "format": "color-hex",
           "default": "#ff462b",
           "description": "%config.diagram.task.color.desc%"
+        },
+        "taipyStudio.diagram.task.icon": {
+          "type": "string",
+          "format": "icon",
+          "default": "extensions",
+          "description": "%config.diagram.task.icon.desc%"
         },
         "taipyStudio.diagram.pipeline.color": {
           "type": "string",
@@ -175,11 +201,23 @@
           "default": "#08a87d",
           "description": "%config.diagram.pipeline.color.desc%"
         },
+        "taipyStudio.diagram.pipeline.icon": {
+          "type": "string",
+          "format": "icon",
+          "default": "symbol-class",
+          "description": "%config.diagram.pipeline.icon.desc%"
+        },
         "taipyStudio.diagram.scenario.color": {
           "type": "string",
           "format": "color-hex",
           "default": "#f0faff",
           "description": "%config.diagram.scenario.color.desc%"
+        },
+        "taipyStudio.diagram.scenario.icon": {
+          "type": "string",
+          "format": "icon",
+          "default": "output",
+          "description": "%config.diagram.scenario.icon.desc%"
         }
       }
     }
