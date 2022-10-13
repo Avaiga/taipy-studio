@@ -1,4 +1,4 @@
-import { CancellationToken, EventEmitter, ProviderResult, TextDocumentContentProvider, Uri, workspace } from "vscode";
+import { CancellationToken, EventEmitter, ProviderResult, TextDocument, TextDocumentContentProvider, Uri, workspace } from "vscode";
 
 import { perspectiveRootId } from "../../shared/views";
 
@@ -91,11 +91,19 @@ const getParamFromUri = (uri: Uri, name: string, defaultValue: string | undefine
 export const getPerspectiveFromUri = (uri: Uri): string => getParamFromUri(uri, PerspectiveKey, perspectiveRootId);
 export const getNodeFromUri = (uri: Uri): string | undefined => getParamFromUri(uri, NodeKey, undefined);
 
+export const getOriginalDocument = (document: TextDocument): ProviderResult<TextDocument> => {
+  if (document.uri.scheme == PerspectiveScheme) {
+    return workspace.openTextDocument(getOriginalUri(document.uri));
+  }
+  return document;
+}
+
 export class PerspectiveContentProvider implements TextDocumentContentProvider {
   onDidChangeEmitter = new EventEmitter<Uri>();
   onDidChange = this.onDidChangeEmitter.event;
 
   provideTextDocumentContent(uri: Uri, token: CancellationToken): ProviderResult<string> {
-    return new Promise<string>((resolve) => workspace.openTextDocument(getOriginalUri(uri)).then((doc) => resolve(doc.getText())));
+    return uri.toString();
+    //return new Promise<string>((resolve) => workspace.openTextDocument(getOriginalUri(uri)).then((doc) => resolve(doc.getText())));
   }
 }

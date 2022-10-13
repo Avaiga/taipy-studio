@@ -1,5 +1,18 @@
-import { commands, ExtensionContext, Range, TextDocument, TextEditorRevealType, TreeDataProvider, TreeItem, TreeView, Uri, window, workspace } from "vscode";
-import { parse } from "@iarna/toml";
+import {
+  commands,
+  ExtensionContext,
+  ProviderResult,
+  Range,
+  TextDocument,
+  TextDocumentChangeEvent,
+  TextEditorRevealType,
+  TreeItem,
+  TreeView,
+  Uri,
+  window,
+  workspace,
+} from "vscode";
+import { JsonMap, parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
 import { refreshPerspectiveDocumentCmd, revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
@@ -17,15 +30,9 @@ import {
   TaskItem,
   TreeNodeCtor,
 } from "./providers/ConfigNodesProvider";
-import {
-  PerspectiveContentProvider,
-  PerspectiveScheme,
-  isUriEqual,
-  getOriginalUri,
-  getPerspectiveUri,
-} from "./contentProviders/PerpectiveContentProvider";
+import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri, getPerspectiveUri } from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
-import { getTomlError } from "./l10n";
+import { cleanTomlParseError, handleTomlParseError } from "./errors";
 
 const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
 
@@ -41,13 +48,16 @@ export class Context {
   private static readonly cacheName = "taipy.selectedNodes.cache";
 
   private configFileUri: Uri | null = null;
-  private configContent: object = null;
-  private configFilesView: ConfigFilesView;
-  private treeProviders: ConfigNodesProvider<ConfigItem>[] = [];
-  private treeViews: TreeView<TreeItem>[] = [];
-  private configDetailsView: ConfigDetailsView;
-  private selectionCache: NodeSelectionCache;
-  private perspectiveContentProvider: PerspectiveContentProvider;
+  private readonly configFilesView: ConfigFilesView;
+  private readonly treeProviders: ConfigNodesProvider<ConfigItem>[] = [];
+  private readonly treeViews: TreeView<TreeItem>[] = [];
+  private readonly configDetailsView: ConfigDetailsView;
+  private readonly selectionCache: NodeSelectionCache;
+  private readonly perspectiveContentProvider: PerspectiveContentProvider;
+  // original Uri => toml
+  private readonly tomlByUri: Record<string, JsonMap> = {};
+  // docChanged listeners
+  private readonly docChangedListener: Array<[ConfigEditorProvider, (uri: Uri) => void]> = [];
 
   private constructor(private readonly vsContext: ExtensionContext) {
     this.selectionCache = vsContext.workspaceState.get(Context.cacheName, {} as NodeSelectionCache);
@@ -71,26 +81,38 @@ export class Context {
     this.treeViews.push(this.createTreeView(ScenarioItem));
     // Dispose when finished
     vsContext.subscriptions.push(...this.treeViews);
+    // Config editor
+    ConfigEditorProvider.register(vsContext, this);
     // Details
     this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri);
     vsContext.subscriptions.push(window.registerWebviewViewProvider(CONFIG_DETAILS_ID, this.configDetailsView));
     // Document change listener
-    workspace.onDidChangeTextDocument(
-      (e) => {
-        if (isUriEqual(this.configFileUri, e.document.uri)) {
-          this.refreshProviders(e.document);
-        }
-      },
-      this,
-      vsContext.subscriptions
-    );
-
+    workspace.onDidChangeTextDocument(this.onDocumentChanged, this, vsContext.subscriptions);
     // file system watcher
     const fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
     fileSystemWatcher.onDidChange(this.onFileChange, this);
     fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
     fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
     vsContext.subscriptions.push(fileSystemWatcher);
+  }
+
+  private async onDocumentChanged(e: TextDocumentChangeEvent) {
+    if (this.tomlByUri[getOriginalUri(e.document.uri).toString()]) {
+      await this.refreshToml(e.document);
+      this.docChangedListener.forEach(([t, l]) => l.call(t, e.document.uri));
+    }
+    if (isUriEqual(this.configFileUri, e.document.uri)) {
+      this.treeProviders.forEach((p) => p.refresh(this, e.document.uri));
+      this.revealConfigNodesInTrees();
+    }
+  }
+
+  registerDocChangeListener<T extends ConfigEditorProvider>(listener: (uri: Uri) => void, thisArg: T) {
+    this.docChangedListener.push([thisArg, listener]);
+  }
+  unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (uri: Uri) => void, thisArg: T) {
+    const idx = this.docChangedListener.findIndex(([t, l]) => t === thisArg && l === listener);
+    idx > -1 && this.docChangedListener.splice(idx);
   }
 
   private createTreeView<T extends ConfigItem>(nodeCtor: TreeNodeCtor<T>) {
@@ -120,8 +142,9 @@ export class Context {
   }
   private async onFileChange(uri: Uri): Promise<void> {
     if (uri && this.configFileUri?.toString() == uri.toString()) {
-      this.readConfig(await this.getDocFromUri(uri));
-      this.treeProviders.forEach((p) => p.refresh(this, uri));
+      if (await this.readToml(await this.getDocFromUri(uri))) {
+        this.treeProviders.forEach((p) => p.refresh(this, uri));
+      }
     }
   }
 
@@ -134,7 +157,8 @@ export class Context {
   }
 
   getConfigNodes(nodeType: string): Array<[string, any]> {
-    const configNodes = this.configContent ? this.configContent[nodeType] : null;
+    const toml = this.getToml(this.configFileUri?.toString());
+    const configNodes = toml && toml[nodeType];
     // Sort keys so that 'default' is always the first entry.
     return Object.entries(configNodes || {})
       .sort(configNodeKeySort)
@@ -145,22 +169,21 @@ export class Context {
     if (isUriEqual(uri, this.configFileUri)) {
       return;
     }
-    this.refreshProviders(await this.getDocFromUri(uri));
+    this.configFileUri = uri;
+    if (!this.tomlByUri[uri.toString()]) {
+      await this.readToml(await this.getDocFromUri(uri));
+    }
+    this.treeProviders.forEach((p) => p.refresh(this, uri));
+    this.revealConfigNodesInTrees();
+
+    if (this.selectionCache.fileUri != uri.toString()) {
+      this.selectionCache.fileUri = uri.toString();
+      this.vsContext.workspaceState.update(Context.cacheName, this.selectionCache);
+    }
   }
 
   private getDocFromUri(uri: Uri): Thenable<TextDocument> {
     return workspace.openTextDocument(getOriginalUri(uri));
-  }
-
-  private async refreshProviders(doc: TextDocument) {
-    this.configFileUri = doc.uri;
-    this.readConfig(doc);
-    this.treeProviders.forEach((p) => p.refresh(this, doc.uri));
-    if (this.selectionCache.fileUri != doc.uri.toString()) {
-      this.selectionCache.fileUri = doc.uri.toString();
-      this.vsContext.workspaceState.update(Context.cacheName, this.selectionCache);
-    }
-    this.revealConfigNodesInTrees();
   }
 
   private async selectConfigNode(nodeType: string, name: string, configNode: object, uri: Uri, reveal = true): Promise<void> {
@@ -218,18 +241,32 @@ export class Context {
     commands.executeCommand("vscode.openWith", getPerspectiveUri(Uri.parse(item.baseUri, true), item.perspective), ConfigEditorProvider.viewType);
   }
 
-  private readConfig(doc: TextDocument) {
-    if (doc) {
-      try {
-        this.configContent = parse(doc.getText());
-      } catch (e) {
-        const sbi = window.createStatusBarItem(CONFIG_DETAILS_ID);
-        sbi.text = getTomlError(doc.uri.path);
-        sbi.tooltip = e.message;
-        sbi.show();
-      }
-    } else {
-      this.configContent = null;
+  getToml(uri: string) {
+    return (uri && this.tomlByUri[uri]) || {};
+  }
+
+  private async refreshToml(document: TextDocument) {
+    const uri = document.uri.toString();
+    if (this.tomlByUri[uri]) {
+      await this.readToml(document);
     }
+  }
+
+  async ReadTomlIfNeeded(document: TextDocument) {
+    const uri = document.uri.toString();
+    if (!this.tomlByUri[uri]) {
+      await this.readToml(document);
+    }
+  }
+
+  private async readToml(document: TextDocument) {
+    try {
+      this.tomlByUri[document.uri.toString()] = await parse.async(document.getText());
+      cleanTomlParseError(document);
+      return true;
+    } catch (e) {
+      handleTomlParseError(document, e);
+    }
+    return false;
   }
 }

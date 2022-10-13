@@ -4,12 +4,12 @@ import {
   commands,
   CustomTextEditorProvider,
   DataTransfer,
-  Disposable,
   DocumentDropEdit,
   DocumentDropEditProvider,
   ExtensionContext,
   languages,
   Position,
+  ProviderResult,
   Range,
   TextDocument,
   TreeItem,
@@ -23,27 +23,14 @@ import {
 
 import { configFileExt, getCspScriptSrc, getNonce, textUriListMime } from "../utils";
 import { refreshPerspectiveDocumentCmd, revealConfigNodeCmd } from "../commands";
-import {
-  getCleanPerpsectiveUri,
-  getNodeFromUri,
-  getOriginalUri,
-  getPerspectiveFromUri,
-  getPerspectiveUri,
-  isUriEqual,
-} from "../contentProviders/PerpectiveContentProvider";
+import { getCleanPerpsectiveUri, getNodeFromUri, getOriginalDocument, getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
 import { CreateLink, CreateNode, DeleteLink, GetNodeName, Refresh, Select, SetPositions } from "../../shared/commands";
 import { EditorAddNodeMessage, Positions, ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
 import { TaipyStudioSettingsName } from "../constants";
-import {
-  defaultNodeNotShown,
-  getInvalidEntityTypeForPerspective,
-  getNewNameInputError,
-  getNewNameInputPrompt,
-  getNewNameInputTitle,
-  getTomlError,
-} from "../l10n";
-import { getChildType, getDefaultContent, getDescendants, getPropertyToDropType } from "../../shared/toml";
+import { defaultNodeNotShown, getInvalidEntityTypeForPerspective, getNewNameInputError, getNewNameInputPrompt, getNewNameInputTitle } from "../l10n";
+import { getChildType, getDefaultContent, getPropertyToDropType } from "../../shared/toml";
+import { Context } from "../context";
 
 interface EditorCache {
   positions: Positions;
@@ -56,15 +43,13 @@ interface ProviderCache {
 const nodeTypes = ["datanode", "task", "pipeline", "scenario"];
 
 export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentDropEditProvider {
-  public static register(context: ExtensionContext): Disposable {
-    const provider = new ConfigEditorProvider(context);
+  static register(context: ExtensionContext, taipyContext: Context): ConfigEditorProvider {
+    const provider = new ConfigEditorProvider(context, taipyContext);
     const providerRegistration = window.registerCustomEditorProvider(ConfigEditorProvider.viewType, provider, {
       webviewOptions: { enableFindWidget: true },
     });
-    commands.registerCommand("taipy.clearConfigCache", provider.clearCache, provider);
-    commands.registerCommand("taipy.add.node.to.diagram", provider.addNodeToCurrentDiagram, provider);
-
-    return providerRegistration;
+    context.subscriptions.push(providerRegistration);
+    return provider;
   }
 
   private static readonly cacheName = "taipy.editor.cache";
@@ -73,15 +58,15 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
   private readonly extensionPath: Uri;
   // Perspective Uri => cache
   private cache: ProviderCache;
-  // original Uri => toml
-  private tomlByUri: Record<string, JsonMap> = {};
   // original Uri => perspective Id => panels
   private panelsByUri: Record<string, Record<string, WebviewPanel[]>> = {};
 
-  constructor(private readonly context: ExtensionContext) {
+  private constructor(private readonly context: ExtensionContext, private readonly taipyContext: Context) {
     this.extensionPath = context.extensionUri;
     this.cache = context.workspaceState.get(ConfigEditorProvider.cacheName, {} as ProviderCache);
     context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: "**/*" + configFileExt }, this));
+    commands.registerCommand("taipy.clearConfigCache", this.clearCache, this);
+    commands.registerCommand("taipy.add.node.to.diagram", this.addNodeToCurrentDiagram, this);
   }
 
   async provideDocumentDropEdits(
@@ -194,26 +179,11 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
   }
 
-  private setToml(document: TextDocument) {
-    try {
-      this.tomlByUri[getOriginalUri(document.uri).toString()] = this.getDocumentAsToml(document);
-    } catch (e) {
-      const sbi = window.createStatusBarItem(ConfigEditorId);
-      sbi.text = getTomlError(document.uri.path);
-      sbi.tooltip = e.message;
-      sbi.show();
-    }
-  }
-
-  private getToml(uri: string) {
-    return this.tomlByUri[uri] || {};
-  }
-
-  private async updateWebview(uri: Uri) {
+  async updateWebview(uri: Uri) {
     const originalUri = getOriginalUri(uri).toString();
     const panelsByPersp = this.panelsByUri[originalUri];
     if (panelsByPersp) {
-      const toml = this.getToml(originalUri);
+      const toml = this.taipyContext.getToml(originalUri);
       const positions = this.getPositionsCache(getCleanPerpsectiveUri(uri));
       Object.entries(panelsByPersp).forEach(([perspectiveId, panels]) => {
         panels.forEach((p) => {
@@ -240,7 +210,11 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     webviewPanel.webview.options = {
       enableScripts: true,
     };
-    this.setToml(document);
+    // retrieve and work with the original document
+    const realDocument = await getOriginalDocument(document);
+
+    await this.taipyContext.ReadTomlIfNeeded(realDocument);
+
     const perspId = getPerspectiveFromUri(document.uri);
     const originalUri = getOriginalUri(document.uri).toString();
     this.panelsByUri[originalUri] = this.panelsByUri[originalUri] || {};
@@ -249,18 +223,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
 
     // Hook up event handlers so that we can synchronize the webview with the text document.
-    //
-    // The text document acts as our model, so we have to sync change in the document to our
-    // editor and sync changes in the editor back to the document.
-    //
-    // Remember that a single text document can also be shared between multiple custom
-    // editors (this happens for example when you split a custom editor)
-
-    const changeDocumentSubscription = workspace.onDidChangeTextDocument((e) => {
-      if (isUriEqual(document.uri, e.document.uri)) {
-        this.setToml(e.document);
+    this.taipyContext.registerDocChangeListener((uri: Uri) => {
+      if (isUriEqual(document.uri, uri)) {
         this.updateWebview(document.uri);
-        commands.executeCommand(refreshPerspectiveDocumentCmd, document.uri);
+        //commands.executeCommand(refreshPerspectiveDocumentCmd, document.uri);
       }
     }, this);
 
@@ -277,16 +243,16 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
           this.setPositions(document.uri, e.positions);
           break;
         case CreateLink:
-          this.createLink(document, e.nodeType, e.nodeName, e.property, e.targetName);
+          this.createLink(realDocument, e.nodeType, e.nodeName, e.property, e.targetName);
           break;
         case CreateNode:
-          this.createNode(document, e.nodeType, e.nodeName);
+          this.createNode(realDocument, e.nodeType, e.nodeName);
           break;
         case GetNodeName:
-          this.getNodeName(document, e.nodeType, e.nodeName);
+          this.getNodeName(realDocument.uri, e.nodeType, e.nodeName);
           break;
         case DeleteLink:
-          this.deleteLink(document, e.nodeType, e.nodeName, e.property, e.targetName);
+          this.deleteLink(realDocument, e.nodeType, e.nodeName, e.property, e.targetName);
           break;
       }
     }, this);
@@ -296,29 +262,28 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       this.panelsByUri[originalUri] &&
         this.panelsByUri[originalUri][perspId] &&
         (this.panelsByUri[originalUri][perspId] = this.panelsByUri[originalUri][perspId].filter((p) => p !== webviewPanel));
-      document.isClosed && changeDocumentSubscription.dispose();
       receiveMessageSubscription.dispose();
     });
   }
 
-  private deleteLink(document: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
-    this.createOrDeleteLink(document, nodeType, nodeName, property, targetName, false);
+  private deleteLink(realDocument: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
+    this.createOrDeleteLink(realDocument, nodeType, nodeName, property, targetName, false);
   }
 
-  private createLink(document: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
-    this.createOrDeleteLink(document, nodeType, nodeName, property, targetName, true);
+  private createLink(realDocument: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
+    this.createOrDeleteLink(realDocument, nodeType, nodeName, property, targetName, true);
   }
 
-  private createOrDeleteLink(document: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string, create: boolean) {
-    const uri = getOriginalUri(document.uri);
+  private createOrDeleteLink(realDocument: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string, create: boolean) {
+    const uri = realDocument.uri;
     const tomlUri = uri.toString();
-    const toml = this.getToml(tomlUri);
+    const toml = this.taipyContext.getToml(tomlUri);
     const links = toml[nodeType] && toml[nodeType][nodeName] && (toml[nodeType][nodeName][property] as string[]);
     const sectionHead = "[" + nodeType + "." + nodeName + "]";
     let sectionFound = false;
     let edit: WorkspaceEdit;
-    for (let i = 0; i < document.lineCount; i++) {
-      const line = document.lineAt(i);
+    for (let i = 0; i < realDocument.lineCount; i++) {
+      const line = realDocument.lineAt(i);
       const text = line.text.trim();
       if (sectionFound) {
         if (text.split("=", 2)[0].trim() == property) {
@@ -338,7 +303,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       if (!sectionFound && text == sectionHead) {
         if (!links) {
           edit = new WorkspaceEdit();
-          const start = i + 1 < document.lineCount ? document.lineAt(i + 1).text.substring(0, document.lineAt(i + 1).firstNonWhitespaceCharacterIndex) : "";
+          const start = i + 1 < realDocument.lineCount ? realDocument.lineAt(i + 1).text.substring(0, realDocument.lineAt(i + 1).firstNonWhitespaceCharacterIndex) : "";
           edit.insert(uri, line.range.end, "\n" + start + stringify({ [property]: create ? [targetName] : [] }).trimEnd());
           break;
         }
@@ -350,8 +315,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
   }
 
-  private async getNodeName(document: TextDocument, nodeType: string, nodeName: string) {
-    const entity = this.getToml(getOriginalUri(document.uri).toString())[nodeType];
+  private async getNodeName(uri: Uri, nodeType: string, nodeName: string) {
+    const entity = this.taipyContext.getToml(uri.toString())[nodeType];
     const validateNodeName = (value: string) => {
       if (!value || /[\s\.]/.test(value)) {
         return getNewNameInputError(nodeType, value, true);
@@ -372,9 +337,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
   }
 
-  private createNode(document: TextDocument, nodeType: string, nodeName: string) {
-    const uri = getOriginalUri(document.uri);
-    const toml = this.getToml(uri.toString());
+  private createNode(realDocument: TextDocument, nodeType: string, nodeName: string) {
+    const uri = realDocument.uri;
+    const toml = this.taipyContext.getToml(uri.toString());
     const node = toml[nodeType] && toml[nodeType][nodeName];
     if (node) {
       return;
@@ -382,7 +347,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     const edit = new WorkspaceEdit();
     edit.insert(
       uri,
-      document.lineCount ? document.lineAt(document.lineCount - 1).range.end : new Position(0, 0),
+      realDocument.lineCount ? realDocument.lineAt(realDocument.lineCount - 1).range.end : new Position(0, 0),
       "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
     );
     workspace.applyEdit(edit);
@@ -426,8 +391,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       { icons: {} }
     );
 
-    const cssVars = nodeTypes.map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";")
-      .join(" ");
+    const cssVars = nodeTypes.map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";").join(" ");
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();
     return `<html style="${cssVars}">
@@ -454,12 +418,12 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
   /**
    * Try to get a current document as json text.
    */
-  private getDocumentAsToml(document: TextDocument): JsonMap {
+  private getDocumentAsToml(document: TextDocument): ProviderResult<JsonMap> {
     const text = document.getText();
     if (text.trim().length === 0) {
       return {};
     }
-    return parse(text);
+    return parse.async(text);
   }
 
   /**

@@ -50,6 +50,7 @@ export abstract class ConfigItem extends TreeItem {
   constructor(name: string, private readonly node: JsonMap) {
     super(name, TreeItemCollapsibleState.None);
     this.contextValue = this.getNodeType();
+    this.tooltip = name;
   }
   setResourceUri(uri: Uri) {
     this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, typeof this.node == "object" ? stringify(this.node): ("" + this.node));

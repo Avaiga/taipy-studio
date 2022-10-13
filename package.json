@@ -218,6 +218,11 @@
           "format": "icon",
           "default": "output",
           "description": "%config.diagram.scenario.icon.desc%"
+        },
+        "taipyStudio.status.timeout": {
+          "type": "integer",
+          "default": 3000,
+          "description": "%config.status.timeout.desc%"
         }
       }
     }

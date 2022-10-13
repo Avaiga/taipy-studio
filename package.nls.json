@@ -21,12 +21,13 @@
 
     "config.editor.drop.enabled": "Should the config editor accept drops.",
     "config.editor.reveal.enabled": "Should the config editor reveal the selected nodes.",
-    "config.diagram.datanode.color.desc": "The color for the DataNode Diagram element",
-    "config.diagram.datanode.icon.desc": "The icon for the DataNode Diagram element",
-    "config.diagram.task.color.desc": "The color for the Task Diagram element",
-    "config.diagram.task.icon.desc": "The icon for the Task Diagram element",
-    "config.diagram.pipeline.color.desc": "The color for the Pipeline Diagram element",
-    "config.diagram.pipeline.icon.desc": "The icon for the Pipeline Diagram element",
-    "config.diagram.scenario.color.desc": "The color for the Scenario Diagram element",
-    "config.diagram.scenario.icon.desc": "The icon for the Scenario Diagram element"
+    "config.diagram.datanode.color.desc": "The color for the DataNode Diagram element.",
+    "config.diagram.datanode.icon.desc": "The icon for the DataNode Diagram element.",
+    "config.diagram.task.color.desc": "The color for the Task Diagram element.",
+    "config.diagram.task.icon.desc": "The icon for the Task Diagram element.",
+    "config.diagram.pipeline.color.desc": "The color for the Pipeline Diagram element.",
+    "config.diagram.pipeline.icon.desc": "The icon for the Pipeline Diagram element.",
+    "config.diagram.scenario.color.desc": "The color for the Scenario Diagram element.",
+    "config.diagram.scenario.icon.desc": "The icon for the Scenario Diagram element.",
+    "config.status.timeout.desc": "The timeout for Status Bar Item (ms)."
 }
