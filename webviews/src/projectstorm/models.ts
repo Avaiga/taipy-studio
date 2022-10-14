@@ -1,6 +1,6 @@
 import { DefaultPortModel, DefaultPortModelOptions, DiagramModel, LinkModel, LinkModelGenerics, PortModelAlignment } from "@projectstorm/react-diagrams";
 
-import { InPortName, onLinkRemove, OutPortName } from "../components/nodeUtils";
+import { InPortName, onLinkRemove, OutPortName } from "../utils/diagram";
 import { getChildType } from "../../../shared/toml";
 import { DataNode, Task } from "../../../shared/names";
 

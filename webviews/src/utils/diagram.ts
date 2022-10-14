@@ -10,21 +10,25 @@ import createEngine, {
   DefaultDiagramState,
   PortModel,
   LinkModelGenerics,
+  DiagramEngine,
+  PathFindingLinkFactory,
+  DagreEngine,
+  DefaultNodeModelOptions,
 } from "@projectstorm/react-diagrams";
 import { BaseEvent, BaseEntityEvent } from "@projectstorm/react-canvas-core";
 import { debounce } from "debounce";
 
-import { Positions } from "../../../shared/messages";
+import { EditorAddNodeMessage, Positions } from "../../../shared/messages";
 import { DataNode, Pipeline, Scenario, Task } from "../../../shared/names";
 import { getNodeColor } from "./config";
-import { postActionMessage, postLinkCreation, postLinkDeletion, postNodeCreation, postPositionsMessage } from "./postUtils";
+import { postActionMessage, postLinkCreation, postLinkDeletion, postNodeCreation, postPositionsMessage } from "./messaging";
 import { Select } from "../../../shared/commands";
-import { TaipyPortModel } from "../projectstorm/models";
-import { getDescendants } from "../../../shared/toml";
+import { TaipyDiagramModel, TaipyPortModel } from "../projectstorm/models";
+import { getChildType, getDescendants } from "../../../shared/toml";
 import { TaipyNodeFactory, TaipyPortFactory } from "../projectstorm/factories";
 import { nodeTypes } from "./config";
 
-export const initEngine = () => {
+export const initDiagram = (): [DiagramEngine, DagreEngine, TaipyDiagramModel] => {
   const engine = createEngine();
   nodeTypes.forEach((nodeType) => engine.getNodeFactories().registerFactory(new TaipyNodeFactory(nodeType)));
   engine.getPortFactories().registerFactory(new TaipyPortFactory());
@@ -32,7 +36,18 @@ export const initEngine = () => {
   if (state instanceof DefaultDiagramState) {
     state.dragNewLink.config.allowLooseLinks = false;
   }
-  return engine;
+  const dagreEngine = new DagreEngine({
+    graph: {
+      rankdir: "LR",
+      ranker: "longest-path",
+      marginx: 25,
+      marginy: 25,
+    },
+    includeLinks: true,
+  });
+  const model = new TaipyDiagramModel();
+  engine.setModel(model);
+  return [engine, dagreEngine, model];
 };
 
 const openPerspective: Record<string, boolean> = {
@@ -40,11 +55,18 @@ const openPerspective: Record<string, boolean> = {
   [Pipeline]: true,
 };
 
+export const getModelNodes = (model: TaipyDiagramModel) => Object.values(model.getActiveNodeLayer().getNodes());
+export const getModelLinks = (model: TaipyDiagramModel) => Object.values(model.getActiveLinkLayer().getLinks());
+
+export const getNodeByName = (model: TaipyDiagramModel, paths: string[]) => {
+  const [nodeType, ...parts] = paths;
+  const name = parts.join(".");
+  return name ? getModelNodes(model).filter((n) => n.getType() == nodeType && (n.getOptions() as DefaultNodeModelOptions).name == name) : [];
+};
+
 export const shouldOpenPerspective = (nodeType: string) => !!(nodeType && openPerspective[nodeType]);
 
-export const getNewName = (model: DiagramModel, nodeType: string) => {
-  return model
-    .getNodes()
+export const getNewName = (model: DiagramModel, nodeType: string) => getModelNodes(model)
     .filter((node) => node.getType() == nodeType)
     .reduce((pv, node) => {
       if ((node as DefaultNodeModel).getOptions().name == pv) {
@@ -57,7 +79,6 @@ export const getNewName = (model: DiagramModel, nodeType: string) => {
       }
       return pv;
     }, nodeType + "-1");
-};
 
 export const InPortName = "In";
 export const OutPortName = "Out";
@@ -80,7 +101,7 @@ export const getNodeId = (node: DefaultNodeModel) => node.getType() + "." + node
 
 const fireNodeSelected = (nodeType: string, name?: string) => name && postActionMessage(nodeType, name, Select);
 export const cachePositions = (model: DiagramModel) => {
-  const pos = model.getNodes().reduce((ps, node) => {
+  const pos = getModelNodes(model).reduce((ps, node) => {
     const pNode = node as DefaultNodeModel;
     const nodeName = getNodeId(pNode);
     const pos = pNode.getPosition();
@@ -89,7 +110,7 @@ export const cachePositions = (model: DiagramModel) => {
     }
     return ps;
   }, {} as Positions);
-  const posL = model.getLinks().reduce((ps, link) => {
+  const posL = getModelLinks(model).reduce((ps, link) => {
     const linkName = getLinkId(link);
     const points = link.getPoints();
     if (linkName && points) {
@@ -199,4 +220,94 @@ export const createNode = (nodeType: string, nodeName: string, createPorts = tru
 export const createLink = (outPort: DefaultPortModel, inPort: DefaultPortModel) => {
   const link = outPort.link<DefaultLinkModel>(inPort);
   return link;
+};
+
+export const showNode = (engine: DiagramEngine, message: EditorAddNodeMessage) => {
+  const model = engine.getModel();
+  let node = getModelNodes(model).find((n) => n.getType() == message.nodeType && (n as DefaultNodeModel).getOptions().name == message.nodeName);
+  if (node) {
+    const canvas = engine.getCanvas();
+    const ratio = model.getZoomLevel() / 100;
+    model.setOffset(
+      (canvas.offsetWidth - node.width * ratio) / 2 - node.getPosition().x * ratio,
+      (canvas.offsetHeight - node.height * ratio) / 2 - node.getPosition().y * ratio
+    );
+  } else {
+    node = model.addNode(createNode(message.nodeType, message.nodeName));
+    node.setPosition(-model.getOffsetX(), -model.getOffsetY());
+  }
+  engine.repaintCanvas();
+};
+
+export const relayoutDiagram = (engine: DiagramEngine, dagreEngine: DagreEngine) => {
+  const model = engine.getModel();
+  dagreEngine.redistribute(model);
+  engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
+  engine.repaintCanvas();
+  cachePositions(model);
+};
+
+export const setNodeContext = (engine: DiagramEngine, node: DefaultNodeModel, baseUri: string) =>
+  engine
+    .getNodeElement(node)
+    .setAttribute(
+      "data-vscode-context",
+      '{"preventDefaultContextMenuItems": true' +
+        (shouldOpenPerspective(node.getType())
+          ? ', "webviewSection": "taipy.node", "baseUri": "' + baseUri + '", "perspective": "' + getNodeId(node) + '"'
+          : "") +
+        "}"
+    );
+
+export const populateModel = (toml: any, model: TaipyDiagramModel) => {
+  const linkModels: DefaultLinkModel[] = [];
+  const nodeModels: Record<string, Record<string, DefaultNodeModel>> = {};
+
+  Object.keys(toml).forEach((nodeType, tIdx) => {
+    if (nodeType == "TAIPY" || nodeType == "JOB") {
+      return;
+    }
+    Object.keys(toml[nodeType]).forEach((key, nIdx) => {
+      if (key == "default") {
+        return;
+      }
+      const node = createNode(nodeType, key);
+      node.setPosition(150, 100 + 100 * tIdx + 10 * nIdx);
+      nodeModels[nodeType] = nodeModels[nodeType] || {};
+      nodeModels[nodeType][key] = node;
+    });
+  });
+
+  // create links Tasks-DataNodes, Pipeline-Tasks, Scenario-Pipelines
+  [Task, Pipeline, Scenario].forEach((nodeType) => {
+    nodeModels[nodeType] &&
+      Object.entries(nodeModels[nodeType]).forEach(([name, nodeModel]) => {
+        const parentNode = toml[nodeType][name];
+        const childType = getChildType(nodeType);
+        if (childType) {
+          const descendants = getDescendants(nodeType);
+          if (descendants[0]) {
+            (parentNode[descendants[0]] || []).forEach((dnKey: string) => {
+              const node = nodeModels[childType][dnKey];
+              if (node) {
+                linkModels.push(createLink(node.getPort(OutPortName) as DefaultPortModel, nodeModel.getPort(InPortName) as DefaultPortModel));
+              }
+            });
+          }
+          if (descendants[1]) {
+            (parentNode[descendants[1]] || []).forEach((dnKey: string) => {
+              const node = nodeModels[childType][dnKey];
+              if (node) {
+                linkModels.push(createLink(nodeModel.getPort(OutPortName) as DefaultPortModel, node.getPort(InPortName) as DefaultPortModel));
+              }
+            });
+          }
+        }
+      });
+  });
+
+  const nodeLayer = model.getActiveNodeLayer();
+  Object.values(nodeModels).forEach((nm) => Object.values(nm).forEach(n => nodeLayer.addModel(n)));
+  const linkLayer = model.getActiveLinkLayer();
+  linkModels.forEach(l => linkLayer.addModel(l));
 };

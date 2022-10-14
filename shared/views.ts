@@ -18,6 +18,7 @@ export interface ConfigEditorProps {
   perspectiveId: string;
   positions: Positions;
   baseUri: string;
+  extraEntities: Array<[string, string]>;
 }
 
 export type NodeType = Record<string, string |string[]>;

@@ -2,7 +2,7 @@ import { useEffect, lazy, useState, Suspense } from "react";
 
 import { ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, DataNodeDetailsId, DataNodeDetailsProps, NoDetailsId, NoDetailsProps } from "../../shared/views";
-import { postRefreshMessage } from "./components/postUtils";
+import { postRefreshMessage } from "./utils/messaging";
 
 const NoDetails = lazy(() => import(/* webpackChunkName: "NoDetails" */ "./components/NoDetails"));
 const DataNodeDetails = lazy(() => import(/* webpackChunkName: "DataNodeDetails" */ "./components/DataNodeDetails"));

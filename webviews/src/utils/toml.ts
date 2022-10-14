@@ -80,3 +80,31 @@ export const getNodeTypes = (perspectiveId: string) => {
   }
   return res.reverse();
 };
+
+const childrenNodesKey: Record<string, string> = {
+  [Task]: TaskOutputs,
+  [Pipeline]: PipelineTasks,
+  [Scenario]: ScenarioPipelines,
+};
+
+export const getChildrenNodes = (toml: any, parentType: string, filter?: string) => {
+  const nodes = toml[parentType];
+  if (nodes) {
+    const parents = Object.keys(nodes);
+    const childrenKey = childrenNodesKey[parentType];
+    const res = childrenKey
+      ? parents.reduce((pv, cv) => {
+          pv[cv] = nodes[cv][childrenKey];
+          return pv;
+        }, {} as Record<string, string[]>)
+      : {};
+    if (filter) {
+      parents.forEach((p) => {
+        if (res[p]) {
+          res[p] = (res[p] as string[]).filter((n) => n == filter);
+        }
+      });
+    }
+    return res;
+  }
+};
