@@ -7,12 +7,12 @@ const childType: Record<string, string> = {
 };
 export const getChildType = (nodeType: string) => childType[nodeType] || "";
 
-const descendants: Record<string, [string, string]> = {
+const descendantProperties: Record<string, [string, string]> = {
   [Scenario]: ["", ScenarioPipelines],
   [Pipeline]: ["", PipelineTasks],
   [Task]: [TaskInputs, TaskOutputs],
 };
-export const getDescendants = (nodeType: string) => descendants[nodeType] || ["", ""];
+export const getDescendantProperties = (nodeType: string) => descendantProperties[nodeType] || ["", ""];
 
 const dropByTypes: Record<string, string[]> = {
   [DataNode]: [TaskInputs, TaskOutputs],
@@ -28,3 +28,10 @@ const defaultContents: Record<string, Record<string, string | string[]>> = {
   [Scenario]: { [ScenarioPipelines]: [] },
 };
 export const getDefaultContent = (nodeType: string, nodeName: string) => ({ [nodeType]: { [nodeName]: defaultContents[nodeType] || {} } });
+
+const parentType: Record<string, string> = {
+  [DataNode]: Task,
+  [Task]: Pipeline,
+  [Pipeline]: Scenario,
+};
+export const getParentType = (nodeType: string) => parentType[nodeType] || "";

@@ -1,6 +1,7 @@
-import { Diagnostic, DiagnosticSeverity, languages, Range, StatusBarItem, TextDocument, ThemeColor, window, workspace } from "vscode";
+import { Diagnostic, DiagnosticSeverity, languages, Range, TextDocument, ThemeColor, window, workspace } from "vscode";
+
 import { TaipyStudioSettingsName } from "./constants";
-import { getOriginalUri } from "./contentProviders/PerpectiveContentProvider";
+import { getOriginalUri } from "../contentProviders/PerpectiveContentProvider";
 import { getTomlError } from "./l10n";
 
 const DiagnoticsCollection = languages.createDiagnosticCollection("toml");

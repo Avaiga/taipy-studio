@@ -1,10 +1,10 @@
-import { MouseEvent, useCallback, useEffect, useRef } from "react";
+import { MouseEvent, useEffect, useRef } from "react";
 import { DefaultNodeModel } from "@projectstorm/react-diagrams";
 import { CanvasWidget } from "@projectstorm/react-canvas-core";
 import * as deepEqual from "fast-deep-equal";
 
 import { ConfigEditorProps, perspectiveRootId } from "../../../shared/views";
-import { postGetNodeName, postRefreshMessage } from "../utils/messaging";
+import { postGetNodeName, postRefreshMessage, postSetExtraEntities } from "../utils/messaging";
 import { applyPerspective, getNodeTypes } from "../utils/toml";
 import { EditorAddNodeMessage } from "../../../shared/messages";
 import { getNodeIcon } from "../utils/config";
@@ -26,19 +26,22 @@ import { applySmallChanges } from "../utils/smallModelChanges";
 
 const [engine, dagreEngine] = initDiagram();
 
-const Editor = ({ toml, positions, perspectiveId, baseUri, extraEntities }: ConfigEditorProps) => {
+const relayout = () => relayoutDiagram(engine, dagreEngine);
+
+const onCreateNode = (evt: MouseEvent<HTMLDivElement>) => {
+  const nodeType = evt.currentTarget.dataset.nodeType;
+  nodeType && postGetNodeName(nodeType, getNewName(engine.getModel(), nodeType));
+};
+
+const Editor = ({ toml: propsToml, positions, perspectiveId, baseUri, extraEntities: propsExtraEntities }: ConfigEditorProps) => {
   const oldToml = useRef<Record<string, any>>();
   const oldPerspId = useRef<string>();
 
-  console.log(extraEntities);
-  toml = applyPerspective(toml, perspectiveId);
+  const [toml, extraEntities] = applyPerspective(propsToml, perspectiveId, propsExtraEntities);
 
-  const relayout = useCallback(() => relayoutDiagram(engine, dagreEngine), []);
-
-  const onCreateNode = useCallback((evt: MouseEvent<HTMLDivElement>) => {
-    const nodeType = evt.currentTarget.dataset.nodeType;
-    nodeType && postGetNodeName(nodeType, getNewName(engine.getModel(), nodeType));
-  }, []);
+  useEffect(() => {
+    propsExtraEntities && extraEntities && extraEntities != propsExtraEntities  && postSetExtraEntities(extraEntities);
+  }, [propsExtraEntities, extraEntities]);
 
   useEffect(() => {
     // Manage Post Message reception

@@ -1,10 +1,10 @@
 import { WebviewViewProvider, WebviewView, Webview, Uri, window } from "vscode";
 
-import { getCspScriptSrc, getNonce } from "../utils";
+import { getCspScriptSrc, getNonce } from "../utils/utils";
 import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName, containerId, DataNodeDetailsProps, NoDetailsProps } from "../../shared/views";
 import { Action, Refresh } from "../../shared/commands";
 import { ViewMessage } from "../../shared/messages";
-import { emptyNodeDetailContent } from "../l10n";
+import { emptyNodeDetailContent } from "../utils/l10n";
 
 export class ConfigDetailsView implements WebviewViewProvider {
   private _view: WebviewView;

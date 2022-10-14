@@ -1,4 +1,16 @@
-import { Action, CreateLink, CreateNode, DeleteLink, GetNodeName, Refresh, SetPositions } from "../../../shared/commands";
+import {
+  Action,
+  CreateLink,
+  CreateNode,
+  DeleteLink,
+  GetNodeName,
+  Refresh,
+  RemoveExtraEntities,
+  RemoveNode,
+  SetExtraEntities,
+  SetPositions,
+  UpdateExtraEntities,
+} from "../../../shared/commands";
 import { Positions } from "../../../shared/messages";
 
 type vscodeApiRet = { postMessage: (pl: Record<string, unknown>) => void };
@@ -23,8 +35,12 @@ export const postActionMessage = (id: string, msg?: string, command = Action) =>
 export const postRefreshMessage = () => getVsCodeApi()?.postMessage({ command: Refresh });
 export const postPositionsMessage = (positions: Positions) => getVsCodeApi()?.postMessage({ command: SetPositions, positions });
 export const postNodeCreation = (nodeType: string, nodeName: string) => getVsCodeApi()?.postMessage({ command: CreateNode, nodeType, nodeName });
+export const postNodeRemoval = (nodeType: string, nodeName: string) => getVsCodeApi()?.postMessage({ command: RemoveNode, nodeType, nodeName });
 export const postLinkCreation = (nodeType: string, nodeName: string, property: string, targetName: string) =>
   getVsCodeApi()?.postMessage({ command: CreateLink, nodeType, nodeName, property, targetName });
 export const postGetNodeName = (nodeType: string, nodeName: string) => getVsCodeApi()?.postMessage({ command: GetNodeName, nodeType, nodeName });
 export const postLinkDeletion = (nodeType: string, nodeName: string, property: string, targetName: string) =>
   getVsCodeApi()?.postMessage({ command: DeleteLink, nodeType, nodeName, property, targetName });
+export const postSetExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: SetExtraEntities, extraEntities });
+export const postUpdateExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: UpdateExtraEntities, extraEntities });
+export const postRemoveExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: RemoveExtraEntities, extraEntities });

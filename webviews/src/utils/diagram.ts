@@ -21,10 +21,10 @@ import { debounce } from "debounce";
 import { EditorAddNodeMessage, Positions } from "../../../shared/messages";
 import { DataNode, Pipeline, Scenario, Task } from "../../../shared/names";
 import { getNodeColor } from "./config";
-import { postActionMessage, postLinkCreation, postLinkDeletion, postNodeCreation, postPositionsMessage } from "./messaging";
+import { postActionMessage, postLinkCreation, postLinkDeletion, postNodeCreation, postNodeRemoval, postPositionsMessage, postUpdateExtraEntities } from "./messaging";
 import { Select } from "../../../shared/commands";
 import { TaipyDiagramModel, TaipyPortModel } from "../projectstorm/models";
-import { getChildType, getDescendants } from "../../../shared/toml";
+import { getChildType, getDescendantProperties } from "../../../shared/toml";
 import { TaipyNodeFactory, TaipyPortFactory } from "../projectstorm/factories";
 import { nodeTypes } from "./config";
 
@@ -162,7 +162,7 @@ const linkListener = {
       if (sourceNode && targetNode) {
         const fromDataNode = sourceNode.getType() == DataNode;
         const nodeType = (fromDataNode ? targetNode : sourceNode).getType();
-        const [inputs, outputs] = getDescendants(nodeType);
+        const [inputs, outputs] = getDescendantProperties(nodeType);
         postLinkCreation(
           nodeType,
           (fromDataNode ? targetNode : sourceNode).getOptions().name || "",
@@ -177,9 +177,11 @@ const linkListener = {
 export const diagramListener = {
   nodesUpdated: (e: BaseEvent) => {
     const evt = e as BaseEntityEvent<DiagramModel> & { node: DefaultNodeModel; isCreated: boolean };
+    const node = evt.node;
     if (evt.isCreated) {
-      const node = evt.node;
       postNodeCreation(node.getType(), node.getOptions().name || "");
+    } else {
+      postNodeRemoval(node.getType(), node.getOptions().name || "");
     }
   },
   linksUpdated: (e: BaseEvent) => {
@@ -196,7 +198,7 @@ export const onLinkRemove = (link: LinkModel<LinkModelGenerics>) => {
   if (sourceNode && targetNode) {
     const fromDataNode = sourceNode.getType() == DataNode;
     const nodeType = (fromDataNode ? targetNode : sourceNode).getType();
-    const [inputs, outputs] = getDescendants(nodeType);
+    const [inputs, outputs] = getDescendantProperties(nodeType);
     postLinkDeletion(
       nodeType,
       (fromDataNode ? targetNode : sourceNode).getOptions().name || "",
@@ -237,6 +239,7 @@ export const showNode = (engine: DiagramEngine, message: EditorAddNodeMessage) =
     node.setPosition(-model.getOffsetX(), -model.getOffsetY());
   }
   engine.repaintCanvas();
+  postUpdateExtraEntities(`${message.nodeType}.${message.nodeName}`);
 };
 
 export const relayoutDiagram = (engine: DiagramEngine, dagreEngine: DagreEngine) => {
@@ -285,7 +288,7 @@ export const populateModel = (toml: any, model: TaipyDiagramModel) => {
         const parentNode = toml[nodeType][name];
         const childType = getChildType(nodeType);
         if (childType) {
-          const descendants = getDescendants(nodeType);
+          const descendants = getDescendantProperties(nodeType);
           if (descendants[0]) {
             (parentNode[descendants[0]] || []).forEach((dnKey: string) => {
               const node = nodeModels[childType][dnKey];

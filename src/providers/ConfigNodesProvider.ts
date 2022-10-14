@@ -12,11 +12,11 @@ import {
   Uri,
 } from "vscode";
 
-import { selectConfigNodeCmd } from "../commands";
+import { selectConfigNodeCmd } from "../utils/commands";
 import { Context } from "../context";
 import { getPerspectiveUri } from "../contentProviders/PerpectiveContentProvider";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
-import { selectDatanodeTitle, selectPipelineTitle, selectScenarioTitle, selectTaskTitle } from "../l10n";
+import { selectDatanodeTitle, selectPipelineTitle, selectScenarioTitle, selectTaskTitle } from "../utils/l10n";
 
 const titles = {
   [DataNode]: selectDatanodeTitle,
@@ -47,7 +47,7 @@ export abstract class ConfigItem extends TreeItem {
   abstract getNodeType();
   constructor(name: string, private readonly node: JsonMap) {
     super(name, TreeItemCollapsibleState.None);
-    this.contextValue = this.getNodeType();
+    this.contextValue = name == "default" ? name : this.getNodeType();
     this.tooltip = name;
   }
   setResourceUri(uri: Uri) {

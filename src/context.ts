@@ -1,7 +1,6 @@
 import {
   commands,
   ExtensionContext,
-  ProviderResult,
   Range,
   TextDocument,
   TextDocumentChangeEvent,
@@ -15,10 +14,10 @@ import {
 import { JsonMap, parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
-import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
-import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./constants";
+import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./utils/commands";
+import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./utils/constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
-import { configFileExt } from "./utils";
+import { configFileExt, configFilePattern } from "./utils/utils";
 import {
   ConfigItem,
   ConfigNodesProvider,
@@ -32,7 +31,7 @@ import {
 } from "./providers/ConfigNodesProvider";
 import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri, getPerspectiveUri } from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
-import { cleanTomlParseError, handleTomlParseError } from "./errors";
+import { cleanTomlParseError, handleTomlParseError } from "./utils/errors";
 
 const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
 
@@ -88,7 +87,7 @@ export class Context {
     // Document change listener
     workspace.onDidChangeTextDocument(this.onDocumentChanged, this, vsContext.subscriptions);
     // file system watcher
-    const fileSystemWatcher = workspace.createFileSystemWatcher(`**/*${configFileExt}`);
+    const fileSystemWatcher = workspace.createFileSystemWatcher(configFilePattern);
     fileSystemWatcher.onDidChange(this.onFileChange, this);
     fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
     fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);

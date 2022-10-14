@@ -2,9 +2,10 @@ import { DefaultPortModel } from "@projectstorm/react-diagrams";
 import { getDiff } from "recursive-diff";
 
 import { TaskInputs } from "../../../shared/names";
+import { getParentType } from "../../../shared/toml";
 import { TaipyDiagramModel, TaipyPortModel } from "../projectstorm/models";
 import { createLink, createNode, getNodeByName, InPortName, OutPortName } from "./diagram";
-import { getChildrenNodes, getChildTypeWithBackLink, getParentNames, getParentType } from "./toml";
+import { getChildrenNodes, getChildTypeWithBackLink, getParentNames } from "./toml";
 
 export const applySmallChanges = (model: TaipyDiagramModel, toml: any, oldToml: any) => {
   const diff = getDiff(oldToml.current, toml, true);

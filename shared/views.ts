@@ -13,15 +13,16 @@ export interface DataNodeDetailsProps {
 }
 
 export const ConfigEditorId = "ConfigEditor";
+
 export interface ConfigEditorProps {
   toml: any;
   perspectiveId: string;
-  positions: Positions;
+  positions?: Positions;
   baseUri: string;
-  extraEntities: Array<[string, string]>;
+  extraEntities?: string;
 }
 
-export type NodeType = Record<string, string |string[]>;
+export type NodeType = Record<string, string | string[]>;
 
 export const perspectiveRootId = "__root__";
 
