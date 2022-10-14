@@ -10,15 +10,11 @@ import {
   window,
   workspace,
 } from "vscode";
-import { config, MessageFormat } from "vscode-nls";
 
 import { selectConfigFileCmd } from "../commands";
 import { Context } from "../context";
+import { configFileItemTitle } from "../l10n";
 import { configFileExt } from "../utils";
-
-const localize = config({ messageFormat: MessageFormat.file })();
-
-const configFileItemTitle = localize("ConfigFileItem.title", "Select file");
 
 class ConfigFileItem extends TreeItem {
   public constructor(baseName: string, readonly resourceUri: Uri, readonly tooltip: string, readonly description: string | null = null) {

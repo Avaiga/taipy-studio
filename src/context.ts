@@ -15,7 +15,7 @@ import {
 import { JsonMap, parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
-import { refreshPerspectiveDocumentCmd, revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
+import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./commands";
 import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { configFileExt } from "./utils";
@@ -73,7 +73,6 @@ export class Context {
     // Perspective Provider
     this.perspectiveContentProvider = new PerspectiveContentProvider();
     vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, this.perspectiveContentProvider));
-    commands.registerCommand(refreshPerspectiveDocumentCmd, this.refreshPerspectiveDocument, this);
     // Create Tree Views
     this.treeViews.push(this.createTreeView(DataNodeItem));
     this.treeViews.push(this.createTreeView(TaskItem));

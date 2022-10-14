@@ -11,20 +11,18 @@ import {
   TreeItemCollapsibleState,
   Uri,
 } from "vscode";
-import { config, MessageFormat } from "vscode-nls";
 
 import { selectConfigNodeCmd } from "../commands";
 import { Context } from "../context";
 import { getPerspectiveUri } from "../contentProviders/PerpectiveContentProvider";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
-
-const localize = config({ messageFormat: MessageFormat.file })();
+import { selectDatanodeTitle, selectPipelineTitle, selectScenarioTitle, selectTaskTitle } from "../l10n";
 
 const titles = {
-  [DataNode]: localize("DataNodeItem.title", "Select data node"),
-  [Task]: localize("TaskItem.title", "Select task"),
-  [Pipeline]: localize("PipelineItem.title", "Select pipeline"),
-  [Scenario]: localize("ScenarioItem.title", "Select scenario"),
+  [DataNode]: selectDatanodeTitle,
+  [Task]: selectTaskTitle,
+  [Pipeline]: selectPipelineTitle,
+  [Scenario]: selectScenarioTitle,
 };
 const getTitleFromType = (nodeType: string) => titles[nodeType] || "Select Something";
 

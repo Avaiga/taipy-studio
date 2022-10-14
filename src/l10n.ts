@@ -2,8 +2,17 @@ import { config, MessageFormat } from "vscode-nls";
 
 const localize = config({ messageFormat: MessageFormat.file })();
 
-//
+// NodeDetail
 export const emptyNodeDetailContent = localize("ConfigDetailsView.emptyContent", "No selected element.");
+
+// Tree Views
+export const selectDatanodeTitle = localize("DataNodeItem.title", "Select data node");
+export const selectTaskTitle = localize("TaskItem.title", "Select task");
+export const selectPipelineTitle = localize("PipelineItem.title", "Select pipeline");
+export const selectScenarioTitle = localize("ScenarioItem.title", "Select scenario");
+
+// File View
+export const configFileItemTitle = localize("ConfigFileItem.title", "Select file");
 
 // Config Editor
 export const getInvalidEntityTypeForPerspective = (perspType: string, nodeType: string) =>

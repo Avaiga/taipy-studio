@@ -22,8 +22,8 @@ import {
 } from "vscode";
 
 import { configFileExt, getCspScriptSrc, getNonce, textUriListMime } from "../utils";
-import { refreshPerspectiveDocumentCmd, revealConfigNodeCmd } from "../commands";
-import { getCleanPerpsectiveUri, getNodeFromUri, getOriginalDocument, getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
+import { revealConfigNodeCmd } from "../commands";
+import { getCleanPerpsectiveUriString, getNodeFromUri, getOriginalDocument, getOriginalUri, getPerspectiveFromUri, isUriEqual } from "../contentProviders/PerpectiveContentProvider";
 import { CreateLink, CreateNode, DeleteLink, GetNodeName, Refresh, Select, SetPositions } from "../../shared/commands";
 import { EditorAddNodeMessage, Positions, ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
@@ -184,7 +184,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     const panelsByPersp = this.panelsByUri[originalUri];
     if (panelsByPersp) {
       const toml = this.taipyContext.getToml(originalUri);
-      const positions = this.getPositionsCache(getCleanPerpsectiveUri(uri));
+      const positions = this.getPositionsCache(getCleanPerpsectiveUriString(uri));
       Object.entries(panelsByPersp).forEach(([perspectiveId, panels]) => {
         panels.forEach((p) => {
           try {
@@ -355,7 +355,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
 
   private setPositions(docUri: Uri, positions: Positions) {
     let modified = false;
-    let pos = this.getPositionsCache(getCleanPerpsectiveUri(docUri));
+    let pos = this.getPositionsCache(getCleanPerpsectiveUriString(docUri));
     if (positions) {
       pos = Object.entries(positions).reduce((pv, [k, v]) => {
         modified = true;

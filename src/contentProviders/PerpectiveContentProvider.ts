@@ -10,8 +10,11 @@ const schemeParams: Record<string, string[]> = {
   [PerspectiveScheme]: [OriginalSchemeKey, PerspectiveKey, NodeKey],
 };
 
-export const getCleanPerpsectiveUri = (uri: Uri) => {
-  if (!uri || uri.scheme != PerspectiveScheme) {
+export const getCleanPerpsectiveUriString = (uri: Uri) => {
+  if (!uri) {
+    return "";
+  }
+  if (uri.scheme != PerspectiveScheme) {
     return uri.toString();
   }
   return uri
@@ -104,6 +107,5 @@ export class PerspectiveContentProvider implements TextDocumentContentProvider {
 
   provideTextDocumentContent(uri: Uri, token: CancellationToken): ProviderResult<string> {
     return uri.toString();
-    //return new Promise<string>((resolve) => workspace.openTextDocument(getOriginalUri(uri)).then((doc) => resolve(doc.getText())));
   }
 }
