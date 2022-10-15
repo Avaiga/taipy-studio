@@ -21,7 +21,15 @@ import { debounce } from "debounce";
 import { EditorAddNodeMessage, Positions } from "../../../shared/messages";
 import { DataNode, Pipeline, Scenario, Task } from "../../../shared/names";
 import { getNodeColor } from "./config";
-import { postActionMessage, postLinkCreation, postLinkDeletion, postNodeCreation, postNodeRemoval, postPositionsMessage, postUpdateExtraEntities } from "./messaging";
+import {
+  postActionMessage,
+  postLinkCreation,
+  postLinkDeletion,
+  postNodeCreation,
+  postNodeRemoval,
+  postPositionsMessage,
+  postUpdateExtraEntities,
+} from "./messaging";
 import { Select } from "../../../shared/commands";
 import { TaipyDiagramModel, TaipyPortModel } from "../projectstorm/models";
 import { getChildType, getDescendantProperties } from "../../../shared/toml";
@@ -50,6 +58,11 @@ export const initDiagram = (): [DiagramEngine, DagreEngine, TaipyDiagramModel] =
   return [engine, dagreEngine, model];
 };
 
+export const setBaseUri = (engine: DiagramEngine, baseUri: string) => {
+  const fact = engine.getNodeFactories();
+  nodeTypes.forEach(nodeType => (fact.getFactory(nodeType) as TaipyNodeFactory).setBaseUri(baseUri));
+}
+
 const openPerspective: Record<string, boolean> = {
   [Scenario]: true,
   [Pipeline]: true,
@@ -66,7 +79,8 @@ export const getNodeByName = (model: TaipyDiagramModel, paths: string[]) => {
 
 export const shouldOpenPerspective = (nodeType: string) => !!(nodeType && openPerspective[nodeType]);
 
-export const getNewName = (model: DiagramModel, nodeType: string) => getModelNodes(model)
+export const getNewName = (model: DiagramModel, nodeType: string) =>
+  getModelNodes(model)
     .filter((node) => node.getType() == nodeType)
     .reduce((pv, node) => {
       if ((node as DefaultNodeModel).getOptions().name == pv) {
@@ -174,7 +188,7 @@ const linkListener = {
   },
 } as LinkModelListener;
 
-const DoNotPostRemove = "doNotPostRemove"; 
+const DoNotPostRemove = "doNotPostRemove";
 
 export const diagramListener = {
   nodesUpdated: (e: BaseEvent) => {
@@ -184,7 +198,7 @@ export const diagramListener = {
       postNodeCreation(node.getType(), node.getOptions().name || "");
     } else {
       //mark the link as not post to
-      Object.values(node.getPorts()).forEach(p => Object.values(p.getLinks()).forEach(l => l.getOptions().extras = DoNotPostRemove))
+      Object.values(node.getPorts()).forEach((p) => Object.values(p.getLinks()).forEach((l) => (l.getOptions().extras = DoNotPostRemove)));
       postNodeRemoval(node.getType(), node.getOptions().name || "");
     }
   },
@@ -258,17 +272,17 @@ export const relayoutDiagram = (engine: DiagramEngine, dagreEngine: DagreEngine)
   cachePositions(model);
 };
 
-export const setNodeContext = (engine: DiagramEngine, node: DefaultNodeModel, baseUri: string) =>
-  engine
-    .getNodeElement(node)
-    .setAttribute(
-      "data-vscode-context",
-      '{"preventDefaultContextMenuItems": true' +
-        (shouldOpenPerspective(node.getType())
-          ? ', "webviewSection": "taipy.node", "baseUri": "' + baseUri + '", "perspective": "' + getNodeId(node) + '"'
-          : "") +
-        "}"
-    );
+export const getNodeContext = (node: DefaultNodeModel, baseUri: string) => {
+  const vscodeContext: any = {
+    preventDefaultContextMenuItems: true,
+  };
+  if (shouldOpenPerspective(node.getType())) {
+    vscodeContext.webviewSection = "taipy.node";
+    vscodeContext.baseUri = baseUri;
+    vscodeContext.perspective = getNodeId(node);
+  }
+  return JSON.stringify(vscodeContext);
+};
 
 export const populateModel = (toml: any, model: TaipyDiagramModel) => {
   const linkModels: DefaultLinkModel[] = [];
@@ -318,7 +332,7 @@ export const populateModel = (toml: any, model: TaipyDiagramModel) => {
   });
 
   const nodeLayer = model.getActiveNodeLayer();
-  Object.values(nodeModels).forEach((nm) => Object.values(nm).forEach(n => nodeLayer.addModel(n)));
+  Object.values(nodeModels).forEach((nm) => Object.values(nm).forEach((n) => nodeLayer.addModel(n)));
   const linkLayer = model.getActiveLinkLayer();
-  linkModels.forEach(l => linkLayer.addModel(l));
+  linkModels.forEach((l) => linkLayer.addModel(l));
 };

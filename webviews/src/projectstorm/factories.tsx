@@ -1,15 +1,22 @@
 import { AbstractReactFactory, GenerateModelEvent, GenerateWidgetEvent, AbstractModelFactory } from "@projectstorm/react-canvas-core";
 import { DiagramEngine } from "@projectstorm/react-diagrams-core";
-import { DefaultNodeModel, DefaultNodeWidget } from "@projectstorm/react-diagrams";
+import { DefaultNodeModel } from "@projectstorm/react-diagrams";
 import { TaipyPortModel } from "./models";
+import EntityWidget from "./EntityWidget";
 
 export class TaipyNodeFactory extends AbstractReactFactory<DefaultNodeModel, DiagramEngine> {
+  private baseUri: string;
   constructor(nodeType: string) {
     super(nodeType);
+    this.baseUri = "";
+  }
+
+  setBaseUri(baseUri: string) {
+    this.baseUri = baseUri;
   }
 
   generateReactWidget(event: GenerateWidgetEvent<DefaultNodeModel>): JSX.Element {
-    return <DefaultNodeWidget engine={this.engine} node={event.model} data-fred="fred" />;
+    return <EntityWidget engine={this.engine} node={event.model} baseUri={this.baseUri} />;
   }
 
   generateModel(_: GenerateModelEvent): DefaultNodeModel {

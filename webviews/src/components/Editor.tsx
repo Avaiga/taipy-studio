@@ -18,11 +18,12 @@ import {
   initDiagram,
   populateModel,
   relayoutDiagram,
-  setNodeContext,
+  setBaseUri,
   showNode,
 } from "../utils/diagram";
 import { TaipyDiagramModel } from "../projectstorm/models";
 import { applySmallChanges } from "../utils/smallModelChanges";
+import { TaipyNodeFactory } from "src/projectstorm/factories";
 
 const [engine, dagreEngine] = initDiagram();
 
@@ -36,6 +37,8 @@ const onCreateNode = (evt: MouseEvent<HTMLDivElement>) => {
 const Editor = ({ toml: propsToml, positions, perspectiveId, baseUri, extraEntities: propsExtraEntities }: ConfigEditorProps) => {
   const oldToml = useRef<Record<string, any>>();
   const oldPerspId = useRef<string>();
+
+  setBaseUri(engine, baseUri);
 
   const [toml, extraEntities] = applyPerspective(propsToml, perspectiveId, propsExtraEntities);
 
@@ -53,7 +56,6 @@ const Editor = ({ toml: propsToml, positions, perspectiveId, baseUri, extraEntit
   }, []);
 
   useEffect(() => {
-    getModelNodes(engine.getModel()).forEach((node) => setNodeContext(engine, node as DefaultNodeModel, baseUri));
     if (!toml || (perspectiveId == oldPerspId.current && deepEqual(oldToml.current, toml))) {
       return;
     }
