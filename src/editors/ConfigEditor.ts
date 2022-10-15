@@ -308,12 +308,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
   private applyEdits(uri: Uri, edits: TextEdit[]) {
     if (edits.length) {
       const we = new WorkspaceEdit();
-      we.set(uri, edits)
-      try {
-        workspace.applyEdit(we);
-      } catch (e) {
-        console.log("applyEdits", edits, e);
-      }
+      we.set(uri, edits);
+      workspace.applyEdit(we);
     }
   }
 

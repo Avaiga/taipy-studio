@@ -174,6 +174,8 @@ const linkListener = {
   },
 } as LinkModelListener;
 
+const DoNotPostRemove = "doNotPostRemove"; 
+
 export const diagramListener = {
   nodesUpdated: (e: BaseEvent) => {
     const evt = e as BaseEntityEvent<DiagramModel> & { node: DefaultNodeModel; isCreated: boolean };
@@ -181,6 +183,8 @@ export const diagramListener = {
     if (evt.isCreated) {
       postNodeCreation(node.getType(), node.getOptions().name || "");
     } else {
+      //mark the link as not post to
+      Object.values(node.getPorts()).forEach(p => Object.values(p.getLinks()).forEach(l => l.getOptions().extras = DoNotPostRemove))
       postNodeRemoval(node.getType(), node.getOptions().name || "");
     }
   },
@@ -193,6 +197,10 @@ export const diagramListener = {
 } as DiagramListener;
 
 export const onLinkRemove = (link: LinkModel<LinkModelGenerics>) => {
+  if (link.getOptions().extras == DoNotPostRemove) {
+    console.log("onLinkRemove blocked by node removal");
+    return;
+  }
   const sourceNode = link.getSourcePort()?.getNode() as DefaultNodeModel;
   const targetNode = link.getTargetPort()?.getNode() as DefaultNodeModel;
   if (sourceNode && targetNode) {
