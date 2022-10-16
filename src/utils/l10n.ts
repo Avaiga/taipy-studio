@@ -22,6 +22,6 @@ export const getNewNameInputPrompt = (nodeType: string) => localize("ConfigEdito
 export const getNewNameInputTitle = (nodeType: string) => localize("ConfigEditor.newNameInputTitle", "new {0} name", nodeType);
 export const getNewNameInputError = (nodeType: string, nodeName: string, emptyOrSpace = false) =>
   emptyOrSpace
-    ? localize("ConfigEditor.newNameInputSpaceError", "Entity {0} Name should not contain space, '.' or be empty '{1}'", nodeType, nodeName)
+    ? localize("ConfigEditor.newNameInputSpaceError", "Entity {0} Name should not contain space, '.' or be empty or be default '{1}'", nodeType, nodeName)
     : localize("ConfigEditor.newNameInputError", "Another {0} entity has the name {1}", nodeType, nodeName);
 export const getTomlError = (file:string) => localize("ConfigEditor.tomlError", "Document '{0}' is not valid toml.", file.split("/").at(-1));

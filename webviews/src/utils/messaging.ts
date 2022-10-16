@@ -11,7 +11,7 @@ import {
   SetPositions,
   UpdateExtraEntities,
 } from "../../../shared/commands";
-import { Positions } from "../../../shared/messages";
+import { Positions } from "../../../shared/diagram";
 
 type vscodeApiRet = { postMessage: (pl: Record<string, unknown>) => void };
 
@@ -36,11 +36,11 @@ export const postRefreshMessage = () => getVsCodeApi()?.postMessage({ command: R
 export const postPositionsMessage = (positions: Positions) => getVsCodeApi()?.postMessage({ command: SetPositions, positions });
 export const postNodeCreation = (nodeType: string, nodeName: string) => getVsCodeApi()?.postMessage({ command: CreateNode, nodeType, nodeName });
 export const postNodeRemoval = (nodeType: string, nodeName: string) => getVsCodeApi()?.postMessage({ command: RemoveNode, nodeType, nodeName });
-export const postLinkCreation = (nodeType: string, nodeName: string, property: string, targetName: string) =>
-  getVsCodeApi()?.postMessage({ command: CreateLink, nodeType, nodeName, property, targetName });
-export const postGetNodeName = (nodeType: string, nodeName: string) => getVsCodeApi()?.postMessage({ command: GetNodeName, nodeType, nodeName });
-export const postLinkDeletion = (nodeType: string, nodeName: string, property: string, targetName: string) =>
-  getVsCodeApi()?.postMessage({ command: DeleteLink, nodeType, nodeName, property, targetName });
+export const postLinkCreation = (sourceType: string, sourceName: string, targetType: string, targetName: string) =>
+  getVsCodeApi()?.postMessage({ command: CreateLink, sourceType, sourceName, targetType, targetName });
+  export const postLinkDeletion = (sourceType: string, sourceName: string, targetType: string, targetName: string) =>
+  getVsCodeApi()?.postMessage({ command: DeleteLink, sourceType, sourceName, targetType, targetName });
+export const postGetNodeName = (nodeType: string) => getVsCodeApi()?.postMessage({ command: GetNodeName, nodeType });
 export const postSetExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: SetExtraEntities, extraEntities });
 export const postUpdateExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: UpdateExtraEntities, extraEntities });
 export const postRemoveExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: RemoveExtraEntities, extraEntities });

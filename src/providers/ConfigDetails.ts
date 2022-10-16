@@ -23,7 +23,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
   setConfigNodeContent(nodeType: string, name: string, node: any): void {
     this._view?.webview.postMessage({
       viewId: DataNodeDetailsId,
-      props: { nodeType, name, node } as DataNodeDetailsProps,
+      props: { nodeType, nodeName: name, node } as DataNodeDetailsProps,
     } as ViewMessage);
   }
 
