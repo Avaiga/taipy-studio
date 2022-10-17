@@ -10,15 +10,11 @@ import {
   window,
   workspace,
 } from "vscode";
-import { config, MessageFormat } from "vscode-nls";
 
-import { selectConfigFileCmd } from "../commands";
+import { selectConfigFileCmd } from "../utils/commands";
 import { Context } from "../context";
-import { configFileExt } from "../utils";
-
-const localize = config({ messageFormat: MessageFormat.file })();
-
-const configFileItemTitle = localize("ConfigFileItem.title", "Select file");
+import { configFileItemTitle } from "../utils/l10n";
+import { configFileExt, configFilePattern } from "../utils/utils";
 
 class ConfigFileItem extends TreeItem {
   public constructor(baseName: string, readonly resourceUri: Uri, readonly tooltip: string, readonly description: string | null = null) {
@@ -90,7 +86,7 @@ export class ConfigFilesView {
 
   async refresh(lastSelectedUri?: string): Promise<void> {
     const configItems: ConfigFileItem[] = [];
-    const uris: Uri[] = await workspace.findFiles(`**/*${configFileExt}`, "**/node_modules/**");
+    const uris: Uri[] = await workspace.findFiles(configFilePattern, "**/node_modules/**");
     const baseDescs: Record<string, Array<FileDesc>> = {};
     uris.forEach((uri) => {
       let path = uri.path;

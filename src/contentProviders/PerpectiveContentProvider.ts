@@ -1,4 +1,4 @@
-import { CancellationToken, EventEmitter, ProviderResult, TextDocumentContentProvider, Uri, workspace } from "vscode";
+import { CancellationToken, EventEmitter, ProviderResult, TextDocument, TextDocumentContentProvider, Uri, workspace } from "vscode";
 
 import { perspectiveRootId } from "../../shared/views";
 
@@ -10,7 +10,26 @@ const schemeParams: Record<string, string[]> = {
   [PerspectiveScheme]: [OriginalSchemeKey, PerspectiveKey, NodeKey],
 };
 
-export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node: string): Uri =>
+export const getCleanPerpsectiveUriString = (uri: Uri) => {
+  if (!uri) {
+    return "";
+  }
+  if (uri.scheme != PerspectiveScheme) {
+    return uri.toString();
+  }
+  return uri
+    .with({
+      query: uri.query
+        ? uri.query
+            .split("&")
+            .filter((p) => !p.startsWith(NodeKey + "="))
+            .join("&")
+        : uri.query,
+    })
+    .toString();
+};
+
+export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node?: string): Uri =>
   uri &&
   uri.with({
     scheme: PerspectiveScheme,
@@ -22,10 +41,7 @@ export const getPerspectiveUri = (uri: Uri, perspectiveId: string, node: string)
       PerspectiveKey +
       "=" +
       encodeURIComponent(perspectiveId) +
-      "&" +
-      NodeKey +
-      "=" +
-      encodeURIComponent(node) +
+      (node ? "&" + NodeKey + "=" + encodeURIComponent(node) : "") +
       (uri.query ? "&" + uri.query : ""),
   });
 
@@ -78,11 +94,18 @@ const getParamFromUri = (uri: Uri, name: string, defaultValue: string | undefine
 export const getPerspectiveFromUri = (uri: Uri): string => getParamFromUri(uri, PerspectiveKey, perspectiveRootId);
 export const getNodeFromUri = (uri: Uri): string | undefined => getParamFromUri(uri, NodeKey, undefined);
 
+export const getOriginalDocument = (document: TextDocument): ProviderResult<TextDocument> => {
+  if (document.uri.scheme == PerspectiveScheme) {
+    return workspace.openTextDocument(getOriginalUri(document.uri));
+  }
+  return document;
+}
+
 export class PerspectiveContentProvider implements TextDocumentContentProvider {
   onDidChangeEmitter = new EventEmitter<Uri>();
   onDidChange = this.onDidChangeEmitter.event;
 
   provideTextDocumentContent(uri: Uri, token: CancellationToken): ProviderResult<string> {
-    return new Promise<string>((resolve) => workspace.openTextDocument(getOriginalUri(uri)).then((doc) => resolve(doc.getText())));
+    return uri.toString();
   }
 }

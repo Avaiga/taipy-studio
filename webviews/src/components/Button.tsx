@@ -1,6 +1,6 @@
 import { MouseEvent } from "react";
 
-import { postActionMessage } from "./utils";
+import { postActionMessage } from "../utils/messaging";
 
 const onClickHandler = (evt: MouseEvent<HTMLButtonElement>) => postActionMessage(evt.currentTarget.id);
 

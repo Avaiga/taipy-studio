@@ -4,6 +4,7 @@ export const getNonce = () => {
 };
 
 export const configFileExt = ".toml";
+export const configFilePattern = `**/*${configFileExt}`;
 
 export const getCspScriptSrc = (nonce: string) => {
   return (
