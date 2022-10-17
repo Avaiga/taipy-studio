@@ -2,7 +2,7 @@ import { AbstractReactFactory, GenerateModelEvent, GenerateWidgetEvent, Abstract
 import { DiagramEngine } from "@projectstorm/react-diagrams-core";
 import { DefaultNodeModel } from "@projectstorm/react-diagrams";
 import { TaipyPortModel } from "./models";
-import EntityWidget from "./EntityWidget";
+import NodeWidget from "./NodeWidget";
 
 export class TaipyNodeFactory extends AbstractReactFactory<DefaultNodeModel, DiagramEngine> {
   private baseUri: string;
@@ -16,7 +16,7 @@ export class TaipyNodeFactory extends AbstractReactFactory<DefaultNodeModel, Dia
   }
 
   generateReactWidget(event: GenerateWidgetEvent<DefaultNodeModel>): JSX.Element {
-    return <EntityWidget engine={this.engine} node={event.model} baseUri={this.baseUri} />;
+    return <NodeWidget engine={this.engine} node={event.model} baseUri={this.baseUri} />;
   }
 
   generateModel(_: GenerateModelEvent): DefaultNodeModel {

@@ -87,8 +87,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     this.extensionPath = context.extensionUri;
     this.cache = context.workspaceState.get(ConfigEditorProvider.cacheName, {} as ProviderCache);
     context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: configFilePattern }, this));
-    commands.registerCommand("taipy.clearConfigCache", this.clearCache, this);
-    commands.registerCommand("taipy.add.node.to.diagram", this.addNodeToCurrentDiagram, this);
+    commands.registerCommand("taipy.config.clearCache", this.clearCache, this);
+    commands.registerCommand("taipy.diagram.addNode", this.addNodeToCurrentDiagram, this);
   }
 
   async provideDocumentDropEdits(

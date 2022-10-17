@@ -2,20 +2,23 @@ import { useCallback } from "react";
 import { DiagramEngine } from "@projectstorm/react-diagrams-core";
 import styled from "@emotion/styled";
 import { DefaultNodeModel, DefaultPortLabel, DefaultPortModel } from "@projectstorm/react-diagrams";
+
 import { getNodeContext } from "../utils/diagram";
+import { getNodeIcon } from "../utils/config";
 
 namespace S {
   export const Node = styled.div<{ background?: string; selected?: boolean }>`
     background-color: ${(p) => p.background};
     border-radius: 5px;
-    font-family: sans-serif;
     color: white;
     border: solid 2px black;
     overflow: visible;
-    font-size: 11px;
     border: solid 2px ${(p) => (p.selected ? "rgb(0,192,255)" : "black")};
   `;
-
+/*
+    font-family: sans-serif;
+    font-size: 11px;
+*/
   export const Title = styled.div`
     background: rgba(0, 0, 0, 0.3);
     display: flex;
@@ -26,6 +29,10 @@ namespace S {
   export const TitleName = styled.div`
     flex-grow: 1;
     padding: 5px 5px;
+  `;
+
+  export const TitleIcon = styled.div`
+    padding: 5px 0 5px 5px;
   `;
 
   export const Ports = styled.div`
@@ -46,13 +53,13 @@ namespace S {
   `;
 }
 
-interface EntityProps {
+interface NodeProps {
   node: DefaultNodeModel;
   engine: DiagramEngine;
   baseUri: string;
 }
 
-const EntityWidget = ({ node, baseUri, engine }: EntityProps) => {
+const NodeWidget = ({ node, baseUri, engine }: NodeProps) => {
   const generatePort = useCallback(
     (port: DefaultPortModel) => {
       return <DefaultPortLabel engine={engine} port={port} key={port.getID()} />;
@@ -68,6 +75,9 @@ const EntityWidget = ({ node, baseUri, engine }: EntityProps) => {
       background={node.getOptions().color}
     >
       <S.Title>
+        <S.TitleIcon className="icon" title={node.getType()}>
+          <i className={"codicon codicon-" + getNodeIcon(node.getType())}></i>
+        </S.TitleIcon>
         <S.TitleName>{node.getOptions().name}</S.TitleName>
       </S.Title>
       <S.Ports>
@@ -78,4 +88,4 @@ const EntityWidget = ({ node, baseUri, engine }: EntityProps) => {
   );
 };
 
-export default EntityWidget;
+export default NodeWidget;
