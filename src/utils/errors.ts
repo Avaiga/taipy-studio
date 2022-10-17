@@ -5,16 +5,20 @@ import { getOriginalUri } from "../contentProviders/PerpectiveContentProvider";
 import { getTomlError } from "./l10n";
 
 const DiagnoticsCollection = languages.createDiagnosticCollection("toml");
-const ErrorRe = /(at\s*row\s*)(\d+)(,\s*col\s*)(\d+)/;
 
-export const handleTomlParseError = (doc: TextDocument, e: Error) => {
+interface TomlInfo {
+  line: number;
+  col: number;
+  fromTOML: boolean;
+}
+
+export const handleTomlParseError = (doc: TextDocument, e: Error & TomlInfo) => {
   const uri = getOriginalUri(doc.uri);
-  const [_0, _1, rowStr, _2, colStr] = ErrorRe.exec(e.message);
-  const row = rowStr ? parseInt(rowStr, 10) - 1 : 0;
-  const col = colStr ? parseInt(colStr, 10) - 1 : 0;
+  const line = e.fromTOML ? e.line: 0;
+  const col = e.fromTOML ? e.col: 0;
   const diagnostic: Diagnostic = {
     severity: DiagnosticSeverity.Warning,
-    range: new Range(row, col, row, col),
+    range: new Range(line, col, line, col),
     message: e.message,
     source: "toml parser",
   };
@@ -23,7 +27,7 @@ export const handleTomlParseError = (doc: TextDocument, e: Error) => {
   sbi.text = getTomlError(doc.uri.path);
   sbi.backgroundColor = new ThemeColor("statusBarItem.warningBackground");
   sbi.tooltip = e.message;
-  sbi.command = { title: "Open Editor", command: "vscode.open", arguments: [uri.with({ fragment: `L${rowStr}C${colStr}` })] };
+  sbi.command = { title: "Open Editor", command: "vscode.open", arguments: [uri.with({ fragment: `L${line}C${col}` })] };
   sbi.show();
   setTimeout(() => sbi.dispose(), workspace.getConfiguration(TaipyStudioSettingsName).get("status.timeout", 2000));
 };

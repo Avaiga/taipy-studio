@@ -356,7 +356,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
           }
           const range = line.range.with({ start: line.range.start.with({ character: line.firstNonWhitespaceCharacterIndex }) });
           const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
-          edits.push(TextEdit.replace(range, stringify({ [property]: newLinks }).trimEnd()));
+          edits.push(TextEdit.replace(range, property + " = " + stringify.value(newLinks).trimEnd()));
           break;
         }
         if (text.startsWith("[")) {
@@ -368,7 +368,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         if (!found) {
           const start =
             i + 1 < realDocument.lineCount ? realDocument.lineAt(i + 1).text.substring(0, realDocument.lineAt(i + 1).firstNonWhitespaceCharacterIndex) : "";
-          edits.push(TextEdit.insert(line.range.end, "\n" + start + stringify({ [property]: create ? [childName] : [] }).trimEnd()));
+          edits.push(TextEdit.insert(line.range.end, "\n" + start + property + " = " + stringify.value(create ? [childName] : []).trimEnd()));
           break;
         }
         sectionFound = true;

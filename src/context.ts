@@ -17,7 +17,7 @@ import { ConfigFilesView } from "./views/ConfigFilesView";
 import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./utils/commands";
 import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./utils/constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
-import { configFileExt, configFilePattern } from "./utils/utils";
+import { configFilePattern } from "./utils/utils";
 import {
   ConfigItem,
   ConfigNodesProvider,
