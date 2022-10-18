@@ -39,6 +39,7 @@ import {
   Refresh,
   RemoveExtraEntities,
   RemoveNode,
+  SaveDocument,
   Select,
   SetExtraEntities,
   SetPositions,
@@ -299,7 +300,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         case RemoveExtraEntities:
           this.removeExtraEntitiesInCache(document.uri, e.extraEntities);
           break;
-      }
+        case SaveDocument:
+          this.saveDocument(realDocument);
+          break;
+        }
     }, this);
 
     // clean-up when our editor is closed.
@@ -310,6 +314,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       receiveMessageSubscription.dispose();
       this.taipyContext.unregisterDocChangeListener(docListener, this);
     });
+  }
+
+  private saveDocument(document: TextDocument) {
+    document.isDirty && document.save();
   }
 
   private applyEdits(uri: Uri, edits: TextEdit[]) {
