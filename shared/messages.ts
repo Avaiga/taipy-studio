@@ -9,4 +9,3 @@ export interface EditorAddNodeMessage {
     nodeName: string;
 }
 
-export type Positions = Record<string, Array<[number, number]>>;

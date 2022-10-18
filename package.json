@@ -26,28 +26,28 @@
         "title": "%extension.commands.taipy.hello%"
       },
       {
-        "command": "taipy.refreshConfigs",
-        "title": "%extension.commands.taipy.refreshConfigs%",
+        "command": "taipy.config.refresh",
+        "title": "%extension.commands.taipy.config.refresh%",
         "icon": "$(refresh)"
       },
       {
-        "command": "taipy.clearConfigCache",
-        "title": "%extension.commands.taipy.clearConfigCache%",
+        "command": "taipy.config.clearCache",
+        "title": "%extension.commands.taipy.config.clearCache%",
         "icon": "$(clear-all)"
       },
       {
-        "command": "taipy.show.perpective",
-        "title": "%extension.commands.taipy.show.perpective%",
+        "command": "taipy.perspective.show",
+        "title": "%extension.commands.taipy.perspective.show%",
         "icon": "$(type-hierarchy)"
       },
       {
-        "command": "taipy.show.perpective.from.diagram",
-        "title": "%extension.commands.taipy.show.perpective%",
+        "command": "taipy.perspective.showFromDiagram",
+        "title": "%extension.commands.taipy.perspective.show%",
         "icon": "$(type-hierarchy)"
       },
       {
-        "command": "taipy.add.node.to.diagram",
-        "title": "%extension.commands.taipy.add.node.to.diagram%",
+        "command": "taipy.diagram.addNode",
+        "title": "%extension.commands.taipy.diagram.addNode%",
         "icon": "$(add)"
       }
     ],
@@ -136,24 +136,24 @@
     "menus": {
       "view/title": [
         {
-          "command": "taipy.refreshConfigs",
+          "command": "taipy.config.refresh",
           "when": "view == taipy-configs",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "taipy.show.perpective",
+          "command": "taipy.perspective.show",
           "when": "viewItem != default && view == taipy-configs || viewItem != default && view == taipy-config-pipelines || viewItem != default && view == taipy-config-scenarii )"
         },
         {
-          "command": "taipy.add.node.to.diagram",
+          "command": "taipy.diagram.addNode",
           "when": "viewItem != default && view == taipy-config-datanodes || viewItem != default && view == taipy-config-tasks || viewItem != default && view == taipy-config-pipelines"
         }
       ],
       "webview/context": [
         {
-          "command": "taipy.show.perpective.from.diagram",
+          "command": "taipy.perspective.showFromDiagram",
           "when": "webviewId == 'taipy.config.editor.diagram' && webviewSection == 'taipy.node'"
         }
       ]

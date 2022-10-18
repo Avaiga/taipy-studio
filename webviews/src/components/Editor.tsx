@@ -1,29 +1,16 @@
 import { MouseEvent, useEffect, useRef } from "react";
-import { DefaultNodeModel } from "@projectstorm/react-diagrams";
 import { CanvasWidget } from "@projectstorm/react-canvas-core";
 import * as deepEqual from "fast-deep-equal";
 
 import { ConfigEditorProps, perspectiveRootId } from "../../../shared/views";
-import { postGetNodeName, postRefreshMessage, postSetExtraEntities } from "../utils/messaging";
+import { postGetNodeName, postRefreshMessage, postSaveMessage, postSetExtraEntities } from "../utils/messaging";
 import { applyPerspective, getNodeTypes } from "../utils/toml";
 import { EditorAddNodeMessage } from "../../../shared/messages";
 import { getNodeIcon } from "../utils/config";
-import {
-  diagramListener,
-  getLinkId,
-  getModelLinks,
-  getModelNodes,
-  getNewName,
-  getNodeId,
-  initDiagram,
-  populateModel,
-  relayoutDiagram,
-  setBaseUri,
-  showNode,
-} from "../utils/diagram";
+import { diagramListener, initDiagram, populateModel, relayoutDiagram, setBaseUri, showNode } from "../utils/diagram";
 import { TaipyDiagramModel } from "../projectstorm/models";
 import { applySmallChanges } from "../utils/smallModelChanges";
-import { TaipyNodeFactory } from "src/projectstorm/factories";
+import { DisplayModel } from "../../../shared/diagram";
 
 const [engine, dagreEngine] = initDiagram();
 
@@ -31,19 +18,19 @@ const relayout = () => relayoutDiagram(engine, dagreEngine);
 
 const onCreateNode = (evt: MouseEvent<HTMLDivElement>) => {
   const nodeType = evt.currentTarget.dataset.nodeType;
-  nodeType && postGetNodeName(nodeType, getNewName(engine.getModel(), nodeType));
+  nodeType && postGetNodeName(nodeType);
 };
 
-const Editor = ({ toml: propsToml, positions, perspectiveId, baseUri, extraEntities: propsExtraEntities }: ConfigEditorProps) => {
-  const oldToml = useRef<Record<string, any>>();
+const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extraEntities: propsExtraEntities, isDirty }: ConfigEditorProps) => {
+  const oldDisplayModel = useRef<DisplayModel>();
   const oldPerspId = useRef<string>();
 
   setBaseUri(engine, baseUri);
 
-  const [toml, extraEntities] = applyPerspective(propsToml, perspectiveId, propsExtraEntities);
+  const [displayModel, extraEntities] = applyPerspective(propsDisplayModel, perspectiveId, propsExtraEntities);
 
   useEffect(() => {
-    propsExtraEntities && extraEntities && extraEntities != propsExtraEntities  && postSetExtraEntities(extraEntities);
+    propsExtraEntities && extraEntities && extraEntities != propsExtraEntities && postSetExtraEntities(extraEntities);
   }, [propsExtraEntities, extraEntities]);
 
   useEffect(() => {
@@ -56,46 +43,29 @@ const Editor = ({ toml: propsToml, positions, perspectiveId, baseUri, extraEntit
   }, []);
 
   useEffect(() => {
-    if (!toml || (perspectiveId == oldPerspId.current && deepEqual(oldToml.current, toml))) {
+    if (!displayModel || (perspectiveId == oldPerspId.current && deepEqual(displayModel.current, displayModel))) {
       return;
     }
-    if (oldToml.current  && perspectiveId == oldPerspId.current && applySmallChanges(engine.getModel(), toml, oldToml.current)) {
-      oldToml.current = toml;
+    if (perspectiveId == oldPerspId.current && applySmallChanges(engine.getModel(), displayModel, oldDisplayModel.current)) {
+      oldDisplayModel.current = displayModel;
       return;
     }
 
-    oldToml.current = toml;
+    oldDisplayModel.current = displayModel;
     oldPerspId.current = perspectiveId;
 
     // clear model
     const model = new TaipyDiagramModel();
     // populate model
-    populateModel(toml, model);
+    const needsPositions = populateModel(displayModel, model);
     // add listener to Model
     model.registerListener(diagramListener);
 
-    if (positions && Object.keys(positions).length) {
-      getModelNodes(model).forEach((node) => {
-        const dNode = node as DefaultNodeModel;
-        const pos = positions[getNodeId(dNode)];
-        if (pos && Array.isArray(pos[0])) {
-          dNode.setPosition(pos[0][0], pos[0][1]);
-        }
-      });
-      getModelLinks(model).forEach((link) => {
-        const linkId = getLinkId(link);
-        if (linkId) {
-          const pos = positions[linkId];
-          if (pos) {
-            link.setPoints(pos.map((p) => link.point(p[0], p[1])));
-          }
-        }
-      });
-    } else {
+    if (needsPositions) {
       setTimeout(relayout, 500);
     }
     engine.setModel(model);
-  }, [toml, positions, baseUri]);
+  }, [displayModel, baseUri]);
 
   return (
     <div className="diagram-root">
@@ -105,6 +75,9 @@ const Editor = ({ toml: propsToml, positions, perspectiveId, baseUri, extraEntit
         </div>
         <div className="diagram-button icon" title="refresh" onClick={postRefreshMessage}>
           <i className="codicon codicon-refresh"></i>
+        </div>
+        <div className="diagram-button icon" title={isDirty ? "save": ""} {...isDirty ? {onClick:postSaveMessage}: {}}>
+          <i className={"codicon codicon-" + (isDirty ? "circle-filled" : "circle-outline")}></i>
         </div>
       </div>
       <div>{perspectiveId != perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>

@@ -1,82 +1,73 @@
-import { DataNode, Pipeline, PipelineTasks, Scenario, ScenarioPipelines, Task, TaskInputs, TaskOutputs } from "../../../shared/names";
-import { getChildType, getDescendantProperties } from "../../../shared/toml";
+import { DisplayModel, Link, Nodes } from "../../../shared/diagram";
+import { Scenario } from "../../../shared/names";
+import { getChildType } from "../../../shared/toml";
 import { perspectiveRootId } from "../../../shared/views";
 
-export const getChildTypeWithBackLink = (nodeType: string) => (nodeType == DataNode ? Task : "");
-const getParentLinkKey = (nodeType: string) => (nodeType == Task ? TaskInputs : "");
-
-export const getParentNames = (content: any, nodeType: string, names: string[]) => {
-  if (nodeType == Task) {
-    const node = [nodeType, names.join("."), TaskInputs].reduce((pv, cv) => {
-      if (pv) {
-        return pv[cv];
-      }
-    }, content);
-    return ((node || []) as string[]).map((p) => [DataNode, p]);
+const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: string) => {
+  const nodes = {} as Nodes;
+  const links = [] as Link[];
+  if (!displayModel.nodes || !Array.isArray(displayModel.links)) {
+    return displayModel;
   }
-  return [];
-};
-
-const applyNode = (toml: any, nodeType: string, nodeName: string) => {
-  const res: any = {};
   const queue: Array<[string, string]> = [];
   const doneNodes: Set<string> = new Set();
   while (true) {
     if (!nodeType || !nodeName) {
       break;
     }
-    if (!doneNodes.has(nodeType + "." + nodeName)) {
-      doneNodes.add(nodeType + "." + nodeName);
-      const node = toml[nodeType] && toml[nodeType][nodeName];
+    if (!doneNodes.has(`${nodeType}.${nodeName}`)) {
+      doneNodes.add(`${nodeType}.${nodeName}`);
+      const node = displayModel.nodes[nodeType] && displayModel.nodes[nodeType][nodeName];
       if (node) {
-        res[nodeType] = res[nodeType] || {};
-        res[nodeType][nodeName] = node;
-        const childType = getChildType(nodeType);
-        if (childType) {
-          getDescendantProperties(nodeType).forEach(
-            (k) =>
-              k &&
-              node[k] &&
-              (node[k] as string[]).forEach((n) => {
-                queue.push([childType, n]);
-              })
-          );
-        }
-        const childType2 = getChildTypeWithBackLink(nodeType);
-        const linkKey = getParentLinkKey(childType2);
-        if (childType2 && linkKey) {
-          Object.keys(toml[childType2]).forEach((k) => {
-            if (((toml[childType2][k][linkKey] || []) as string[]).some((n) => n == nodeName)) {
-              queue.push([childType2, k]);
-            }
-          });
-        }
+        nodes[nodeType] = nodes[nodeType] || {};
+        nodes[nodeType][nodeName] = node;
+        displayModel.links.forEach((link) => {
+          const [[sourceType, sourceName, targetType, targetName], _] = link;
+          if (sourceType == nodeType && sourceName == nodeName) {
+            queue.push([targetType, targetName]);
+            links.push(link);
+          }
+        });
       }
     }
     [nodeType, nodeName] = queue.shift() || ["", ""];
   }
-  return res;
+  return { nodes, links };
 };
 
-export const applyPerspective = (toml: any, perspectiveId: string, extraEntities?: string): [any, string | undefined] => {
-  if (toml && perspectiveId != perspectiveRootId) {
+export const applyPerspective = (displayModel: DisplayModel, perspectiveId: string, extraEntities?: string): [any, string | undefined] => {
+  if (displayModel && perspectiveId != perspectiveRootId) {
     const appliedEntities: string[] = [];
     const [nodeType, nodeName] = perspectiveId.split(".");
-    let res = applyNode(toml, nodeType, nodeName);
-    delete res[perspectiveId.split(".")[0]];
+    const res = applyNode(displayModel, nodeType, nodeName);
+    delete res.nodes[perspectiveId.split(".")[0]];
     extraEntities &&
       extraEntities.split(";").forEach((e) => {
         const [nt, nn] = e.split(".", 2);
-        if (nt && nn && !(res[nt] && res[nt][nn])) {
-          appliedEntities.push(`${nt}.${nn}`);
-          res = { ...applyNode(toml, nt, nn), ...res };
+        if (nt && nn && !(res.nodes[nt] && res.nodes[nt][nn])) {
+          appliedEntities.push(e);
+          const nodeRes = applyNode(displayModel, nt, nn);
+          Object.entries(nodeRes.nodes).forEach(([t, e]) => {
+            if (!res.nodes[t]) {
+              res.nodes[t] = e;
+            } else {
+              Object.entries(e).forEach(([n, d]) => {
+                if (!res.nodes[t][n]) {
+                  res.nodes[t][n] = d;
+                } else {
+                  console.log("Issue applying node in perspective ...", t, n);
+                }
+              });
+            }
+          });
+          res.links.push(...nodeRes.links);
         }
       });
-    if (Object.keys(res).length) {
-      return [res, appliedEntities.length ? appliedEntities.join(";"): undefined];
+    if (Object.keys(res.nodes).length) {
+      return [res, appliedEntities.length ? appliedEntities.join(";") : undefined];
     }
   }
-  return [toml, undefined];
+  return [displayModel, undefined];
 };
 
 export const getNodeTypes = (perspectiveId: string) => {
@@ -87,32 +78,4 @@ export const getNodeTypes = (perspectiveId: string) => {
     res.push(childType);
   }
   return res.reverse();
-};
-
-const childrenNodesKey: Record<string, string> = {
-  [Task]: TaskOutputs,
-  [Pipeline]: PipelineTasks,
-  [Scenario]: ScenarioPipelines,
-};
-
-export const getChildrenNodes = (toml: any, parentType: string, filter?: string) => {
-  const nodes = toml[parentType];
-  if (nodes) {
-    const parents = Object.keys(nodes);
-    const childrenKey = childrenNodesKey[parentType];
-    const res = childrenKey
-      ? parents.reduce((pv, cv) => {
-          pv[cv] = nodes[cv][childrenKey];
-          return pv;
-        }, {} as Record<string, string[]>)
-      : {};
-    if (filter) {
-      parents.forEach((p) => {
-        if (res[p]) {
-          res[p] = (res[p] as string[]).filter((n) => n == filter);
-        }
-      });
-    }
-    return res;
-  }
 };

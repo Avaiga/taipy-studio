@@ -1,4 +1,4 @@
-import { Positions } from "./messages";
+import { DisplayModel } from "./diagram";
 
 export const NoDetailsId = "NoDetails";
 export interface NoDetailsProps {
@@ -8,21 +8,19 @@ export interface NoDetailsProps {
 export const DataNodeDetailsId = "DataNodeDetails";
 export interface DataNodeDetailsProps {
   nodeType: string;
-  name: string;
-  node: NodeType;
+  nodeName: string;
+  node: Record<string, string | string[]>;
 }
 
 export const ConfigEditorId = "ConfigEditor";
 
 export interface ConfigEditorProps {
-  toml: any;
+  displayModel: DisplayModel;
   perspectiveId: string;
-  positions?: Positions;
   baseUri: string;
   extraEntities?: string;
+  isDirty?: boolean;
 }
-
-export type NodeType = Record<string, string | string[]>;
 
 export const perspectiveRootId = "__root__";
 

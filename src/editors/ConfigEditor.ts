@@ -28,6 +28,7 @@ import {
   getOriginalDocument,
   getOriginalUri,
   getPerspectiveFromUri,
+  getPerspectiveUri,
   isUriEqual,
 } from "../contentProviders/PerpectiveContentProvider";
 import {
@@ -38,18 +39,20 @@ import {
   Refresh,
   RemoveExtraEntities,
   RemoveNode,
+  SaveDocument,
   Select,
   SetExtraEntities,
   SetPositions,
   UpdateExtraEntities,
 } from "../../shared/commands";
-import { EditorAddNodeMessage, Positions, ViewMessage } from "../../shared/messages";
+import { EditorAddNodeMessage, ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
 import { TaipyStudioSettingsName } from "../utils/constants";
-import { defaultNodeNotShown, getInvalidEntityTypeForPerspective, getNewNameInputError, getNewNameInputPrompt, getNewNameInputTitle } from "../utils/l10n";
-import { getChildType, getDefaultContent, getDescendantProperties, getParentType, getPropertyToDropType } from "../../shared/toml";
+import { getInvalidEntityTypeForPerspective, getNewNameInputError, getNewNameInputPrompt, getNewNameInputTitle } from "../utils/l10n";
+import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
-import { getPropertyValue } from "../utils/toml";
+import { getDefaultContent, getDescendantProperties, getParentType, getPropertyToDropType, getPropertyValue, toDisplayModel } from "../utils/toml";
+import { Positions } from "../../shared/diagram";
 
 interface EditorCache {
   positions?: Positions;
@@ -85,8 +88,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     this.extensionPath = context.extensionUri;
     this.cache = context.workspaceState.get(ConfigEditorProvider.cacheName, {} as ProviderCache);
     context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: configFilePattern }, this));
-    commands.registerCommand("taipy.clearConfigCache", this.clearCache, this);
-    commands.registerCommand("taipy.add.node.to.diagram", this.addNodeToCurrentDiagram, this);
+    commands.registerCommand("taipy.config.clearCache", this.clearCache, this);
+    commands.registerCommand("taipy.diagram.addNode", this.addNodeToCurrentDiagram, this);
   }
 
   async provideDocumentDropEdits(
@@ -155,7 +158,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
 
   private getPositionsCache(perspectiveUri: string): Positions {
     this.cache[perspectiveUri] = this.cache[perspectiveUri] || { positions: {} };
-    return this.cache[perspectiveUri].positions;
+    return this.cache[perspectiveUri].positions || {};
   }
 
   private getCache(perspectiveUri: string) {
@@ -200,23 +203,25 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
   }
 
-  async updateWebview(uri: Uri) {
-    const originalUri = getOriginalUri(uri).toString();
-    const panelsByPersp = this.panelsByUri[originalUri];
+  async updateWebview(uri: Uri, isDirty = false) {
+    const originalUri = getOriginalUri(uri);
+    const baseUri = originalUri.toString();
+    const panelsByPersp = this.panelsByUri[baseUri];
+    const toml = this.taipyContext.getToml(baseUri);
     if (panelsByPersp) {
-      const toml = this.taipyContext.getToml(originalUri);
-      const cache = this.getCache(getCleanPerpsectiveUriString(uri));
       Object.entries(panelsByPersp).forEach(([perspectiveId, panels]) => {
+        const cache = this.getCache(getPerspectiveUri(originalUri, perspectiveId).toString());
+        const model = toDisplayModel(toml, cache.positions);
         panels.forEach((p) => {
           try {
             p.webview.postMessage({
               viewId: ConfigEditorId,
               props: {
-                toml: toml,
+                displayModel: model,
                 perspectiveId: perspectiveId,
-                positions: cache.positions,
-                baseUri: originalUri,
+                baseUri: baseUri,
                 extraEntities: cache.extraEntities,
+                isDirty: isDirty
               } as ConfigEditorProps,
             } as ViewMessage);
           } catch (e) {
@@ -247,15 +252,17 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     this.panelsByUri[originalUri] = this.panelsByUri[originalUri] || {};
     this.panelsByUri[originalUri][perspId] = this.panelsByUri[originalUri][perspId] || [];
     this.panelsByUri[originalUri][perspId].push(webviewPanel);
+
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
 
-    // Hook up event handlers so that we can synchronize the webview with the text document.
-    this.taipyContext.registerDocChangeListener((uri: Uri) => {
-      if (isUriEqual(document.uri, uri)) {
-        this.updateWebview(document.uri);
-        //commands.executeCommand(refreshPerspectiveDocumentCmd, document.uri);
+    const docListener = (textDocument: TextDocument) => {
+      if (isUriEqual(document.uri, textDocument.uri)) {
+        this.updateWebview(document.uri, textDocument.isDirty);
       }
-    }, this);
+    }
+
+    // Hook up event handlers so that we can synchronize the webview with the text document.
+    this.taipyContext.registerDocChangeListener(docListener, this);
 
     // Receive message from the webview.
     const receiveMessageSubscription = webviewPanel.webview.onDidReceiveMessage((e) => {
@@ -270,19 +277,19 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
           this.setPositions(document.uri, e.positions);
           break;
         case CreateLink:
-          this.createLink(realDocument, e.nodeType, e.nodeName, e.property, e.targetName);
+          this.createLink(realDocument, e.sourceType, e.sourceName, e.targetType, e.targetName);
+          break;
+        case DeleteLink:
+          this.deleteLink(realDocument, e.sourceType, e.sourceName, e.targetType, e.targetName);
           break;
         case CreateNode:
-          this.createNode(realDocument, e.nodeType, e.nodeName, perspId);
+          this.createNode(realDocument, document.uri, e.nodeType, e.nodeName);
           break;
         case RemoveNode:
           this.removeNodeFromPerspective(realDocument, e.nodeType, e.nodeName) && this.removeExtraEntitiesInCache(document.uri, `${e.nodeType}.${e.nodeName}`);
           break;
         case GetNodeName:
-          this.getNodeName(realDocument.uri, e.nodeType, e.nodeName);
-          break;
-        case DeleteLink:
-          this.deleteLink(realDocument, e.nodeType, e.nodeName, e.property, e.targetName);
+          this.getNodeName(realDocument.uri, e.nodeType);
           break;
         case SetExtraEntities:
           this.setExtraEntitiesInCache(document.uri, e.extraEntities);
@@ -293,7 +300,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         case RemoveExtraEntities:
           this.removeExtraEntitiesInCache(document.uri, e.extraEntities);
           break;
-      }
+        case SaveDocument:
+          this.saveDocument(realDocument);
+          break;
+        }
     }, this);
 
     // clean-up when our editor is closed.
@@ -302,7 +312,12 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         this.panelsByUri[originalUri][perspId] &&
         (this.panelsByUri[originalUri][perspId] = this.panelsByUri[originalUri][perspId].filter((p) => p !== webviewPanel));
       receiveMessageSubscription.dispose();
+      this.taipyContext.unregisterDocChangeListener(docListener, this);
     });
+  }
+
+  private saveDocument(document: TextDocument) {
+    document.isDirty && document.save();
   }
 
   private applyEdits(uri: Uri, edits: TextEdit[]) {
@@ -313,40 +328,50 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
   }
 
-  private deleteLink(realDocument: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
-    this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, nodeType, nodeName, property, targetName, false, false));
+  private deleteLink(realDocument: TextDocument, sourceType: string, sourceName: string, targetType: string, targetName: string) {
+    this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, sourceType, sourceName, targetType, targetName, false, false));
   }
 
-  private createLink(realDocument: TextDocument, nodeType: string, nodeName: string, property: string, targetName: string) {
-    this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, nodeType, nodeName, property, targetName, true, false));
+  private createLink(realDocument: TextDocument, sourceType: string, sourceName: string, targetType: string, targetName: string) {
+    this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, sourceType, sourceName, targetType, targetName, true, false));
   }
 
   private createOrDeleteLink(
     realDocument: TextDocument,
-    nodeType: string,
-    nodeName: string,
-    property: string,
+    sourceType: string,
+    sourceName: string,
+    targetType: string,
     targetName: string,
     create: boolean,
     deleteAll: boolean,
     edits = [] as TextEdit[]
   ) {
+    const reverse = !deleteAll && !getChildType(sourceType);
+    const nodeType = reverse ? targetType : sourceType;
+    const nodeName = reverse ? targetName : sourceName;
+    const childName = reverse ? sourceName : targetName;
+    const [inputProp, outputProp] = getDescendantProperties(nodeType);
+    const property = deleteAll ? targetType : reverse ? inputProp : outputProp;
+
     const toml = this.taipyContext.getToml(realDocument.uri.toString());
-    const [links, found] = getPropertyValue(toml, [] as string[], nodeType, nodeName, property);
     const sectionHead = "[" + nodeType + "." + nodeName + "]";
+    const [links, found] = getPropertyValue(toml, [] as string[], nodeType, nodeName, property);
+    if (!create && links.length == 0) {
+      return edits;
+    }
     let sectionFound = false;
     for (let i = 0; i < realDocument.lineCount; i++) {
       const line = realDocument.lineAt(i);
       const text = line.text.trim();
       if (sectionFound) {
         if (text.split("=", 2)[0].trim() == property) {
-          const targetFound = (!create && deleteAll) || links.some((n) => n == targetName);
+          const targetFound = (!create && deleteAll) || links.some((n) => n == childName);
           if (create == targetFound || (!found && !create && deleteAll)) {
             break;
           }
           const range = line.range.with({ start: line.range.start.with({ character: line.firstNonWhitespaceCharacterIndex }) });
-          const newLinks = create ? [...links, targetName] : deleteAll ? [] : links.filter((l) => l != targetName);
-          edits.push(TextEdit.replace(range, stringify({ [property]: newLinks }).trimEnd()));
+          const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
+          edits.push(TextEdit.replace(range, property + " = " + stringify.value(newLinks).trimEnd().split(/\r\n|\n/).map(e => e.trim()).join(" ")));
           break;
         }
         if (text.startsWith("[")) {
@@ -358,7 +383,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         if (!found) {
           const start =
             i + 1 < realDocument.lineCount ? realDocument.lineAt(i + 1).text.substring(0, realDocument.lineAt(i + 1).firstNonWhitespaceCharacterIndex) : "";
-          edits.push(TextEdit.insert(line.range.end, "\n" + start + stringify({ [property]: create ? [targetName] : [] }).trimEnd()));
+          edits.push(TextEdit.insert(line.range.end, "\n" + start + property + " = " + stringify.value(create ? [childName] : []).trimEnd()));
           break;
         }
         sectionFound = true;
@@ -367,13 +392,24 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     return edits;
   }
 
-  private async getNodeName(uri: Uri, nodeType: string, nodeName: string) {
-    const entity = this.taipyContext.getToml(uri.toString())[nodeType];
+  private async getNodeName(uri: Uri, nodeType: string) {
+    const entity = this.taipyContext.getToml(uri.toString())[nodeType] || {};
+    const nodeName = Object.keys(entity).sort().reduce((pv, name) => {
+      if (name.toLowerCase() == pv.toLowerCase()) {
+        const parts = pv.split("-", 2);
+        if (parts.length == 1) {
+          return parts[0] + "-1";
+        } else {
+          return parts[0] + "-" + (parseInt(parts[1]) + 1);
+        }
+      }
+      return pv;
+    }, nodeType + "-1");
     const validateNodeName = (value: string) => {
-      if (!value || /[\s\.]/.test(value)) {
+      if (!value || /[\s\.]/.test(value) || value.toLowerCase() == "default") {
         return getNewNameInputError(nodeType, value, true);
       }
-      if (value && entity && Object.keys(entity).some((n) => n.toLowerCase() == value.toLowerCase())) {
+      if (Object.keys(entity).some((n) => n.toLowerCase() == value.toLowerCase())) {
         return getNewNameInputError(nodeType, value);
       }
       return undefined as string;
@@ -389,49 +425,59 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
   }
 
-  private createNode(realDocument: TextDocument, nodeType: string, nodeName: string, perspectiveId: string) {
+  private createNode(realDocument: TextDocument, perspectiveUri: Uri, nodeType: string, nodeName: string) {
+    const perspectiveId = getPerspectiveFromUri(perspectiveUri);
     const [perspType, perspName] = perspectiveId.split(".", 2);
     const uri = realDocument.uri;
     const toml = this.taipyContext.getToml(uri.toString());
     const node = toml[nodeType] && toml[nodeType][nodeName];
+    const edits = [] as TextEdit[];
     if (getParentType(nodeType) == perspType && toml[perspType] && toml[perspType][perspName]) {
-      this.createLink(realDocument, perspType, perspName, getDescendantProperties(perspType)[1], nodeName);
+      this.createOrDeleteLink(realDocument, perspType, perspName, nodeType, nodeName, true, false, edits);
+    } else {
+      this.updateExtraEntitiesInCache(perspectiveUri, `${nodeType}.${nodeName}`);
     }
-    if (node) {
-      return;
+    if (!node) {
+      edits.push(TextEdit.insert(
+        realDocument.lineCount ? realDocument.lineAt(realDocument.lineCount - 1).range.end : new Position(0, 0),
+        "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
+      ));
     }
-    const edit = new WorkspaceEdit();
-    edit.insert(
-      uri,
-      realDocument.lineCount ? realDocument.lineAt(realDocument.lineCount - 1).range.end : new Position(0, 0),
-      "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
-    );
-    workspace.applyEdit(edit);
+    this.applyEdits(uri, edits);
   }
 
   private removeNodeFromPerspective(realDocument: TextDocument, nodeType: string, nodeName: string) {
     const uri = realDocument.uri;
     const toml = this.taipyContext.getToml(uri.toString());
     const node = toml[nodeType] && toml[nodeType][nodeName];
-    if (node) {
+    if (!node) {
       return false;
     }
     const edits = [] as TextEdit[];
     getDescendantProperties(nodeType).forEach((p) => p && this.createOrDeleteLink(realDocument, nodeType, nodeName, p, "", false, true, edits));
     const parentType = getParentType(nodeType);
     const pp = getDescendantProperties(parentType);
-    const parentNames = [] as Array<[string, string]>;
-    Object.entries(toml[parentType]).forEach(([k, v]) => {
-      pp.forEach(p => p && Array.isArray(v[p]) && (v[p] as string[]).some(n => n == nodeName) && parentNames.push([k, p]));
+    toml[parentType] && Object.entries(toml[parentType]).forEach(([parentName, v]) => {
+      pp.forEach((property, idx) => {
+        if (property && Array.isArray(v[property]) && v[property].some((n: string) => n == nodeName)) {
+          if (idx == 0) {
+            // input property: reverse order
+            this.createOrDeleteLink(realDocument, nodeType, nodeName, parentType, parentName, false, false, edits)
+          } else {
+            // output property
+            this.createOrDeleteLink(realDocument, parentType, parentName, nodeType, nodeName, false, false, edits)
+          }
+        }
+      });
     });
-    parentNames.forEach(([n, p]) => this.createOrDeleteLink(realDocument, parentType, n, p, nodeName, false, false, edits));
     this.applyEdits(realDocument.uri, edits);
     return true;
   }
 
   private setPositions(docUri: Uri, positions: Positions) {
     let modified = false;
-    let pos = this.getPositionsCache(getCleanPerpsectiveUriString(docUri));
+    const perspUri = getCleanPerpsectiveUriString(docUri)
+    let pos = this.getPositionsCache(perspUri);
     if (positions) {
       pos = Object.entries(positions).reduce((pv, [k, v]) => {
         modified = true;
@@ -440,6 +486,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       }, pos);
     }
     if (modified) {
+      this.cache[perspUri] = this.cache[perspUri];
+      this.cache[perspUri].positions = pos; 
       this.context.workspaceState.update(ConfigEditorProvider.cacheName, this.cache);
     }
   }
@@ -461,7 +509,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     if (editorCache.extraEntities) {
       const ee = editorCache.extraEntities.split(";");
       const len = ee.length;
-      extraEntities.split(";").forEach((e) => ee.indexOf(e) > -1 && ee.push(e));
+      extraEntities.split(";").forEach((e) => ee.indexOf(e) == -1 && ee.push(e));
       if (len < ee.length) {
         editorCache.extraEntities = ee.join(";");
         modified = true;

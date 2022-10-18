@@ -1,3 +1,3 @@
-export const selectConfigFileCmd = "taipy.selectConfigFile";
-export const selectConfigNodeCmd = "taipy.selectConfigNode";
-export const revealConfigNodeCmd = "taipy.revealConfigNode";
+export const selectConfigFileCmd = "taipy.config.selectFile";
+export const selectConfigNodeCmd = "taipy.config.selectNode";
+export const revealConfigNodeCmd = "taipy.config.revealNode";

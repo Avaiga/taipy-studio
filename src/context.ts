@@ -17,7 +17,7 @@ import { ConfigFilesView } from "./views/ConfigFilesView";
 import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./utils/commands";
 import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./utils/constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
-import { configFileExt, configFilePattern } from "./utils/utils";
+import { configFilePattern } from "./utils/utils";
 import {
   ConfigItem,
   ConfigNodesProvider,
@@ -56,19 +56,19 @@ export class Context {
   // original Uri => toml
   private readonly tomlByUri: Record<string, JsonMap> = {};
   // docChanged listeners
-  private readonly docChangedListener: Array<[ConfigEditorProvider, (uri: Uri) => void]> = [];
+  private readonly docChangedListener: Array<[ConfigEditorProvider, (document: TextDocument) => void]> = [];
 
   private constructor(private readonly vsContext: ExtensionContext) {
     this.selectionCache = vsContext.workspaceState.get(Context.cacheName, {} as NodeSelectionCache);
     // Configuration files
     this.configFilesView = new ConfigFilesView(this, "taipy-configs", this.selectionCache.fileUri);
-    commands.registerCommand("taipy.refreshConfigs", this.configFilesView.refresh, this.configFilesView);
+    commands.registerCommand("taipy.config.refresh", this.configFilesView.refresh, this.configFilesView);
     commands.registerCommand(selectConfigFileCmd, this.selectUri, this);
     // global Commands
     commands.registerCommand(selectConfigNodeCmd, this.selectConfigNode, this);
     commands.registerCommand(revealConfigNodeCmd, this.revealConfigNodeInEditors, this);
-    commands.registerCommand("taipy.show.perpective", this.showPerspective, this);
-    commands.registerCommand("taipy.show.perpective.from.diagram", this.showPerspectiveFromDiagram, this);
+    commands.registerCommand("taipy.perspective.show", this.showPerspective, this);
+    commands.registerCommand("taipy.perspective.showFromDiagram", this.showPerspectiveFromDiagram, this);
     // Perspective Provider
     this.perspectiveContentProvider = new PerspectiveContentProvider();
     vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, this.perspectiveContentProvider));
@@ -96,8 +96,9 @@ export class Context {
 
   private async onDocumentChanged(e: TextDocumentChangeEvent) {
     if (this.tomlByUri[getOriginalUri(e.document.uri).toString()]) {
+      const dirty = e.document.isDirty;
       await this.refreshToml(e.document);
-      this.docChangedListener.forEach(([t, l]) => l.call(t, e.document.uri));
+      this.docChangedListener.forEach(([t, l]) => l.call(t, e.document));
     }
     if (isUriEqual(this.configFileUri, e.document.uri)) {
       this.treeProviders.forEach((p) => p.refresh(this, e.document.uri));
@@ -105,10 +106,10 @@ export class Context {
     }
   }
 
-  registerDocChangeListener<T extends ConfigEditorProvider>(listener: (uri: Uri) => void, thisArg: T) {
+  registerDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
     this.docChangedListener.push([thisArg, listener]);
   }
-  unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (uri: Uri) => void, thisArg: T) {
+  unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
     const idx = this.docChangedListener.findIndex(([t, l]) => t === thisArg && l === listener);
     idx > -1 && this.docChangedListener.splice(idx);
   }
