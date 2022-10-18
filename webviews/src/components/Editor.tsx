@@ -76,7 +76,7 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
         <div className="diagram-button icon" title="refresh" onClick={postRefreshMessage}>
           <i className="codicon codicon-refresh"></i>
         </div>
-        <div className="diagram-button icon" title="save" {...isDirty ? {onClick:postSaveMessage}: {}}>
+        <div className="diagram-button icon" title={isDirty ? "save": ""} {...isDirty ? {onClick:postSaveMessage}: {}}>
           <i className={"codicon codicon-" + (isDirty ? "circle-filled" : "circle-outline")}></i>
         </div>
       </div>
