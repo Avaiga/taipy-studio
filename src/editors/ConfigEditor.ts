@@ -9,6 +9,7 @@ import {
   ExtensionContext,
   languages,
   Position,
+  Range,
   TextDocument,
   TextEdit,
   TreeItem,
@@ -53,6 +54,7 @@ import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
 import { getDefaultContent, getDescendantProperties, getParentType, getPropertyToDropType, getPropertyValue, toDisplayModel } from "../utils/toml";
 import { Positions } from "../../shared/diagram";
+import { PosSymbol } from "../iarna-toml/AsyncParser";
 
 interface EditorCache {
   positions?: Positions;
@@ -221,7 +223,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
                 perspectiveId: perspectiveId,
                 baseUri: baseUri,
                 extraEntities: cache.extraEntities,
-                isDirty: isDirty
+                isDirty: isDirty,
               } as ConfigEditorProps,
             } as ViewMessage);
           } catch (e) {
@@ -259,7 +261,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       if (isUriEqual(document.uri, textDocument.uri)) {
         this.updateWebview(document.uri, textDocument.isDirty);
       }
-    }
+    };
 
     // Hook up event handlers so that we can synchronize the webview with the text document.
     this.taipyContext.registerDocChangeListener(docListener, this);
@@ -303,7 +305,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         case SaveDocument:
           this.saveDocument(realDocument);
           break;
-        }
+      }
     }, this);
 
     // clean-up when our editor is closed.
@@ -354,11 +356,30 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     const property = deleteAll ? targetType : reverse ? inputProp : outputProp;
 
     const toml = this.taipyContext.getToml(realDocument.uri.toString());
-    const sectionHead = "[" + nodeType + "." + nodeName + "]";
     const [links, found] = getPropertyValue(toml, [] as string[], nodeType, nodeName, property);
+
     if (!create && links.length == 0) {
       return edits;
     }
+    if (found) {
+      // @ts-ignore
+      const linksPos = links[PosSymbol] as CodePos[];
+      const propertyRange = linksPos && linksPos.length > 1 && new Range(linksPos[0].line, linksPos[0].col, linksPos.at(-1).line, linksPos.at(-1).col);
+      if (propertyRange) {
+        const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
+        edits.push(TextEdit.replace(propertyRange, stringify.value(newLinks).trimEnd()));
+        return edits;
+      }
+    } else {
+      const table = toml[nodeType] && toml[nodeType][nodeName];
+      if (table) {
+        // @ts-ignore
+        const propertyPos = new Position(table[PosSymbol].at(-1).line, table[PosSymbol].at(-1).col -1);
+        edits.push(TextEdit.insert(propertyPos, property + " = " + stringify.value(create ? [childName] : []) + "\n"));
+        return edits;
+      }
+    }
+    const sectionHead = "[" + nodeType + "." + nodeName + "]";
     let sectionFound = false;
     for (let i = 0; i < realDocument.lineCount; i++) {
       const line = realDocument.lineAt(i);
@@ -371,7 +392,19 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
           }
           const range = line.range.with({ start: line.range.start.with({ character: line.firstNonWhitespaceCharacterIndex }) });
           const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
-          edits.push(TextEdit.replace(range, property + " = " + stringify.value(newLinks).trimEnd().split(/\r\n|\n/).map(e => e.trim()).join(" ")));
+          edits.push(
+            TextEdit.replace(
+              range,
+              property +
+                " = " +
+                stringify
+                  .value(newLinks)
+                  .trimEnd()
+                  .split(/\r\n|\n/)
+                  .map((e) => e.trim())
+                  .join(" ")
+            )
+          );
           break;
         }
         if (text.startsWith("[")) {
@@ -394,17 +427,19 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
 
   private async getNodeName(uri: Uri, nodeType: string) {
     const entity = this.taipyContext.getToml(uri.toString())[nodeType] || {};
-    const nodeName = Object.keys(entity).sort().reduce((pv, name) => {
-      if (name.toLowerCase() == pv.toLowerCase()) {
-        const parts = pv.split("-", 2);
-        if (parts.length == 1) {
-          return parts[0] + "-1";
-        } else {
-          return parts[0] + "-" + (parseInt(parts[1]) + 1);
+    const nodeName = Object.keys(entity)
+      .sort()
+      .reduce((pv, name) => {
+        if (name.toLowerCase() == pv.toLowerCase()) {
+          const parts = pv.split("-", 2);
+          if (parts.length == 1) {
+            return parts[0] + "-1";
+          } else {
+            return parts[0] + "-" + (parseInt(parts[1]) + 1);
+          }
         }
-      }
-      return pv;
-    }, nodeType + "-1");
+        return pv;
+      }, nodeType + "-1");
     const validateNodeName = (value: string) => {
       if (!value || /[\s\.]/.test(value) || value.toLowerCase() == "default") {
         return getNewNameInputError(nodeType, value, true);
@@ -438,10 +473,12 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
       this.updateExtraEntitiesInCache(perspectiveUri, `${nodeType}.${nodeName}`);
     }
     if (!node) {
-      edits.push(TextEdit.insert(
-        realDocument.lineCount ? realDocument.lineAt(realDocument.lineCount - 1).range.end : new Position(0, 0),
-        "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
-      ));
+      edits.push(
+        TextEdit.insert(
+          realDocument.lineCount ? realDocument.lineAt(realDocument.lineCount - 1).range.end : new Position(0, 0),
+          "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
+        )
+      );
     }
     this.applyEdits(uri, edits);
   }
@@ -457,26 +494,27 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     getDescendantProperties(nodeType).forEach((p) => p && this.createOrDeleteLink(realDocument, nodeType, nodeName, p, "", false, true, edits));
     const parentType = getParentType(nodeType);
     const pp = getDescendantProperties(parentType);
-    toml[parentType] && Object.entries(toml[parentType]).forEach(([parentName, v]) => {
-      pp.forEach((property, idx) => {
-        if (property && Array.isArray(v[property]) && v[property].some((n: string) => n == nodeName)) {
-          if (idx == 0) {
-            // input property: reverse order
-            this.createOrDeleteLink(realDocument, nodeType, nodeName, parentType, parentName, false, false, edits)
-          } else {
-            // output property
-            this.createOrDeleteLink(realDocument, parentType, parentName, nodeType, nodeName, false, false, edits)
+    toml[parentType] &&
+      Object.entries(toml[parentType]).forEach(([parentName, v]) => {
+        pp.forEach((property, idx) => {
+          if (property && Array.isArray(v[property]) && v[property].some((n: string) => n == nodeName)) {
+            if (idx == 0) {
+              // input property: reverse order
+              this.createOrDeleteLink(realDocument, nodeType, nodeName, parentType, parentName, false, false, edits);
+            } else {
+              // output property
+              this.createOrDeleteLink(realDocument, parentType, parentName, nodeType, nodeName, false, false, edits);
+            }
           }
-        }
+        });
       });
-    });
     this.applyEdits(realDocument.uri, edits);
     return true;
   }
 
   private setPositions(docUri: Uri, positions: Positions) {
     let modified = false;
-    const perspUri = getCleanPerpsectiveUriString(docUri)
+    const perspUri = getCleanPerpsectiveUriString(docUri);
     let pos = this.getPositionsCache(perspUri);
     if (positions) {
       pos = Object.entries(positions).reduce((pv, [k, v]) => {
@@ -487,7 +525,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
     if (modified) {
       this.cache[perspUri] = this.cache[perspUri];
-      this.cache[perspUri].positions = pos; 
+      this.cache[perspUri].positions = pos;
       this.context.workspaceState.update(ConfigEditorProvider.cacheName, this.cache);
     }
   }

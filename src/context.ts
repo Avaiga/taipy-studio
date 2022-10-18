@@ -11,7 +11,7 @@ import {
   window,
   workspace,
 } from "vscode";
-import { JsonMap, parse } from "@iarna/toml";
+import { JsonMap } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
 import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./utils/commands";
@@ -32,6 +32,7 @@ import {
 import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri, getPerspectiveUri } from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
 import { cleanTomlParseError, handleTomlParseError } from "./utils/errors";
+import { parseAsync } from "./iarna-toml/AsyncParser";
 
 const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
 
@@ -260,7 +261,7 @@ export class Context {
 
   private async readToml(document: TextDocument) {
     try {
-      this.tomlByUri[document.uri.toString()] = await parse.async(document.getText());
+      this.tomlByUri[document.uri.toString()] = await parseAsync(document.getText());
       cleanTomlParseError(document);
       return true;
     } catch (e) {
