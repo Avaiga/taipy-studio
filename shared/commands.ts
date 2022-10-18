@@ -11,3 +11,4 @@ export const GetNodeName = "getNodeName";
 export const SetExtraEntities = "setExtraEntities";
 export const UpdateExtraEntities = "updateExtraEntities";
 export const RemoveExtraEntities = "removeExtraEntities";
+export const SaveDocument = "saveDocument";

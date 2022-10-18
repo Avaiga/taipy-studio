@@ -202,7 +202,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     }
   }
 
-  async updateWebview(uri: Uri) {
+  async updateWebview(uri: Uri, isDirty = false) {
     const originalUri = getOriginalUri(uri);
     const baseUri = originalUri.toString();
     const panelsByPersp = this.panelsByUri[baseUri];
@@ -220,6 +220,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
                 perspectiveId: perspectiveId,
                 baseUri: baseUri,
                 extraEntities: cache.extraEntities,
+                isDirty: isDirty
               } as ConfigEditorProps,
             } as ViewMessage);
           } catch (e) {
@@ -253,12 +254,14 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
 
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
 
-    // Hook up event handlers so that we can synchronize the webview with the text document.
-    this.taipyContext.registerDocChangeListener((uri: Uri) => {
-      if (isUriEqual(document.uri, uri)) {
-        this.updateWebview(document.uri);
+    const docListener = (textDocument: TextDocument) => {
+      if (isUriEqual(document.uri, textDocument.uri)) {
+        this.updateWebview(document.uri, textDocument.isDirty);
       }
-    }, this);
+    }
+
+    // Hook up event handlers so that we can synchronize the webview with the text document.
+    this.taipyContext.registerDocChangeListener(docListener, this);
 
     // Receive message from the webview.
     const receiveMessageSubscription = webviewPanel.webview.onDidReceiveMessage((e) => {
@@ -305,6 +308,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
         this.panelsByUri[originalUri][perspId] &&
         (this.panelsByUri[originalUri][perspId] = this.panelsByUri[originalUri][perspId].filter((p) => p !== webviewPanel));
       receiveMessageSubscription.dispose();
+      this.taipyContext.unregisterDocChangeListener(docListener, this);
     });
   }
 
@@ -344,6 +348,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     const toml = this.taipyContext.getToml(realDocument.uri.toString());
     const sectionHead = "[" + nodeType + "." + nodeName + "]";
     const [links, found] = getPropertyValue(toml, [] as string[], nodeType, nodeName, property);
+    if (!create && links.length == 0) {
+      return edits;
+    }
     let sectionFound = false;
     for (let i = 0; i < realDocument.lineCount; i++) {
       const line = realDocument.lineAt(i);
@@ -356,7 +363,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
           }
           const range = line.range.with({ start: line.range.start.with({ character: line.firstNonWhitespaceCharacterIndex }) });
           const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
-          edits.push(TextEdit.replace(range, property + " = " + stringify.value(newLinks).trimEnd()));
+          edits.push(TextEdit.replace(range, property + " = " + stringify.value(newLinks).trimEnd().split(/\r\n|\n/).map(e => e.trim()).join(" ")));
           break;
         }
         if (text.startsWith("[")) {
@@ -494,7 +501,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     if (editorCache.extraEntities) {
       const ee = editorCache.extraEntities.split(";");
       const len = ee.length;
-      extraEntities.split(";").forEach((e) => ee.indexOf(e) > -1 && ee.push(e));
+      extraEntities.split(";").forEach((e) => ee.indexOf(e) == -1 && ee.push(e));
       if (len < ee.length) {
         editorCache.extraEntities = ee.join(";");
         modified = true;

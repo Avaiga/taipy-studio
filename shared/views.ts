@@ -19,6 +19,7 @@ export interface ConfigEditorProps {
   perspectiveId: string;
   baseUri: string;
   extraEntities?: string;
+  isDirty?: boolean;
 }
 
 export const perspectiveRootId = "__root__";

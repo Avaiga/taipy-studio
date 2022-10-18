@@ -3,7 +3,7 @@ import { CanvasWidget } from "@projectstorm/react-canvas-core";
 import * as deepEqual from "fast-deep-equal";
 
 import { ConfigEditorProps, perspectiveRootId } from "../../../shared/views";
-import { postGetNodeName, postRefreshMessage, postSetExtraEntities } from "../utils/messaging";
+import { postGetNodeName, postRefreshMessage, postSaveMessage, postSetExtraEntities } from "../utils/messaging";
 import { applyPerspective, getNodeTypes } from "../utils/toml";
 import { EditorAddNodeMessage } from "../../../shared/messages";
 import { getNodeIcon } from "../utils/config";
@@ -21,7 +21,7 @@ const onCreateNode = (evt: MouseEvent<HTMLDivElement>) => {
   nodeType && postGetNodeName(nodeType);
 };
 
-const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extraEntities: propsExtraEntities }: ConfigEditorProps) => {
+const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extraEntities: propsExtraEntities, isDirty }: ConfigEditorProps) => {
   const oldDisplayModel = useRef<DisplayModel>();
   const oldPerspId = useRef<string>();
 
@@ -75,6 +75,9 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
         </div>
         <div className="diagram-button icon" title="refresh" onClick={postRefreshMessage}>
           <i className="codicon codicon-refresh"></i>
+        </div>
+        <div className="diagram-button icon" title="save" {...isDirty ? {onClick:postSaveMessage}: {}}>
+          <i className={"codicon codicon-" + (isDirty ? "circle-filled" : "circle-outline")}></i>
         </div>
       </div>
       <div>{perspectiveId != perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>

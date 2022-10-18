@@ -56,7 +56,7 @@ export class Context {
   // original Uri => toml
   private readonly tomlByUri: Record<string, JsonMap> = {};
   // docChanged listeners
-  private readonly docChangedListener: Array<[ConfigEditorProvider, (uri: Uri) => void]> = [];
+  private readonly docChangedListener: Array<[ConfigEditorProvider, (document: TextDocument) => void]> = [];
 
   private constructor(private readonly vsContext: ExtensionContext) {
     this.selectionCache = vsContext.workspaceState.get(Context.cacheName, {} as NodeSelectionCache);
@@ -96,8 +96,9 @@ export class Context {
 
   private async onDocumentChanged(e: TextDocumentChangeEvent) {
     if (this.tomlByUri[getOriginalUri(e.document.uri).toString()]) {
+      const dirty = e.document.isDirty;
       await this.refreshToml(e.document);
-      this.docChangedListener.forEach(([t, l]) => l.call(t, e.document.uri));
+      this.docChangedListener.forEach(([t, l]) => l.call(t, e.document));
     }
     if (isUriEqual(this.configFileUri, e.document.uri)) {
       this.treeProviders.forEach((p) => p.refresh(this, e.document.uri));
@@ -105,10 +106,10 @@ export class Context {
     }
   }
 
-  registerDocChangeListener<T extends ConfigEditorProvider>(listener: (uri: Uri) => void, thisArg: T) {
+  registerDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
     this.docChangedListener.push([thisArg, listener]);
   }
-  unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (uri: Uri) => void, thisArg: T) {
+  unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
     const idx = this.docChangedListener.findIndex(([t, l]) => t === thisArg && l === listener);
     idx > -1 && this.docChangedListener.splice(idx);
   }

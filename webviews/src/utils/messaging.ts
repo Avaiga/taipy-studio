@@ -7,6 +7,7 @@ import {
   Refresh,
   RemoveExtraEntities,
   RemoveNode,
+  SaveDocument,
   SetExtraEntities,
   SetPositions,
   UpdateExtraEntities,
@@ -44,3 +45,4 @@ export const postGetNodeName = (nodeType: string) => getVsCodeApi()?.postMessage
 export const postSetExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: SetExtraEntities, extraEntities });
 export const postUpdateExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: UpdateExtraEntities, extraEntities });
 export const postRemoveExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: RemoveExtraEntities, extraEntities });
+export const postSaveMessage = () => getVsCodeApi()?.postMessage({ command: SaveDocument });
