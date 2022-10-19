@@ -14,7 +14,7 @@ import {
 
 import { selectConfigNodeCmd } from "../utils/commands";
 import { Context } from "../context";
-import { getPerspectiveUri } from "../contentProviders/PerpectiveContentProvider";
+import { getPerspectiveUri } from "./PerpectiveContentProvider";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
 import { selectDatanodeTitle, selectPipelineTitle, selectScenarioTitle, selectTaskTitle } from "../utils/l10n";
 
@@ -40,7 +40,7 @@ const commandIdFromTypes = {
   [Task]: "taipy.refreshTasks",
   [Pipeline]: "taipy.refreshPipelines",
   [Scenario]: "taipy.refreshScenarii",
-}
+};
 export const getCommandIdFromType = (nodeType: string) => commandIdFromTypes[nodeType];
 
 export abstract class ConfigItem extends TreeItem {
@@ -51,14 +51,16 @@ export abstract class ConfigItem extends TreeItem {
     this.tooltip = name;
   }
   setResourceUri(uri: Uri) {
-    this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, typeof this.node == "object" ? stringify(this.node): ("" + this.node));
+    this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, typeof this.node == "object" ? stringify(this.node) : "" + this.node);
     this.command = {
       command: selectConfigNodeCmd,
       title: getTitleFromType(this.contextValue),
       arguments: [this.contextValue, this.label, this.node, this.resourceUri],
     };
-  };
-  getNode() {return this.node}
+  }
+  getNode() {
+    return this.node;
+  }
 }
 export class DataNodeItem extends ConfigItem {
   getNodeType() {
@@ -93,7 +95,7 @@ export class ConfigNodesProvider<T extends ConfigItem = ConfigItem> implements T
   private configItems: T[] = [];
   private nodeType: string;
 
-  constructor(context: Context, private readonly nodeCtor: TreeNodeCtor<T> ) {
+  constructor(context: Context, private readonly nodeCtor: TreeNodeCtor<T>) {
     this.nodeType = new nodeCtor(undefined, undefined).getNodeType();
     this.dragMimeTypes = [getMimeTypeFromType(this.nodeType)];
     this.refresh(context, context.getConfigUri());
@@ -106,7 +108,7 @@ export class ConfigNodesProvider<T extends ConfigItem = ConfigItem> implements T
   }
 
   getNodeForUri(uri: string) {
-    return this.configItems.find(i => i.resourceUri.toString() == uri);
+    return this.configItems.find((i) => i.resourceUri.toString() == uri);
   }
 
   async refresh(context: Context, uri: Uri): Promise<void> {

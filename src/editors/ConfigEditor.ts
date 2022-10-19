@@ -3,9 +3,6 @@ import {
   CancellationToken,
   commands,
   CustomTextEditorProvider,
-  DataTransfer,
-  DocumentDropEdit,
-  DocumentDropEditProvider,
   ExtensionContext,
   languages,
   Position,
@@ -21,17 +18,16 @@ import {
   WorkspaceEdit,
 } from "vscode";
 
-import { configFilePattern, getCspScriptSrc, getNonce, textUriListMime } from "../utils/utils";
+import { configFilePattern, getCspScriptSrc, getNonce } from "../utils/utils";
 import { revealConfigNodeCmd } from "../utils/commands";
 import {
   getCleanPerpsectiveUriString,
-  getNodeFromUri,
   getOriginalDocument,
   getOriginalUri,
   getPerspectiveFromUri,
   getPerspectiveUri,
   isUriEqual,
-} from "../contentProviders/PerpectiveContentProvider";
+} from "../providers/PerpectiveContentProvider";
 import {
   CreateLink,
   CreateNode,
@@ -52,9 +48,11 @@ import { TaipyStudioSettingsName } from "../utils/constants";
 import { getInvalidEntityTypeForPerspective, getNewNameInputError, getNewNameInputPrompt, getNewNameInputTitle } from "../utils/l10n";
 import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
-import { getDefaultContent, getDescendantProperties, getParentType, getPropertyToDropType, getPropertyValue, toDisplayModel } from "../utils/toml";
+import { getDefaultContent, getDescendantProperties, getParentType, getPropertyValue, toDisplayModel } from "../utils/toml";
 import { Positions } from "../../shared/diagram";
 import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
+import { ConfigCompletionItemProvider } from "../providers/CompletionItemProvider";
+import { ConfigDropEditProvider } from "../providers/DocumentDropEditProvider";
 
 interface EditorCache {
   positions?: Positions;
@@ -67,7 +65,7 @@ interface ProviderCache {
 
 const nodeTypes = ["datanode", "task", "pipeline", "scenario"];
 
-export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentDropEditProvider {
+export class ConfigEditorProvider implements CustomTextEditorProvider {
   static register(context: ExtensionContext, taipyContext: Context): ConfigEditorProvider {
     const provider = new ConfigEditorProvider(context, taipyContext);
     const providerRegistration = window.registerCustomEditorProvider(ConfigEditorProvider.viewType, provider, {
@@ -89,68 +87,15 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
   private constructor(private readonly context: ExtensionContext, private readonly taipyContext: Context) {
     this.extensionPath = context.extensionUri;
     this.cache = context.workspaceState.get(ConfigEditorProvider.cacheName, {} as ProviderCache);
-    context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: configFilePattern }, this));
+    // Drop Edit Provider
+    context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: configFilePattern }, ConfigDropEditProvider.register(this.taipyContext)));
+    // Completion Item Provider
+    context.subscriptions.push(
+      languages.registerCompletionItemProvider({ pattern: configFilePattern }, ConfigCompletionItemProvider.register(this.taipyContext))
+    );
+
     commands.registerCommand("taipy.config.clearCache", this.clearCache, this);
     commands.registerCommand("taipy.diagram.addNode", this.addNodeToCurrentDiagram, this);
-  }
-
-  async provideDocumentDropEdits(
-    document: TextDocument,
-    position: Position,
-    dataTransfer: DataTransfer,
-    token: CancellationToken
-  ): Promise<DocumentDropEdit | undefined> {
-    const enabled = workspace.getConfiguration(TaipyStudioSettingsName, document).get("editor.drop.enabled", true);
-    if (!enabled) {
-      return undefined;
-    }
-
-    if (!dataTransfer || token.isCancellationRequested) {
-      return undefined;
-    }
-    const urlList = await dataTransfer.get(textUriListMime)?.asString();
-    if (!urlList) {
-      return undefined;
-    }
-    const uris: Uri[] = [];
-    urlList.split("\n").forEach((u) => {
-      try {
-        u && uris.push(Uri.parse(u, true));
-      } catch {
-        console.warn("provideDocumentDropEdits: Cannot parse ", u);
-      }
-    });
-    if (!uris.length) {
-      return undefined;
-    }
-    const dropEdit = new DocumentDropEdit("");
-    if (isUriEqual(uris[0], document.uri)) {
-      // TODO handle multi-uris case (but you can't drag more than one treeItem ...)
-      const [nodeType, nodeName] = getPerspectiveFromUri(uris[0]).split(".", 2);
-      const properties = getPropertyToDropType(nodeType);
-      if (nodeName) {
-        const line = document.lineAt(position.line);
-        const lineProperty = line.text.split("=", 2)[0];
-        if (properties.some((p) => p == lineProperty.trim())) {
-          const endPos = line.text.lastIndexOf("]");
-          const startPos = line.text.indexOf("[", lineProperty.length + 1);
-          if (position.character <= endPos && position.character > startPos) {
-            const lastChar = line.text.substring(0, position.character).trim().at(-1);
-            if (lastChar == '"' || lastChar == "'" || lastChar == "[" || lastChar == ",") {
-              dropEdit.insertText = (lastChar == '"' || lastChar == "'" ? ", " : "") + '"' + nodeName + '"' + (lastChar == "," ? ", " : "");
-            }
-          }
-        }
-      }
-    } else {
-      const node = getNodeFromUri(uris[0]);
-      if (node) {
-        const lines: string[] = ["", "[" + getPerspectiveFromUri(uris[0]) + "]"];
-        node.split("\n").forEach((l) => lines.push(l && "\t" + l));
-        dropEdit.insertText = lines.join("\n");
-      }
-    }
-    return dropEdit;
   }
 
   private clearCache() {
@@ -247,7 +192,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     // retrieve and work with the original document
     const realDocument = await getOriginalDocument(document);
 
-    await this.taipyContext.ReadTomlIfNeeded(realDocument);
+    await this.taipyContext.readTomlIfNeeded(realDocument);
 
     const perspId = getPerspectiveFromUri(document.uri);
     const originalUri = getOriginalUri(document.uri).toString();
