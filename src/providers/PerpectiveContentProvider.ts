@@ -15,7 +15,7 @@ export const getCleanPerpsectiveUriString = (uri: Uri) => {
     return "";
   }
   if (uri.scheme != PerspectiveScheme) {
-    return uri.toString();
+    uri = getPerspectiveUri(uri, perspectiveRootId);
   }
   return uri
     .with({
@@ -99,7 +99,7 @@ export const getOriginalDocument = (document: TextDocument): ProviderResult<Text
     return workspace.openTextDocument(getOriginalUri(document.uri));
   }
   return document;
-}
+};
 
 export class PerspectiveContentProvider implements TextDocumentContentProvider {
   onDidChangeEmitter = new EventEmitter<Uri>();
