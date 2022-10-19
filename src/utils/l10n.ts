@@ -24,4 +24,6 @@ export const getNewNameInputError = (nodeType: string, nodeName: string, emptyOr
   emptyOrSpace
     ? localize("ConfigEditor.newNameInputSpaceError", "Entity {0} Name should not contain space, '.' or be empty or be default '{1}'", nodeType, nodeName)
     : localize("ConfigEditor.newNameInputError", "Another {0} entity has the name {1}", nodeType, nodeName);
-export const getTomlError = (file:string) => localize("ConfigEditor.tomlError", "Document '{0}' is not valid toml.", file.split("/").at(-1));
+export const getTomlError = (file: string) => localize("ConfigEditor.tomlError", "Document '{0}' is not valid toml.", file.split("/").at(-1));
+export const getConsistencyWarning = (nodeType: string, nodeName: string) => localize("ConfigEditor.consistencyWarning", "Element '{0}.{1}' does not exist.", nodeType, nodeName);
+export const getUnreferencedELement = (nodeType: string, nodeName: string) => localize("ConfigEditor.unreferencedELement", "No reference to Element '{0}.{1}'.", nodeType, nodeName);

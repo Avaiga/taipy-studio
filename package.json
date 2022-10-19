@@ -219,6 +219,11 @@
           "default": "output",
           "description": "%config.diagram.scenario.icon.desc%"
         },
+        "taipyStudio.parser.usePositions": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.parser.usePositions.desc%"
+        },
         "taipyStudio.status.timeout": {
           "type": "integer",
           "default": 3000,

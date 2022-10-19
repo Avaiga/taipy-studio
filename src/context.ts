@@ -29,9 +29,10 @@ import {
   TaskItem,
   TreeNodeCtor,
 } from "./providers/ConfigNodesProvider";
-import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri, getPerspectiveUri } from "./contentProviders/PerpectiveContentProvider";
+import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri, getPerspectiveUri } from "./providers/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
-import { cleanTomlParseError, handleTomlParseError } from "./utils/errors";
+import { cleanTomlParseError, handleTomlParseError, reportInconsistencies } from "./utils/errors";
+import { parseAsync } from "./iarna-toml/AsyncParser";
 
 const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
 
@@ -251,7 +252,7 @@ export class Context {
     }
   }
 
-  async ReadTomlIfNeeded(document: TextDocument) {
+  async readTomlIfNeeded(document: TextDocument) {
     const uri = document.uri.toString();
     if (!this.tomlByUri[uri]) {
       await this.readToml(document);
@@ -260,8 +261,11 @@ export class Context {
 
   private async readToml(document: TextDocument) {
     try {
-      this.tomlByUri[document.uri.toString()] = await parse.async(document.getText());
+      const toml = (this.tomlByUri[document.uri.toString()] = workspace.getConfiguration(TaipyStudioSettingsName).get("parser.usePositions", true)
+        ? await parseAsync(document.getText())
+        : await parse.async(document.getText()));
       cleanTomlParseError(document);
+      reportInconsistencies(document, toml);
       return true;
     } catch (e) {
       handleTomlParseError(document, e);
