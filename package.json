@@ -60,7 +60,7 @@
             "filenamePattern": "*.toml"
           }
         ],
-        "priority": "default"
+        "priority": "option"
       }
     ],
     "viewsContainers": {
