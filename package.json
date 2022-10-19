@@ -94,8 +94,8 @@
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
-          "id": "taipy-config-scenarii",
-          "name": "%extension.views.taipy-config-panel.taipy-config-scenarii%",
+          "id": "taipy-config-scenarios",
+          "name": "%extension.views.taipy-config-panel.taipy-config-scenarios%",
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
@@ -129,8 +129,8 @@
         "contents": "%extension.viewsWelcome.taipy-config-pipelines%"
       },
       {
-        "view": "taipy-config-scenarii",
-        "contents": "%extension.viewsWelcome.taipy-config-scenarii%"
+        "view": "taipy-config-scenarios",
+        "contents": "%extension.viewsWelcome.taipy-config-scenarios%"
       }
     ],
     "menus": {
@@ -144,7 +144,7 @@
       "view/item/context": [
         {
           "command": "taipy.perspective.show",
-          "when": "viewItem != default && view == taipy-configs || viewItem != default && view == taipy-config-pipelines || viewItem != default && view == taipy-config-scenarii"
+          "when": "viewItem != default && view == taipy-configs || viewItem != default && view == taipy-config-pipelines || viewItem != default && view == taipy-config-scenarios"
         },
         {
           "command": "taipy.diagram.addNode",

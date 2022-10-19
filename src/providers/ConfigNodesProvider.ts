@@ -30,7 +30,7 @@ const treeViewIdFromTypes = {
   [DataNode]: "taipy-config-datanodes",
   [Task]: "taipy-config-tasks",
   [Pipeline]: "taipy-config-pipelines",
-  [Scenario]: "taipy-config-scenarii",
+  [Scenario]: "taipy-config-scenarios",
 };
 export const getTreeViewIdFromType = (nodeType: string) => treeViewIdFromTypes[nodeType] || "";
 const getMimeTypeFromType = (nodeType: string) => "application/vnd.code.tree." + getTreeViewIdFromType(nodeType);
@@ -39,7 +39,7 @@ const commandIdFromTypes = {
   [DataNode]: "taipy.refreshDataNodes",
   [Task]: "taipy.refreshTasks",
   [Pipeline]: "taipy.refreshPipelines",
-  [Scenario]: "taipy.refreshScenarii",
+  [Scenario]: "taipy.refreshScenarios",
 };
 export const getCommandIdFromType = (nodeType: string) => commandIdFromTypes[nodeType];
 
