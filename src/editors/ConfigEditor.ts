@@ -54,7 +54,7 @@ import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
 import { getDefaultContent, getDescendantProperties, getParentType, getPropertyToDropType, getPropertyValue, toDisplayModel } from "../utils/toml";
 import { Positions } from "../../shared/diagram";
-import { PosSymbol } from "../iarna-toml/AsyncParser";
+import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
 
 interface EditorCache {
   positions?: Positions;
@@ -361,22 +361,25 @@ export class ConfigEditorProvider implements CustomTextEditorProvider, DocumentD
     if (!create && links.length == 0) {
       return edits;
     }
-    if (found) {
-      // @ts-ignore
-      const linksPos = links[PosSymbol] as CodePos[];
-      const propertyRange = linksPos && linksPos.length > 1 && new Range(linksPos[0].line, linksPos[0].col, linksPos.at(-1).line, linksPos.at(-1).col);
-      if (propertyRange) {
-        const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
-        edits.push(TextEdit.replace(propertyRange, stringify.value(newLinks).trimEnd()));
-        return edits;
-      }
-    } else {
-      const table = toml[nodeType] && toml[nodeType][nodeName];
-      if (table) {
+    // @ts-ignore
+    if (toml[PosSymbol]) {
+      if (found) {
         // @ts-ignore
-        const propertyPos = new Position(table[PosSymbol].at(-1).line, table[PosSymbol].at(-1).col -1);
-        edits.push(TextEdit.insert(propertyPos, property + " = " + stringify.value(create ? [childName] : []) + "\n"));
-        return edits;
+        const linksPos = links[PosSymbol] as CodePos[];
+        const propertyRange = linksPos && linksPos.length && new Range(linksPos[0].line, linksPos[0].col, linksPos.at(-1).line, linksPos.at(-1).col);
+        if (propertyRange) {
+          const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
+          edits.push(TextEdit.replace(propertyRange, stringify.value(newLinks).trimEnd()));
+          return edits;
+        }
+      } else {
+        const table = toml[nodeType] && toml[nodeType][nodeName];
+        if (table) {
+          // @ts-ignore
+          const codePos = table[PosSymbol].at(-1) as CodePos;
+          edits.push(TextEdit.insert(new Position(codePos.line, codePos.col), property + " = " + stringify.value(create ? [childName] : []) + "\n"));
+          return edits;
+        }
       }
     }
     const sectionHead = "[" + nodeType + "." + nodeName + "]";

@@ -29,5 +29,6 @@
     "config.diagram.pipeline.icon.desc": "The icon for the Pipeline Diagram element.",
     "config.diagram.scenario.color.desc": "The color for the Scenario Diagram element.",
     "config.diagram.scenario.icon.desc": "The icon for the Scenario Diagram element.",
+    "config.parser.usePositions.desc": "Use the (hacked) toml parser with position.",
     "config.status.timeout.desc": "The timeout for Status Bar Item (ms)."
 }

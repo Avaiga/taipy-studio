@@ -19,11 +19,11 @@ const improveState = (parser, state, line, col) => {
   });
   Object.defineProperty(state, "resultArr", {
     set: (val) => {
-      if (val && typeof val == "object") {
+      if (Array.isArray(val)) {
         Object.defineProperty(val, _pos, { value: [{ line: line, col: col }] });
         val._push = val.push
         val.push = (...args) => {
-          val[_pos].push({line: parser.line, col: parser.col - (typeof args[0] == "string" ? args[0].length : 0)});
+          val[_pos].push({line: parser.line, col: parser.col - (typeof args[0] == "string" ? (args[0].length + 1) : 0)});
           return val._push(...args);
         }
       }
@@ -35,6 +35,8 @@ const improveState = (parser, state, line, col) => {
   });
 };
 
+const addCodePos = (obj, line, col) => obj && Array.isArray(obj[_pos]) && obj[_pos].push({ line, col });
+
 class PosParser extends Parser {
   constructor(...args) {
     super(...args);
@@ -42,11 +44,9 @@ class PosParser extends Parser {
     Object.defineProperty(this, "ctx", {
       set: (val) => {
         if (val && typeof val == "object" && !val[_pos]) {
-          Object.defineProperty(val, _pos, { value: [{ line: this.state.line, col: this.state.col }] });
+          Object.defineProperty(val, _pos, { value: [{ line: this.state.line, col: this.state.col + 1 }] });
         }
-        if (this._ctx && Array.isArray(this._ctx[_pos])) {
-          this._ctx[_pos].push({ line: this.line, col: this.col });
-        }
+        addCodePos(this._ctx, this.line, this.col -1);
         this._ctx = val;
       },
       get: () => {
@@ -63,6 +63,10 @@ class PosParser extends Parser {
       Array.isArray(val[_pos]) ? val[_pos].push({ line: this.line, col: this.col }) :  Object.defineProperty(val, _pos, { value: [{ line: this.state.line, col: this.state.col }] });
     }
     return super.return(val);
+  }
+  finish () {
+    addCodePos(this.obj, this.line, this.col -1);
+    return super.finish()
   }
 }
 PosParser.PosSymbol = _pos;

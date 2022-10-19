@@ -11,7 +11,7 @@ import {
   window,
   workspace,
 } from "vscode";
-import { JsonMap } from "@iarna/toml";
+import { JsonMap, parse } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
 import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./utils/commands";
@@ -31,7 +31,7 @@ import {
 } from "./providers/ConfigNodesProvider";
 import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri, getPerspectiveUri } from "./contentProviders/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
-import { cleanTomlParseError, handleTomlParseError } from "./utils/errors";
+import { cleanTomlParseError, handleTomlParseError, reportInconsistencies } from "./utils/errors";
 import { parseAsync } from "./iarna-toml/AsyncParser";
 
 const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
@@ -261,8 +261,9 @@ export class Context {
 
   private async readToml(document: TextDocument) {
     try {
-      this.tomlByUri[document.uri.toString()] = await parseAsync(document.getText());
+      const toml = this.tomlByUri[document.uri.toString()] = workspace.getConfiguration(TaipyStudioSettingsName).get("parser.usePositions", true) ? await parseAsync(document.getText()) :  await parse.async(document.getText());
       cleanTomlParseError(document);
+      reportInconsistencies(document, toml);
       return true;
     } catch (e) {
       handleTomlParseError(document, e);
