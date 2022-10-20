@@ -36,6 +36,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [this.extensionPath],
+      enableCommandUris: true,
     };
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
     this._view = webviewView;

@@ -1,15 +1,4 @@
-import {
-  commands,
-  EventEmitter,
-  ProviderResult,
-  TreeDataProvider,
-  TreeItem,
-  TreeItemCollapsibleState,
-  TreeView,
-  Uri,
-  window,
-  workspace,
-} from "vscode";
+import { commands, EventEmitter, ProviderResult, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from "vscode";
 
 import { selectConfigFileCmd } from "../utils/commands";
 import { Context } from "../context";
@@ -50,10 +39,6 @@ class ConfigFilesProvider implements TreeDataProvider<ConfigFileItem> {
   treeDataChanged(): void {
     this._onDidChangeTreeData.fire(undefined);
   }
-}
-
-interface ConfigFilesCache {
-  lastSelectedUri?: string;
 }
 
 interface FileDesc {

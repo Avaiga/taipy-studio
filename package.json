@@ -49,6 +49,26 @@
         "command": "taipy.diagram.addNode",
         "title": "%extension.commands.taipy.diagram.addNode%",
         "icon": "$(add)"
+      },
+      {
+        "command": "taipy.config.datanode.create",
+        "title": "%extension.commands.taipy.config.datanode.create%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "taipy.config.task.create",
+        "title": "%extension.commands.taipy.config.task.create%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "taipy.config.pipeline.create",
+        "title": "%extension.commands.taipy.config.pipeline.create%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "taipy.config.scenario.create",
+        "title": "%extension.commands.taipy.config.scenario.create%",
+        "icon": "$(add)"
       }
     ],
     "customEditors": [
@@ -138,6 +158,26 @@
         {
           "command": "taipy.config.refresh",
           "when": "view == taipy-configs",
+          "group": "navigation"
+        },
+        {
+          "command": "taipy.config.datanode.create",
+          "when": "view == taipy-config-datanodes",
+          "group": "navigation"
+        },
+        {
+          "command": "taipy.config.task.create",
+          "when": "view == taipy-config-tasks",
+          "group": "navigation"
+        },
+        {
+          "command": "taipy.config.pipeline.create",
+          "when": "view == taipy-config-pipelines",
+          "group": "navigation"
+        },
+        {
+          "command": "taipy.config.scenario.create",
+          "when": "view == taipy-config-scenarios",
           "group": "navigation"
         }
       ],

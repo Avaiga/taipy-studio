@@ -35,13 +35,21 @@ const treeViewIdFromTypes = {
 export const getTreeViewIdFromType = (nodeType: string) => treeViewIdFromTypes[nodeType] || "";
 const getMimeTypeFromType = (nodeType: string) => "application/vnd.code.tree." + getTreeViewIdFromType(nodeType);
 
-const commandIdFromTypes = {
+const refreshCommandIdFromTypes = {
   [DataNode]: "taipy.refreshDataNodes",
   [Task]: "taipy.refreshTasks",
   [Pipeline]: "taipy.refreshPipelines",
   [Scenario]: "taipy.refreshScenarios",
 };
-export const getCommandIdFromType = (nodeType: string) => commandIdFromTypes[nodeType];
+export const getRefreshCommandIdFromType = (nodeType: string) => refreshCommandIdFromTypes[nodeType];
+
+const createCommandIdFromType = {
+  [DataNode]: "taipy.config.datanode.create",
+  [Task]: "taipy.config.task.create",
+  [Pipeline]: "taipy.config.pipeline.create",
+  [Scenario]: "taipy.config.scenario.create",
+};
+export const getCreateCommandIdFromType = (nodeType: string) => createCommandIdFromType[nodeType];
 
 export abstract class ConfigItem extends TreeItem {
   abstract getNodeType();

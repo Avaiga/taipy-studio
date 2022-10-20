@@ -63,7 +63,7 @@ interface ProviderCache {
   [key: string]: EditorCache;
 }
 
-const nodeTypes = ["datanode", "task", "pipeline", "scenario"];
+const nodeTypes4config = ["datanode", "task", "pipeline", "scenario"];
 
 export class ConfigEditorProvider implements CustomTextEditorProvider {
   static register(context: ExtensionContext, taipyContext: Context): ConfigEditorProvider {
@@ -96,6 +96,26 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
     commands.registerCommand("taipy.config.clearCache", this.clearCache, this);
     commands.registerCommand("taipy.diagram.addNode", this.addNodeToCurrentDiagram, this);
+  }
+
+  async createNewElement(uri: Uri, nodeType: string) {
+    const nodeName = await this.getNodeName(uri, nodeType, false);
+    if (nodeName) {
+      const doc = await workspace.openTextDocument(getOriginalUri(uri));
+      if (await this.applyEdits(doc.uri, this.doCreateElement(doc, nodeType, nodeName))) {
+        this.addNodeToActiveDiagram(nodeType, nodeName, false);
+      }
+    }
+  }
+
+  private doCreateElement(doc: TextDocument, nodeType: string, nodeName: string, edits: TextEdit[] = []) {
+    edits.push(
+      TextEdit.insert(
+        doc.lineCount ? doc.lineAt(doc.lineCount - 1).range.end : new Position(0, 0),
+        "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
+      )
+    );
+    return edits;
   }
 
   private clearCache() {
@@ -263,24 +283,25 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     });
   }
 
-  private saveDocument(document: TextDocument) {
-    document.isDirty && document.save();
+  private async saveDocument(document: TextDocument) {
+    return !document.isDirty || document.save();
   }
 
-  private applyEdits(uri: Uri, edits: TextEdit[]) {
+  private async applyEdits(uri: Uri, edits: TextEdit[]) {
     if (edits.length) {
       const we = new WorkspaceEdit();
       we.set(uri, edits);
-      workspace.applyEdit(we);
+      return workspace.applyEdit(we);
     }
+    return false;
   }
 
-  private deleteLink(realDocument: TextDocument, sourceType: string, sourceName: string, targetType: string, targetName: string) {
-    this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, sourceType, sourceName, targetType, targetName, false, false));
+  private async deleteLink(realDocument: TextDocument, sourceType: string, sourceName: string, targetType: string, targetName: string) {
+    return this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, sourceType, sourceName, targetType, targetName, false, false));
   }
 
-  private createLink(realDocument: TextDocument, sourceType: string, sourceName: string, targetType: string, targetName: string) {
-    this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, sourceType, sourceName, targetType, targetName, true, false));
+  private async createLink(realDocument: TextDocument, sourceType: string, sourceName: string, targetType: string, targetName: string) {
+    return this.applyEdits(realDocument.uri, this.createOrDeleteLink(realDocument, sourceType, sourceName, targetType, targetName, true, false));
   }
 
   private createOrDeleteLink(
@@ -373,9 +394,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     return edits;
   }
 
-  private async getNodeName(uri: Uri, nodeType: string) {
+  private async getNodeName(uri: Uri, nodeType: string, addNodeToActiveDiagram = true) {
     const entity = this.taipyContext.getToml(uri.toString())[nodeType] || {};
     const nodeName = Object.keys(entity)
+      .filter((n) => n.toLowerCase().startsWith(nodeType.toLowerCase()))
       .sort()
       .reduce((pv, name) => {
         if (name.toLowerCase() == pv.toLowerCase()) {
@@ -403,12 +425,13 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       validateInput: validateNodeName,
       value: nodeName,
     });
-    if (newName) {
+    if (newName && addNodeToActiveDiagram) {
       this.addNodeToActiveDiagram(nodeType, newName);
     }
+    return newName;
   }
 
-  private createNode(realDocument: TextDocument, perspectiveUri: Uri, nodeType: string, nodeName: string) {
+  private async createNode(realDocument: TextDocument, perspectiveUri: Uri, nodeType: string, nodeName: string) {
     const perspectiveId = getPerspectiveFromUri(perspectiveUri);
     const [perspType, perspName] = perspectiveId.split(".", 2);
     const uri = realDocument.uri;
@@ -421,17 +444,12 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       this.updateExtraEntitiesInCache(perspectiveUri, `${nodeType}.${nodeName}`);
     }
     if (!node) {
-      edits.push(
-        TextEdit.insert(
-          realDocument.lineCount ? realDocument.lineAt(realDocument.lineCount - 1).range.end : new Position(0, 0),
-          "\n" + stringify(getDefaultContent(nodeType, nodeName)).trimEnd() + "\n"
-        )
-      );
+      this.doCreateElement(realDocument, nodeType, nodeName, edits);
     }
-    this.applyEdits(uri, edits);
+    return this.applyEdits(uri, edits);
   }
 
-  private removeNodeFromPerspective(realDocument: TextDocument, nodeType: string, nodeName: string) {
+  private async removeNodeFromPerspective(realDocument: TextDocument, nodeType: string, nodeName: string) {
     const uri = realDocument.uri;
     const toml = this.taipyContext.getToml(uri.toString());
     const node = toml[nodeType] && toml[nodeType][nodeName];
@@ -456,8 +474,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
           }
         });
       });
-    this.applyEdits(realDocument.uri, edits);
-    return true;
+    return this.applyEdits(realDocument.uri, edits);
   }
 
   private setPositions(docUri: Uri, positions: Positions) {
@@ -547,7 +564,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
 
     const config = workspace.getConfiguration(TaipyStudioSettingsName, document);
-    const configObj = nodeTypes.reduce(
+    const configObj = nodeTypes4config.reduce(
       (co, nodeType) => {
         co["icons"][nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");
         return co;
@@ -555,7 +572,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       { icons: {} }
     );
 
-    const cssVars = nodeTypes.map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";").join(" ");
+    const cssVars = nodeTypes4config
+      .map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";")
+      .join(" ");
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();
     return `<html style="${cssVars}">
