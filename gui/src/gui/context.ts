@@ -1,0 +1,45 @@
+import { Diagnostic, DocumentFilter, ExtensionContext, languages, TextDocument, window, workspace } from "vscode";
+import { GuiCompletionItemProvider } from "./completion";
+import { getMdDiagnostics, getPyDiagnostics } from "./diagnostics";
+
+export class GuiContext {
+    static register(vsContext: ExtensionContext): void {
+        new GuiContext(vsContext);
+    }
+
+    private constructor(readonly context: ExtensionContext) {
+        this.registerMarkdownDiagnostics(context);
+        this.registerCompletionItemProvider(context);
+    }
+
+    private registerMarkdownDiagnostics(context: ExtensionContext): void {
+        const markdownDiagnosticCollection = languages.createDiagnosticCollection("gui-markdown");
+
+        const handler = async (doc: TextDocument) => {
+            let diagnostics: Diagnostic[] | undefined = undefined;
+            if (doc.fileName.endsWith(".md")) {
+                diagnostics = await getMdDiagnostics(doc);
+            } else if (doc.fileName.endsWith(".py")) {
+                diagnostics = await getPyDiagnostics(doc);
+            }
+            diagnostics && markdownDiagnosticCollection.set(doc.uri, diagnostics);
+        };
+
+        // handle active text editor
+        if (window.activeTextEditor) {
+            (async () => window.activeTextEditor && (await handler(window.activeTextEditor.document)))();
+        }
+
+        const didOpen = workspace.onDidOpenTextDocument((doc) => handler(doc));
+        const didChange = workspace.onDidChangeTextDocument((e) => handler(e.document));
+
+        context.subscriptions.push(markdownDiagnosticCollection, didOpen, didChange);
+    }
+
+    private registerCompletionItemProvider(context: ExtensionContext): void {
+        const markdownFilter: DocumentFilter = { language: "markdown", scheme: "file" };
+        const pythonFilter: DocumentFilter = { language: "python", scheme: "file" };
+        context.subscriptions.push(languages.registerCompletionItemProvider(markdownFilter, new GuiCompletionItemProvider(), '|'));
+        context.subscriptions.push(languages.registerCompletionItemProvider(pythonFilter, new GuiCompletionItemProvider(), '|'));
+    }
+}
