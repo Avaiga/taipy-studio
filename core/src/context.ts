@@ -22,7 +22,8 @@ import {
   ConfigItem,
   ConfigNodesProvider,
   DataNodeItem,
-  getCommandIdFromType,
+  getCreateCommandIdFromType,
+  getRefreshCommandIdFromType,
   getTreeViewIdFromType,
   PipelineItem,
   ScenarioItem,
@@ -53,11 +54,12 @@ export class Context {
   private readonly treeViews: TreeView<TreeItem>[] = [];
   private readonly configDetailsView: ConfigDetailsView;
   private readonly selectionCache: NodeSelectionCache;
-  private readonly perspectiveContentProvider: PerspectiveContentProvider;
   // original Uri => toml
   private readonly tomlByUri: Record<string, JsonMap> = {};
   // docChanged listeners
   private readonly docChangedListener: Array<[ConfigEditorProvider, (document: TextDocument) => void]> = [];
+  // editors
+  private readonly configEditorProvider: ConfigEditorProvider;
 
   private constructor(private readonly vsContext: ExtensionContext) {
     this.selectionCache = vsContext.workspaceState.get(Context.cacheName, {} as NodeSelectionCache);
@@ -71,8 +73,7 @@ export class Context {
     commands.registerCommand("taipy.perspective.show", this.showPerspective, this);
     commands.registerCommand("taipy.perspective.showFromDiagram", this.showPerspectiveFromDiagram, this);
     // Perspective Provider
-    this.perspectiveContentProvider = new PerspectiveContentProvider();
-    vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, this.perspectiveContentProvider));
+    vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, new PerspectiveContentProvider()));
     // Create Tree Views
     this.treeViews.push(this.createTreeView(DataNodeItem));
     this.treeViews.push(this.createTreeView(TaskItem));
@@ -81,7 +82,7 @@ export class Context {
     // Dispose when finished
     vsContext.subscriptions.push(...this.treeViews);
     // Config editor
-    ConfigEditorProvider.register(vsContext, this);
+    this.configEditorProvider = ConfigEditorProvider.register(vsContext, this);
     // Details
     this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri);
     vsContext.subscriptions.push(window.registerWebviewViewProvider(CONFIG_DETAILS_ID, this.configDetailsView));
@@ -115,10 +116,15 @@ export class Context {
     idx > -1 && this.docChangedListener.splice(idx);
   }
 
+  private createNewElement(nodeType: string) {
+    this.configEditorProvider.createNewElement(this.configFileUri, nodeType);
+  }
+
   private createTreeView<T extends ConfigItem>(nodeCtor: TreeNodeCtor<T>) {
     const provider = new ConfigNodesProvider(this, nodeCtor);
     const nodeType = provider.getNodeType();
-    commands.registerCommand(getCommandIdFromType(nodeType), () => provider.refresh(this, this.configFileUri), this);
+    commands.registerCommand(getRefreshCommandIdFromType(nodeType), () => provider.refresh(this, this.configFileUri), this);
+    commands.registerCommand(getCreateCommandIdFromType(nodeType), () => this.createNewElement(nodeType), this);
     this.treeProviders.push(provider);
     const treeView = window.createTreeView(getTreeViewIdFromType(nodeType), { treeDataProvider: provider, dragAndDropController: provider });
     return treeView;
@@ -231,10 +237,6 @@ export class Context {
 
   private showPerspective(item: TreeItem) {
     commands.executeCommand("vscode.openWith", item.resourceUri, ConfigEditorProvider.viewType);
-  }
-
-  private refreshPerspectiveDocument(uri: Uri) {
-    this.perspectiveContentProvider.onDidChangeEmitter.fire(uri);
   }
 
   private showPerspectiveFromDiagram(item: { baseUri: string; perspective: string }) {
