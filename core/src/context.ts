@@ -94,6 +94,12 @@ export class Context {
     fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
     fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
     vsContext.subscriptions.push(fileSystemWatcher);
+    // directory watcher
+    const directoriesWatcher = workspace.createFileSystemWatcher("**/");
+    directoriesWatcher.onDidChange(this.onFileChange, this);
+    directoriesWatcher.onDidCreate(this.onFileCreateDelete, this);
+    directoriesWatcher.onDidDelete(this.onFileCreateDelete, this);
+    vsContext.subscriptions.push(directoriesWatcher);
   }
 
   private async onDocumentChanged(e: TextDocumentChangeEvent) {
