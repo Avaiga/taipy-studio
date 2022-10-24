@@ -26,6 +26,9 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
           if (sourceType == nodeType && sourceName == nodeName) {
             queue.push([targetType, targetName]);
             links.push(link);
+          } else if (targetType == nodeType && targetName == nodeName) {
+            queue.push([sourceType, sourceName]);
+            links.push(link);
           }
         });
       }
