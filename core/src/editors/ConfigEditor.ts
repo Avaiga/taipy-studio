@@ -537,7 +537,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       const len = ee.length;
       extraEntities.split(";").forEach((e) => {
         const p = ee.indexOf(e);
-        p > -1 && ee.splice(p);
+        p > -1 && ee.splice(p, 1);
       });
       if (len > ee.length) {
         editorCache.extraEntities = ee.length ? ee.join(";") : undefined;
