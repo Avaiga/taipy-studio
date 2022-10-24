@@ -11,9 +11,9 @@ import createEngine, {
   PortModel,
   LinkModelGenerics,
   DiagramEngine,
-  PathFindingLinkFactory,
   DagreEngine,
   DefaultNodeModelOptions,
+  PointModel,
 } from "@projectstorm/react-diagrams";
 import { BaseEvent, BaseEntityEvent } from "@projectstorm/react-canvas-core";
 import { debounce } from "debounce";
@@ -234,10 +234,51 @@ export const showNode = (engine: DiagramEngine, message: EditorAddNodeMessage) =
   postUpdateExtraEntities(`${message.nodeType}.${message.nodeName}`);
 };
 
+const isInLine = (pnt: PointModel, startLine: PointModel, endLine: PointModel) => {
+  const L2 =
+    (endLine.getX() - startLine.getX()) * (endLine.getX() - startLine.getX()) + (endLine.getY() - startLine.getY()) * (endLine.getY() - startLine.getY());
+  if (L2 == 0) {
+    return false;
+  }
+  const r = ((pnt.getX() - startLine.getX()) * (endLine.getX() - startLine.getX()) + (pnt.getY() - startLine.getY()) * (endLine.getY() - startLine.getY())) / L2;
+
+  //Assume line thickness is circular
+  if (0 <= r && r <= 1) {
+    //On the line segment
+    const s =
+      ((startLine.getY() - pnt.getY()) * (endLine.getX() - startLine.getX()) - (startLine.getX() - pnt.getX()) * (endLine.getY() - startLine.getY())) / L2;
+    return Math.abs(s) * Math.sqrt(L2) <= lineLeeway;
+  }
+  return false;
+};
+
+const lineLeeway = 0.1;
+
 export const relayoutDiagram = (engine: DiagramEngine, dagreEngine: DagreEngine) => {
   const model = engine.getModel();
   dagreEngine.redistribute(model);
-  engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
+  //  engine.getLinkFactories().getFactory<PathFindingLinkFactory>(PathFindingLinkFactory.NAME).calculateRoutingMatrix();
+  getModelLinks(model).forEach((l) => {
+    const points = l.getPoints();
+    if (points.length == 3) {
+      // remove unnecessary intermediate if same level
+      if (Math.abs(points[0].getX() - points[2].getX()) < lineLeeway || Math.abs(points[0].getY() - points[2].getY()) < lineLeeway) {
+        points.splice(1, 1);
+        l.setPoints(points);  
+      }
+    } else if (points.length > 3) {
+      const pointsToRemove = [] as number[];
+      let startIdx = 0;
+      while (startIdx + 2 < points.length) {
+        if (isInLine(points[startIdx +1], points[startIdx], points[startIdx +2])) {
+          pointsToRemove.push(startIdx +1);
+        }
+        startIdx++;
+      }
+      pointsToRemove.reverse().forEach(idx => points.splice(idx, 1));
+      l.setPoints(points);
+    }
+  });
   engine.repaintCanvas();
   cachePositions(model);
 };

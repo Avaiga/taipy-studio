@@ -113,7 +113,7 @@ export class Context {
   }
   unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
     const idx = this.docChangedListener.findIndex(([t, l]) => t === thisArg && l === listener);
-    idx > -1 && this.docChangedListener.splice(idx);
+    idx > -1 && this.docChangedListener.splice(idx, 1);
   }
 
   private createNewElement(nodeType: string) {
