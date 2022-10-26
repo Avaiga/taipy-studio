@@ -1,107 +1,101 @@
-# Taipy Studio
+# Taipy: Configuration Builder 
 
-Taipy Studio is ultimately an application that allows for creating Taipy applications
-reducing the code that needs to be manually created.
+Taipy Configuration Builder makes it possible to create complete configuration files for
+[Taipy](https://www.taipy.io).<br/>
+These files must have the `.toml` extension.
 
-This application builder comes with predefined features that greatly accelerate
-the development of applications that rely on Taipy Core.
+With Taipy Configuration Builder you can create, edit or remove any configuration element
+from a dedicated pane.
 
-Taipy Studio depends on [Visual Studio Code](https://code.visualstudio.com/) which provides a
-full development environment, including state-of-the-art support for the Python programming
-language. The Taipy-specific functionality is provided as a Visual Studio Code extension,
-which this repository holds the source code.<br/>
-Taipy Studio was created using the [`yo`](https://www.npmjs.com/package/yo) utility that
-builds a skeleton for Visual Studio extensions. The
-[`Yo Code`](https://www.npmjs.com/package/generator-code) package will let you run `yo code`
-that generates a boilerplate for the project.
+## Opening the Taipy Configuration Builder pane
+
+The Taipy Configuration Builder pane appears in the Visual Studio Code secondary side bar.<br/>
+All you need to do to make it visible is check the _View > Appearance > Secondary Side Bar_ option.
 
 ## Features
 
-This extension makes it possible to configure a Taipy application by providing
-the appropriate settings to a configuration file that is exposed in a series
-of areas grouped in the **Taipy Configuration** panel.
+### Config Files section
 
-## Prerequisites
+This section lists all the potential configuration files in your project. Configuration files
+(`.toml` files) appear in the 'Config Files' section with their base name.
 
-The only prerequisites for building and testing this Visual Studio Code extension
-are Node.js and the `npm` command line interface.
+If several files have the same base name, the actual directory path where this file is located
+appears next to the configuration file name.
 
-Installers that will install both can be found [here](https://nodejs.org/en/download/).
+When you select a configuration file from the 'Config Files' section, all other sections get
+updated with the relevant configuration items that were recognized in the selected configuration
+file.
 
+### Data Nodes section
 
-## Installation for development
+The Data Nodes section displays the list of the names of all the data nodes read from the
+selected configuration file.
 
-The extension is made of two separate parts: the VSCode integration part, and
-the views that are facing end users (called web views).
+- If you select a Data Node, its details appear in the Details view, at the bottom of the pane.
+- If you right-click a Data Node, you can select the 'Add/Show node'
+  option:
+  - If the Data Node is already present in the Pipeline or Scenario
+    diagram view that is opened, the view will be panned and zoomed so
+    that this Data Node is displayed in its center.
+  - If the Data Node is not present in the Pipeline or Scenario
+    diagram view that is opened, it is added to it, so you can connect
+    it.
 
-- Install the required `npm` modules for VSCode integration:
-  ```
-  npm i
-  ```
+### Data Nodes section
 
-- Install the required `npm` modules for the web views:
-  ```
-  cd webviews
-  npm i
-  ```
+The Tasks section displays the list of the names of all the tasks read from the
+selected configuration file.
+
+- If you select a Task, its details appear in the Details view, at the bottom of the pane.
+- If you right-click a Data Node, you can select the 'Add/Show node'
+  option:
+  - If the Task is already present in the Pipeline or Scenario
+    diagram view that is opened, the view will be panned and zoomed so
+    that this Task is displayed in its center.
+  - If the Task is not present in the Pipeline or Scenario
+    diagram view that is opened, it is added to it.
+
+### Pipelines section
+
+The Pipelines section displays the list of the names of all the pipelines read from the
+selected configuration file.
+
+- If you select a Pipeline, its details appear in the Details view, at the bottom of the pane.
+- If you right-click a Pipeline, you have two options:
+
+   - "Add/Show node": if the opened diagram view is a Scenario view,
+     the Pipeline is added to the view it if was not yet present.<br/>
+    If the Pipeline was already in the scenario represented by the
+    diagram view, the view is panned and zoom so you can spot the
+    pipeline node.
   
+  - "Show perspective": opens a diagram view for that pipeline.
 
-## Debugging
 
-- Build the extension:
-  ```
-  npm run build 
-  ```
+### Text edition of configuration files.
 
-- Run a compilation process in the background to watch for code changes in the extension:
-  ```
-  npm run watch 
-  ```
+If you open a configuration file from the Explorer area, it opens just
+like any regular text file in Visual Studio Code.
 
-- In another terminal, run a compilation process in the background to watch for code
-  changes in the web views:
-  ```
-  cd webviews
-  npm run watch 
-  ```
+The Taipy Configuration Builder provides support for a faster and safer
+edition of this text file:
 
-### Notes on debugging:
+- Every change to the configuration is automatically updated in the
+  configuration elements sections in the Configuration Builder pane.
+- If the file has semantic problems, they show up as wiggles under the
+  elements, as well as in the Problems window.
+- For configuration elements that refer to other elements (such as
+  Tasks that refer to Data Nodes), you can rely on the auto-complete
+  functionality:
 
-- Breakpoints.<br/>
-  when setting breakpoints in the extension code, you will notice that they are
-  systematically disabled. The fact is that the code is actually loaded (and therefore allowed
-  to be debugged) when the extension is activated. Your breakpoints will be hit when the
-  extension activates, in the VSCode Extension Development Host (the instance of Visual
-  Studio Code that loads and runs your extension code).
+  Say for example that you want to add a Data Node to the 'inputs' list
+  of a given task.<br/>
+  Move your cursor inside the square brackets of the 'inputs' property
+  of your target task and press Ctrl-Space.<br/>
+  The list of available Data Nodes that are not yet part of this list
+  shows up so you can pick the one you want to add.
 
-- Reloading the extension.<br/>
-  When the code of the extension is modified, the VSCode Extension Development Host does not
-  automatically reflect the changes.
-
-  We can of course stop the debugging session (killing the host or restarting the debug
-  session). A faster way to reload the extension would be to trigger the 'Developer: Reload
-  Window' command from the host VSCode.<br/>
-  It is recommended to assign a keyboard shortcut to this command so you won't have to find
-  it in the Command Palette every time you need it (the command identifier is
-  `workbench.action.reloadWindow` and is bound to the `Crtl-R` key by default).
-
-  Note that this does not apply to WebViews content: if code is changed that impacts 
-
-- Traces.<br/>
-  Calls to `console.log()` are redirected to the "Debug Console" panel in the primary VSCode instance.
-
-## Build
-
-## Packaging
-
-## Notes on implementation
-
-### Panels and views
-
-- The **Taipy Configuration** window is a sidebar, implemented as a View Container.<br/>
-  - Implementation class: `ConfigPanel` (providers/ConfigView.tsx).
-  - Identifier: 'taipy-config-panel' (package.json and CONFIG_PANEL_ID in constants.ts).
-
-- The **Config Files** view lets you select or create a new configuration file.<br/>
-  - Implementation class: `ConfigFilesView` (providers/ConfigFilesView.tsx).
-  - Identifier: 'taipy-config-files' (package.json and CONFIG_FILES_ID in constants.ts).
+You can also drag configuration elements from their section to the text
+location where you want to use that element, press the Shift key and
+release the mouse button. The configuration element will be added, if
+relevant, to your target text.
