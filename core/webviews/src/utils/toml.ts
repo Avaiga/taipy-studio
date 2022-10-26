@@ -66,9 +66,7 @@ export const applyPerspective = (displayModel: DisplayModel, perspectiveId: stri
           res.links.push(...nodeRes.links);
         }
       });
-    if (Object.keys(res.nodes).length) {
-      return [res, appliedEntities.length ? appliedEntities.join(";") : undefined];
-    }
+    return [res, appliedEntities.length ? appliedEntities.join(";") : undefined];
   }
   return [displayModel, undefined];
 };
