@@ -35,22 +35,22 @@ selected configuration file.
 - If you right-click a Data Node, you can select the 'Add/Show node'
   option:
   - If the Data Node is already present in the Pipeline or Scenario
-    diagram view that is opened, the view will be panned and zoomed so
+    diagram view that is opened, the view will be panned so
     that this Data Node is displayed in its center.
   - If the Data Node is not present in the Pipeline or Scenario
     diagram view that is opened, it is added to it, so you can connect
     it.
 
-### Data Nodes section
+### Tasks section
 
 The Tasks section displays the list of the names of all the tasks read from the
 selected configuration file.
 
 - If you select a Task, its details appear in the Details view, at the bottom of the pane.
-- If you right-click a Data Node, you can select the 'Add/Show node'
+- If you right-click a Task, you can select the 'Add/Show node'
   option:
   - If the Task is already present in the Pipeline or Scenario
-    diagram view that is opened, the view will be panned and zoomed so
+    diagram view that is opened, the view will be panned so
     that this Task is displayed in its center.
   - If the Task is not present in the Pipeline or Scenario
     diagram view that is opened, it is added to it.
@@ -66,7 +66,7 @@ selected configuration file.
    - "Add/Show node": if the opened diagram view is a Scenario view,
      the Pipeline is added to the view it if was not yet present.<br/>
     If the Pipeline was already in the scenario represented by the
-    diagram view, the view is panned and zoom so you can spot the
+    diagram view, the view is panned so you can spot the
     pipeline node.
   
   - "Show perspective": opens a diagram view for that pipeline.
