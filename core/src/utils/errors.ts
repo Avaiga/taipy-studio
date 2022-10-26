@@ -1,5 +1,6 @@
 import { Diagnostic, DiagnosticSeverity, languages, Range, TextDocument, ThemeColor, window, workspace } from "vscode";
 import { JsonMap } from "@iarna/toml";
+import { ErrorObject } from "ajv";
 
 import { TaipyStudioSettingsName } from "./constants";
 import { getOriginalUri } from "../providers/PerpectiveContentProvider";
@@ -42,7 +43,7 @@ export const cleanTomlParseError = (doc: TextDocument) => {
   DiagnoticsCollection.delete(getOriginalUri(doc.uri));
 };
 
-export const reportInconsistencies = (doc: TextDocument, toml: JsonMap) => {
+export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaErrors: ErrorObject[] | null) => {
   // @ts-ignore
   if (!Array.isArray(toml[PosSymbol])) {
     return;
@@ -100,6 +101,17 @@ export const reportInconsistencies = (doc: TextDocument, toml: JsonMap) => {
           }
         })
   );
+  schemaErrors && schemaErrors.forEach(err => {
+    const element = err.instancePath.split("/").filter(p => p).reduce((o, path) => o && o[path], toml);
+    // @ts-ignore
+    const codePos = element && Array.isArray(element[PosSymbol]) && element[PosSymbol][0] as CodePos;
+    codePos && diagnostics.push({
+      severity: DiagnosticSeverity.Warning,
+      range: new Range(codePos.line, codePos.col, codePos.line, codePos.col),
+      message: `${err.message}: ${err.keyword == "enum" ? err.params.allowedValues : ""}`,
+      source: "schema validation",
+    });
+  })
   if (diagnostics.length) {
     DiagnoticsCollection.set(getOriginalUri(doc.uri), diagnostics);
   }

@@ -4,11 +4,11 @@ import { getChildType } from "../../../shared/toml";
 import { perspectiveRootId } from "../../../shared/views";
 
 const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: string) => {
-  const nodes = {} as Nodes;
-  const links = [] as Link[];
   if (!displayModel.nodes || !Array.isArray(displayModel.links)) {
     return displayModel;
   }
+  const nodes = {} as Nodes;
+  const links = [] as Link[];
   const queue: Array<[string, string]> = [];
   const doneNodes: Set<string> = new Set();
   const modelLinks = [...displayModel.links];
@@ -44,36 +44,36 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
 };
 
 export const applyPerspective = (displayModel: DisplayModel, perspectiveId: string, extraEntities?: string): [any, string | undefined] => {
-  if (displayModel && perspectiveId != perspectiveRootId) {
-    const appliedEntities: string[] = [];
-    const [nodeType, nodeName] = perspectiveId.split(".");
-    const res = applyNode(displayModel, nodeType, nodeName);
-    delete res.nodes[perspectiveId.split(".")[0]];
-    extraEntities &&
-      extraEntities.split(";").forEach((e) => {
-        const [nt, nn] = e.split(".", 2);
-        if (nt && nn && !(res.nodes[nt] && res.nodes[nt][nn])) {
-          appliedEntities.push(e);
-          const nodeRes = applyNode(displayModel, nt, nn);
-          Object.entries(nodeRes.nodes).forEach(([t, e]) => {
-            if (!res.nodes[t]) {
-              res.nodes[t] = e;
-            } else {
-              Object.entries(e).forEach(([n, d]) => {
-                if (!res.nodes[t][n]) {
-                  res.nodes[t][n] = d;
-                } else {
-                  console.log("Issue applying node in perspective ...", t, n);
-                }
-              });
-            }
-          });
-          res.links.push(...nodeRes.links);
-        }
-      });
-    return [res, appliedEntities.length ? appliedEntities.join(";") : undefined];
+  if (!displayModel || perspectiveId == perspectiveRootId) {
+    return [displayModel, undefined];
   }
-  return [displayModel, undefined];
+  const appliedEntities: string[] = [];
+  const [nodeType, nodeName] = perspectiveId.split(".");
+  const res = applyNode(displayModel, nodeType, nodeName);
+  delete res.nodes[perspectiveId.split(".")[0]];
+  extraEntities &&
+    extraEntities.split(";").forEach((e) => {
+      const [nt, nn] = e.split(".", 2);
+      if (nt && nn && !(res.nodes[nt] && res.nodes[nt][nn])) {
+        appliedEntities.push(e);
+        const nodeRes = applyNode(displayModel, nt, nn);
+        Object.entries(nodeRes.nodes).forEach(([t, e]) => {
+          if (!res.nodes[t]) {
+            res.nodes[t] = e;
+          } else {
+            Object.entries(e).forEach(([n, d]) => {
+              if (!res.nodes[t][n]) {
+                res.nodes[t][n] = d;
+              } else {
+                console.log("Issue applying node in perspective ...", t, n);
+              }
+            });
+          }
+        });
+        res.links.push(...nodeRes.links);
+      }
+    });
+  return [res, appliedEntities.length ? appliedEntities.join(";") : undefined];
 };
 
 export const getNodeTypes = (perspectiveId: string) => {
