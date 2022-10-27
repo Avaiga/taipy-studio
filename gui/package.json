@@ -13,7 +13,8 @@
     "workspaceContains:**/*.md",
     "workspaceContains:**/*.py",
     "onLanguage:python",
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onCommand:guiStudio.generateElement"
   ],
   "main": "./dist/extension.js",
   "capabilities": {
@@ -23,6 +24,14 @@
       "triggerCharacters": ["."]
     }
   },
+  "contributes": {
+		"commands": [
+			{
+				"command": "guiStudio.generateElement",
+				"title": "Generate Gui Element"
+			}
+		]
+	},
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
