@@ -1,5 +1,5 @@
 import { DisplayModel, Link, Nodes } from "../../../shared/diagram";
-import { Scenario } from "../../../shared/names";
+import { DataNode, Scenario } from "../../../shared/names";
 import { getChildType } from "../../../shared/toml";
 import { perspectiveRootId } from "../../../shared/views";
 
@@ -9,9 +9,10 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
   }
   const nodes = {} as Nodes;
   const links = [] as Link[];
-  const queue: Array<[string, string]> = [];
+  const queue: Array<[string, string, boolean]> = [];
   const doneNodes: Set<string> = new Set();
   const modelLinks = [...displayModel.links];
+  let follow = true;
   while (true) {
     if (!nodeType || !nodeName) {
       break;
@@ -22,23 +23,29 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
       if (node) {
         nodes[nodeType] = nodes[nodeType] || {};
         nodes[nodeType][nodeName] = node;
+        if (!follow) {
+          continue;
+        }
         const foundLinks = [] as number[];
         modelLinks.forEach((link, idx) => {
           const [[sourceType, sourceName, targetType, targetName], _] = link;
           if (sourceType == nodeType && sourceName == nodeName) {
-            queue.push([targetType, targetName]);
+            queue.push([targetType, targetName, DataNode != targetType]);
             links.push(link);
             foundLinks.push(idx);
-          } else if (targetType == nodeType && targetName == nodeName) {
-            queue.push([sourceType, sourceName]);
+          } else if (sourceType == DataNode && targetType == nodeType && targetName == nodeName) {
+            queue.push([sourceType, sourceName, false]);
             links.push(link);
             foundLinks.push(idx);
           }
         });
-        foundLinks.sort().reverse().forEach(idx => modelLinks.splice(idx, 1));
+        foundLinks
+          .sort()
+          .reverse()
+          .forEach((idx) => modelLinks.splice(idx, 1));
       }
     }
-    [nodeType, nodeName] = queue.shift() || ["", ""];
+    [nodeType, nodeName, follow] = queue.shift() || ["", "", false];
   }
   return { nodes, links };
 };
@@ -61,7 +68,7 @@ export const applyPerspective = (displayModel: DisplayModel, perspectiveId: stri
           if (!res.nodes[t]) {
             res.nodes[t] = e;
           } else {
-            Object.entries(e).forEach(([n, d]) => res.nodes[t][n] = d);
+            Object.entries(e).forEach(([n, d]) => (res.nodes[t][n] = d));
           }
         });
         res.links.push(...nodeRes.links);
