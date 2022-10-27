@@ -11,6 +11,7 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
   }
   const queue: Array<[string, string]> = [];
   const doneNodes: Set<string> = new Set();
+  const modelLinks = [...displayModel.links];
   while (true) {
     if (!nodeType || !nodeName) {
       break;
@@ -21,16 +22,20 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
       if (node) {
         nodes[nodeType] = nodes[nodeType] || {};
         nodes[nodeType][nodeName] = node;
-        displayModel.links.forEach((link) => {
+        const foundLinks = [] as number[];
+        modelLinks.forEach((link, idx) => {
           const [[sourceType, sourceName, targetType, targetName], _] = link;
           if (sourceType == nodeType && sourceName == nodeName) {
             queue.push([targetType, targetName]);
             links.push(link);
+            foundLinks.push(idx);
           } else if (targetType == nodeType && targetName == nodeName) {
             queue.push([sourceType, sourceName]);
             links.push(link);
+            foundLinks.push(idx);
           }
         });
+        foundLinks.sort().reverse().forEach(idx => modelLinks.splice(idx, 1));
       }
     }
     [nodeType, nodeName] = queue.shift() || ["", ""];
