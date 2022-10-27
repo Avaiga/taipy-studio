@@ -4,7 +4,7 @@ import Ajv, { Schema, SchemaObject, ValidateFunction } from "ajv/dist/2020";
 let validationSchema: Schema;
 export const getValidationSchema = async () => {
   if (!validationSchema) {
-    validationSchema = await import("../../schemas/taipy.schema.json");
+    validationSchema = await import("../../schemas/config.schema.json");
   }
   return validationSchema;
 };
