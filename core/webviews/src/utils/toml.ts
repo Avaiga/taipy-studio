@@ -61,13 +61,7 @@ export const applyPerspective = (displayModel: DisplayModel, perspectiveId: stri
           if (!res.nodes[t]) {
             res.nodes[t] = e;
           } else {
-            Object.entries(e).forEach(([n, d]) => {
-              if (!res.nodes[t][n]) {
-                res.nodes[t][n] = d;
-              } else {
-                console.log("Issue applying node in perspective ...", t, n);
-              }
-            });
+            Object.entries(e).forEach(([n, d]) => res.nodes[t][n] = d);
           }
         });
         res.links.push(...nodeRes.links);

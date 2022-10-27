@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://taipy.io/taipy.schema.json",
+  "$id": "https://taipy.io/config.schema.json",
   "title": "Taipy Config",
   "description": "Taipy Config",
   "type": "object",
