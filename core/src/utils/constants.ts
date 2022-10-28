@@ -10,6 +10,3 @@ export const CONFIG_DETAILS_ID = "taipy-config-details";
 
 export const TaipyStudioSettingsName = "taipyStudio";
 
-export namespace typeSuffix {
-    export const section = ":SECTION";
-}

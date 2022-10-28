@@ -6,7 +6,7 @@ import { TaipyStudioSettingsName } from "./constants";
 import { getOriginalUri } from "../providers/PerpectiveContentProvider";
 import { getConsistencyWarning, getTomlError, getUnreferencedELement } from "./l10n";
 import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
-import { getDescendantProperties } from "./toml";
+import { getDescendantProperties, getUnsuffixedName } from "./toml";
 import { getChildType } from "../../shared/toml";
 import { DataNode, Pipeline, Task } from "../../shared/names";
 
@@ -61,7 +61,7 @@ export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaEr
             const links = e[prop];
             Array.isArray(links) &&
               links.forEach((childName: string, idx: number) => {
-                childName = childName.split(":", 2)[0];
+                childName = getUnsuffixedName(childName);
                 nodeIds.add(`${childType}.${childName}`);
                 if (toml[childType] && toml[childType][childName]) {
                   // all good
