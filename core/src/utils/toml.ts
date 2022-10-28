@@ -1,5 +1,3 @@
-import { JsonMap } from "@iarna/toml";
-import { TextDocument } from "vscode";
 import { DisplayModel, Link, LinkName, Nodes, Positions } from "../../shared/diagram";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
 import { getChildType } from "../../shared/toml";
