@@ -61,6 +61,7 @@ export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaEr
             const links = e[prop];
             Array.isArray(links) &&
               links.forEach((childName: string, idx: number) => {
+                childName = childName.split(":", 2)[0];
                 nodeIds.add(`${childType}.${childName}`);
                 if (toml[childType] && toml[childType][childName]) {
                   // all good

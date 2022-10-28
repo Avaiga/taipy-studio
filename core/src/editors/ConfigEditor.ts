@@ -563,7 +563,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
     const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
 
-    const config = workspace.getConfiguration(TaipyStudioSettingsName, document);
+    const config = workspace.getConfiguration(TaipyStudioSettingsName);
     const configObj = nodeTypes4config.reduce(
       (co, nodeType) => {
         co["icons"][nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");

@@ -69,10 +69,10 @@ export const toDisplayModel = (toml: any, positions?: Positions): DisplayModel =
       if (childType) {
         outputProp &&
           Array.isArray(n[outputProp]) &&
-          n[outputProp].forEach((childName: string) => links.push(getLink([nodeType, nodeName, childType, childName] as LinkName, positions)));
+          n[outputProp].forEach((childName: string) => links.push(getLink([nodeType, nodeName, childType, childName.split(":", 2)[0]] as LinkName, positions)));
         inputProp &&
           Array.isArray(n[inputProp]) &&
-          n[inputProp].forEach((childName: string) => links.push(getLink([childType, childName, nodeType, nodeName] as LinkName, positions)));
+          n[inputProp].forEach((childName: string) => links.push(getLink([childType, childName.split(":", 2)[0], nodeType, nodeName] as LinkName, positions)));
       }
     });
   });

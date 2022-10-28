@@ -20,7 +20,7 @@ export class ConfigDropEditProvider implements DocumentDropEditProvider {
         dataTransfer: DataTransfer,
         token: CancellationToken
       ): Promise<DocumentDropEdit | undefined> {
-        const enabled = workspace.getConfiguration(TaipyStudioSettingsName, document).get("editor.drop.enabled", true);
+        const enabled = workspace.getConfiguration(TaipyStudioSettingsName).get("editor.drop.enabled", true);
         if (!enabled) {
           return undefined;
         }

@@ -12,6 +12,7 @@ import {
   SnippetString,
   TextDocument,
   TextEdit,
+  workspace,
 } from "vscode";
 
 import { DataNode, Job, Pipeline, Scenario, Taipy, Task } from "../../shared/names";
@@ -19,6 +20,7 @@ import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
 import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
 import { getEnum, getEnumProps } from "../schema/validation";
+import { TaipyStudioSettingsName, typeSuffix } from "../utils/constants";
 import { getDescendantProperties } from "../utils/toml";
 import { getOriginalUri } from "./PerpectiveContentProvider";
 
@@ -86,10 +88,11 @@ export class ConfigCompletionItemProvider implements CompletionItemProvider<Comp
                 position.isAfterOrEqual(new Position(codePoss[0].line, codePoss[0].col)) &&
                 position.isBeforeOrEqual(new Position(codePoss.at(-1).line, codePoss.at(-1).col))
               ) {
-                const links = ["default", ...val.map((name) => name.toLowerCase())];
+                const links = ["default", ...val.map((name) => (name.split(":", 2)[0]).toLowerCase())];
+                const addTypeSuffix = workspace.getConfiguration(TaipyStudioSettingsName).get("editor.type.suffix.enabled", true);
                 return Object.keys(toml[childType])
                   .filter((nodeName) => !links.includes(nodeName.toLowerCase()))
-                  .map((nodeName) => getCompletionItemInArray(nodeName, lineText, position));
+                  .map((nodeName) => getCompletionItemInArray(nodeName, lineText, position, addTypeSuffix));
               }
             }
           }
@@ -115,9 +118,10 @@ export class ConfigCompletionItemProvider implements CompletionItemProvider<Comp
   }
 }
 
-const listRe = /(\w+)?\s*(=)?\s*(\[)?\s*(("[-\w]+"(\s*,\s*)?)*)\s*(.*)/; // inputs = ["DATA_NODE-1", "DATA_NODE-2", ]: gr1 inputs | gr2 = | gr3 [ | gr4 "DATA_NODE-1", "DATA_NODE-2", | gr5 "DATA_NODE-2", | gr6 , | gr7 ]
-const getCompletionItemInArray = (value: string, line: string, position: Position) => {
+const listRe = /(\w+)?\s*(=)?\s*(\[)?\s*(("[-\:\w]+"(\s*,\s*)?)*)\s*(.*)/; // inputs = ["DATA_NODE-1", "DATA_NODE-2", ]: gr1 inputs | gr2 = | gr3 [ | gr4 "DATA_NODE-1", "DATA_NODE-2", | gr5 "DATA_NODE-2", | gr6 , | gr7 ]
+const getCompletionItemInArray = (value: string, line: string, position: Position, addTypeSuffix: boolean) => {
   const ci = new CompletionItem(value);
+  addTypeSuffix && (value += typeSuffix.section);
   const matches = line.match(listRe);
   const matchPos = getPosFromMatches(matches, line);
   const matchIdx = matchPos.findIndex((pos, idx) => position.character >= pos && position.character <= pos + (matches[idx] ? matches[idx].length : -1));
@@ -157,8 +161,8 @@ const getCompletionItemInArray = (value: string, line: string, position: Positio
       }
     }
     let startVal = "";
-    if (matches[6]) {
-      if (!matches[6].endsWith(" ")) {
+    if (matches[6] || !matches[4]) {
+      if (matches[6] && !matches[6].endsWith(" ")) {
         startVal = " ";
       }
       startVal += '"';
