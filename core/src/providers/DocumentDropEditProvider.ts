@@ -1,6 +1,6 @@
 import { CancellationToken, DataTransfer, DocumentDropEdit, DocumentDropEditProvider, Position, TextDocument, Uri, workspace } from "vscode";
 import { Context } from "../context";
-import { TaipyStudioSettingsName } from "../utils/constants";
+import { TaipyStudioSettingsName, typeSuffix } from "../utils/constants";
 import { getPropertyToDropType } from "../utils/toml";
 import { textUriListMime } from "../utils/utils";
 import { getNodeFromUri, getPerspectiveFromUri, isUriEqual } from "./PerpectiveContentProvider";
@@ -57,7 +57,8 @@ export class ConfigDropEditProvider implements DocumentDropEditProvider {
               if (position.character <= endPos && position.character > startPos) {
                 const lastChar = line.text.substring(0, position.character).trim().at(-1);
                 if (lastChar == '"' || lastChar == "'" || lastChar == "[" || lastChar == ",") {
-                  dropEdit.insertText = (lastChar == '"' || lastChar == "'" ? ", " : "") + '"' + nodeName + '"' + (lastChar == "," ? ", " : "");
+                  const suffixedName = (workspace.getConfiguration(TaipyStudioSettingsName).get("editor.type.suffix.enabled", true)) ? nodeName + typeSuffix.section : nodeName;
+                  dropEdit.insertText = (lastChar == '"' || lastChar == "'" ? ", " : "") + '"' + suffixedName + '"' + (lastChar == "," ? ", " : "");
                 }
               }
             }
