@@ -67,6 +67,12 @@ export class ConfigFilesView {
       treeDataProvider: this.dataProvider,
     });
     this.refresh(lastSelectedUri);
+    
+    commands.registerCommand("taipy.config.revealInExplorer", this.revealInExplorer, this);
+  }
+  
+  private revealInExplorer(fileItem: ConfigFileItem) {
+    commands.executeCommand("revealInExplorer", fileItem.resourceUri);
   }
 
   async refresh(lastSelectedUri?: string): Promise<void> {
