@@ -34,6 +34,8 @@ import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalU
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
 import { cleanTomlParseError, handleTomlParseError, reportInconsistencies } from "./utils/errors";
 import { parseAsync } from "./iarna-toml/AsyncParser";
+import { ValidateFunction } from "ajv/dist/2020";
+import { getValidationFunction } from "./schema/validation";
 
 const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
 
@@ -60,6 +62,8 @@ export class Context {
   private readonly docChangedListener: Array<[ConfigEditorProvider, (document: TextDocument) => void]> = [];
   // editors
   private readonly configEditorProvider: ConfigEditorProvider;
+  // Json Schema Validator
+  private validateSchema: ValidateFunction<JsonMap>;
 
   private constructor(private readonly vsContext: ExtensionContext) {
     this.selectionCache = vsContext.workspaceState.get(Context.cacheName, {} as NodeSelectionCache);
@@ -94,11 +98,20 @@ export class Context {
     fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
     fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
     vsContext.subscriptions.push(fileSystemWatcher);
+    // directory watcher
+    const directoriesWatcher = workspace.createFileSystemWatcher("**/");
+    directoriesWatcher.onDidChange(this.onFileChange, this);
+    directoriesWatcher.onDidCreate(this.onFileCreateDelete, this);
+    directoriesWatcher.onDidDelete(this.onFileCreateDelete, this);
+    vsContext.subscriptions.push(directoriesWatcher);
+    // Json schema validator
+    getValidationFunction()
+      .then((fn) => (this.validateSchema = fn))
+      .catch(console.warn);
   }
 
   private async onDocumentChanged(e: TextDocumentChangeEvent) {
     if (this.tomlByUri[getOriginalUri(e.document.uri).toString()]) {
-      const dirty = e.document.isDirty;
       await this.refreshToml(e.document);
       this.docChangedListener.forEach(([t, l]) => l.call(t, e.document));
     }
@@ -113,7 +126,7 @@ export class Context {
   }
   unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
     const idx = this.docChangedListener.findIndex(([t, l]) => t === thisArg && l === listener);
-    idx > -1 && this.docChangedListener.splice(idx);
+    idx > -1 && this.docChangedListener.splice(idx, 1);
   }
 
   private createNewElement(nodeType: string) {
@@ -267,7 +280,8 @@ export class Context {
         ? await parseAsync(document.getText())
         : await parse.async(document.getText()));
       cleanTomlParseError(document);
-      reportInconsistencies(document, toml);
+      this.validateSchema(toml);
+      reportInconsistencies(document, toml, this.validateSchema.errors);
       return true;
     } catch (e) {
       handleTomlParseError(document, e);

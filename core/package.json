@@ -1,9 +1,18 @@
 {
-  "name": "taipy-studio",
-  "displayName": "Taipy Studio",
-  "description": "Visual Studio Code extension for Taipy",
+  "name": "taipy-studio-config",
+  "displayName": "Taipy Studio Configuration Builder",
+  "description": "Visual Studio Code extension for Taipy: Configuration Builder",
   "publisher": "Avaiga",
   "version": "0.0.1",
+  "homepage": "https://github.com/Avaiga/taipy-studio.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Avaiga/taipy-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Avaiga/taipy-studio/issues"
+  },
+  "icon": "assets/taipy-logo.png",
   "engines": {
     "vscode": "^1.64.0"
   },
@@ -275,8 +284,8 @@
   "scripts": {
     "build-this": "webpack --mode development",
     "watch-this": "webpack watch --mode development",
-    "vscode:package": "vsce package",
-    "vscode:prepublish": "npm run prod",
+    "vscode-package": "vsce package",
+    "vscode-prepublish": "npm run prod",
     "package": "rm -rf *.vsix && npm run build && vsce package",
     "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
     "prod": "concurrently -n vscode,webviews \"webpack --mode production\" \"cd webviews && webpack --mode production\"",
@@ -301,12 +310,14 @@
     "path": "^0.12.7",
     "ts-loader": "^9.2.6",
     "typescript": "^4.8.4",
+    "vsce": "^2.13.0",
     "webpack": "^5.69.1",
     "webpack-cli": "^4.9.2"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "@vscode/codicons": "^0.0.32",
+    "ajv": "^8.11.0",
     "vscode-nls": "^5.2.0"
   }
 }

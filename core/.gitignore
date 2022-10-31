@@ -1,6 +1,7 @@
 *~
 
 dist
+*.vsix
 
 # Node.JS
 node_modules/
