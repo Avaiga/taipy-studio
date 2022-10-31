@@ -99,11 +99,17 @@ const defaultContents: Record<string, Record<string, string | string[]>> = {
 };
 export const getDefaultContent = (nodeType: string, nodeName: string) => ({ [nodeType]: { [nodeName]: defaultContents[nodeType] || {} } });
 
-export const getUnsuffixedName = (name: string) => name.split(":", 2)[0];
+export const getUnsuffixedName = (name: string) => {
+  const p = name.lastIndexOf(":");
+  if (p == -1){
+    return name;
+  }
+  return name.substring(0, p);
+}
 
-export const getSectionName = (name: string, withSection?: boolean) => {
+export const getSectionName = (name: string, withSection?: boolean, sectionName = "SECTION") => {
   if (withSection === undefined) {
     withSection = workspace.getConfiguration(TaipyStudioSettingsName).get("editor.type.suffix.enabled", true)
   }
-  return withSection ? name + ":SECTION" : name;
+  return withSection ? name + ":" + sectionName : name;
 };
