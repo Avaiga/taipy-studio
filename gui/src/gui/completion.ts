@@ -7,10 +7,9 @@ import {
     Position,
     TextDocument,
 } from "vscode";
-import defaultElementProperties from "../assets/defaultElementProperties.json";
+import { defaultElementList, defaultElementProperties } from "./constant";
 
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
-const defaultElementList = Object.keys(defaultElementProperties);
 
 export class GuiCompletionItemProvider implements CompletionItemProvider {
     public provideCompletionItems(

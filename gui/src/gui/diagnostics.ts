@@ -49,7 +49,7 @@ const createInfoDiagnostic = (message: string, code: string, range: Range): Diag
         severity: DiagnosticSeverity.Information,
         message: message,
         code: code,
-        source: "Taipy Studio Gui",
+        source: "taipy-studio-gui",
         range: range,
     };
 };

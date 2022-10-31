@@ -1,4 +1,5 @@
-import { commands, Diagnostic, DocumentFilter, ExtensionContext, languages, QuickPickItem, TextDocument, window, workspace } from "vscode";
+import { Diagnostic, DocumentFilter, ExtensionContext, languages, TextDocument, window, workspace } from "vscode";
+import { GenerateGuiCommand } from "./command";
 import { GuiCompletionItemProvider } from "./completion";
 import { getMdDiagnostics, getPyDiagnostics } from "./diagnostics";
 
@@ -47,17 +48,6 @@ export class GuiContext {
     }
 
     private registerGenerateElementCommand(context: ExtensionContext): void {
-        context.subscriptions.push(
-            commands.registerCommand("guiStudio.generateElement", async () => {
-                const quickPick = window.createQuickPick();
-                // quickPick.items = Object.keys(options).map((label) => ({ label }));
-                quickPick.items = [{label: "Hello"}, {label: "Bye"}];
-                quickPick.onDidChangeSelection((selection) => {
-                    console.log(selection);
-                });
-                quickPick.onDidHide(() => quickPick.dispose());
-                quickPick.show();
-            })
-        );
+        GenerateGuiCommand.register(context);
     }
 }
