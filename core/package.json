@@ -78,6 +78,11 @@
         "command": "taipy.config.scenario.create",
         "title": "%extension.commands.taipy.config.scenario.create%",
         "icon": "$(add)"
+      },
+      {
+        "command": "taipy.config.revealInExplorer",
+        "title": "%extension.commands.taipy.config.revealInExplorer%",
+        "icon": "$(go-to-file)"
       }
     ],
     "customEditors": [
@@ -193,11 +198,15 @@
       "view/item/context": [
         {
           "command": "taipy.perspective.show",
-          "when": "viewItem != default && view == taipy-configs || viewItem != default && view == taipy-config-pipelines || viewItem != default && view == taipy-config-scenarios"
+          "when": "view == taipy-configs || viewItem != default && view == taipy-config-pipelines || viewItem != default && view == taipy-config-scenarios"
         },
         {
           "command": "taipy.diagram.addNode",
           "when": "viewItem != default && view == taipy-config-datanodes || viewItem != default && view == taipy-config-tasks || viewItem != default && view == taipy-config-pipelines"
+        },
+        {
+          "command": "taipy.config.revealInExplorer",
+          "when": "view == taipy-configs"
         }
       ],
       "webview/context": [

@@ -2,6 +2,7 @@
 	"extension.commands.taipy.hello": "Hello Taipy",
     "extension.commands.taipy.config.refresh": "Taipy: Refresh",
     "extension.commands.taipy.config.clearCache": "Taipy: Clear Config cache",
+    "extension.commands.taipy.config.revealInExplorer": "Taipy: Reveal file in explorer view",
     "extension.commands.taipy.config.datanode.create": "Taipy: Create New Datanode",
     "extension.commands.taipy.config.task.create": "Taipy: Create New Task",
     "extension.commands.taipy.config.pipeline.create": "Taipy: Create New Pipeline",
