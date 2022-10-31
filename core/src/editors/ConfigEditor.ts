@@ -48,7 +48,7 @@ import { TaipyStudioSettingsName } from "../utils/constants";
 import { getInvalidEntityTypeForPerspective, getNewNameInputError, getNewNameInputPrompt, getNewNameInputTitle } from "../utils/l10n";
 import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
-import { getDefaultContent, getDescendantProperties, getParentType, getPropertyValue, toDisplayModel } from "../utils/toml";
+import { getDefaultContent, getDescendantProperties, getParentType, getPropertyValue, getSectionName, getUnsuffixedName, toDisplayModel } from "../utils/toml";
 import { Positions } from "../../shared/diagram";
 import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
 import { ConfigCompletionItemProvider } from "../providers/CompletionItemProvider";
@@ -334,7 +334,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
         const linksPos = links[PosSymbol] as CodePos[];
         const propertyRange = linksPos && linksPos.length && new Range(linksPos[0].line, linksPos[0].col, linksPos.at(-1).line, linksPos.at(-1).col);
         if (propertyRange) {
-          const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
+          const newLinks = create ? [...links, getSectionName(childName)] : deleteAll ? [] : links.filter((l) => getUnsuffixedName(l) != childName);
           edits.push(TextEdit.replace(propertyRange, stringify.value(newLinks).trimEnd()));
           return edits;
         }
@@ -343,7 +343,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
         if (table) {
           // @ts-ignore
           const codePos = table[PosSymbol].at(-1) as CodePos;
-          edits.push(TextEdit.insert(new Position(codePos.line, codePos.col), property + " = " + stringify.value(create ? [childName] : []) + "\n"));
+          edits.push(TextEdit.insert(new Position(codePos.line, codePos.col), property + " = " + stringify.value(create ? [getSectionName(childName)] : []) + "\n"));
           return edits;
         }
       }
@@ -355,12 +355,12 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       const text = line.text.trim();
       if (sectionFound) {
         if (text.split("=", 2)[0].trim() == property) {
-          const targetFound = (!create && deleteAll) || links.some((n) => n == childName);
+          const targetFound = (!create && deleteAll) || links.some((n) => getUnsuffixedName(n) == childName);
           if (create == targetFound || (!found && !create && deleteAll)) {
             break;
           }
           const range = line.range.with({ start: line.range.start.with({ character: line.firstNonWhitespaceCharacterIndex }) });
-          const newLinks = create ? [...links, childName] : deleteAll ? [] : links.filter((l) => l != childName);
+          const newLinks = create ? [...links, getSectionName(childName)] : deleteAll ? [] : links.filter((l) => getUnsuffixedName(l) != childName);
           edits.push(
             TextEdit.replace(
               range,
@@ -385,7 +385,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
         if (!found) {
           const start =
             i + 1 < realDocument.lineCount ? realDocument.lineAt(i + 1).text.substring(0, realDocument.lineAt(i + 1).firstNonWhitespaceCharacterIndex) : "";
-          edits.push(TextEdit.insert(line.range.end, "\n" + start + property + " = " + stringify.value(create ? [childName] : []).trimEnd()));
+          edits.push(TextEdit.insert(line.range.end, "\n" + start + property + " = " + stringify.value(create ? [getSectionName(childName)] : []).trimEnd()));
           break;
         }
         sectionFound = true;
@@ -563,7 +563,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
     const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
 
-    const config = workspace.getConfiguration(TaipyStudioSettingsName, document);
+    const config = workspace.getConfiguration(TaipyStudioSettingsName);
     const configObj = nodeTypes4config.reduce(
       (co, nodeType) => {
         co["icons"][nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");

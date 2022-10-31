@@ -1,6 +1,9 @@
+import { workspace } from "vscode";
+
 import { DisplayModel, Link, LinkName, Nodes, Positions } from "../../shared/diagram";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
 import { getChildType } from "../../shared/toml";
+import { TaipyStudioSettingsName } from "./constants";
 
 const TaskInputs = "inputs";
 const TaskOutputs = "outputs";
@@ -69,10 +72,14 @@ export const toDisplayModel = (toml: any, positions?: Positions): DisplayModel =
       if (childType) {
         outputProp &&
           Array.isArray(n[outputProp]) &&
-          n[outputProp].forEach((childName: string) => links.push(getLink([nodeType, nodeName, childType, childName] as LinkName, positions)));
+          n[outputProp].forEach((childName: string) =>
+            links.push(getLink([nodeType, nodeName, childType, getUnsuffixedName(childName)] as LinkName, positions))
+          );
         inputProp &&
           Array.isArray(n[inputProp]) &&
-          n[inputProp].forEach((childName: string) => links.push(getLink([childType, childName, nodeType, nodeName] as LinkName, positions)));
+          n[inputProp].forEach((childName: string) =>
+            links.push(getLink([childType, getUnsuffixedName(childName), nodeType, nodeName] as LinkName, positions))
+          );
       }
     });
   });
@@ -91,3 +98,18 @@ const defaultContents: Record<string, Record<string, string | string[]>> = {
   [Scenario]: { [ScenarioPipelines]: [] },
 };
 export const getDefaultContent = (nodeType: string, nodeName: string) => ({ [nodeType]: { [nodeName]: defaultContents[nodeType] || {} } });
+
+export const getUnsuffixedName = (name: string) => {
+  const p = name.lastIndexOf(":");
+  if (p == -1){
+    return name;
+  }
+  return name.substring(0, p);
+}
+
+export const getSectionName = (name: string, withSection?: boolean, sectionName = "SECTION") => {
+  if (withSection === undefined) {
+    withSection = workspace.getConfiguration(TaipyStudioSettingsName).get("editor.type.suffix.enabled", true)
+  }
+  return withSection ? name + ":" + sectionName : name;
+};

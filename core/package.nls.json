@@ -25,6 +25,7 @@
 
     "config.editor.drop.enabled": "Should the config editor accept drops.",
     "config.editor.reveal.enabled": "Should the config editor reveal the selected nodes.",
+    "config.editor.type.suffix.enabled.desc": "Should Config add Type Suffix.",
     "config.diagram.datanode.color.desc": "The color for the DataNode Diagram element.",
     "config.diagram.datanode.icon.desc": "The icon for the DataNode Diagram element.",
     "config.diagram.task.color.desc": "The color for the Task Diagram element.",

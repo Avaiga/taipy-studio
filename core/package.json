@@ -3,7 +3,7 @@
   "displayName": "Taipy Studio Configuration Builder",
   "description": "Visual Studio Code extension for Taipy: Configuration Builder",
   "publisher": "Avaiga",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "homepage": "https://github.com/Avaiga/taipy-studio.git",
   "repository": {
     "type": "git",
@@ -220,6 +220,11 @@
           "default": "true",
           "description": "%config.editor.reveal.enabled%"
         },
+        "taipyStudio.editor.type.suffix.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.editor.type.suffix.enabled.desc%"
+        },
         "taipyStudio.diagram.datanode.color": {
           "type": "string",
           "format": "color-hex",
@@ -286,24 +291,24 @@
     "watch-this": "webpack watch --mode development",
     "vscode-package": "vsce package",
     "vscode-prepublish": "npm run prod",
-    "package": "rm -rf *.vsix && npm run build && vsce package",
+    "package": "rm -rf *.vsix && npm run prod && vsce package",
     "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
     "prod": "concurrently -n vscode,webviews \"webpack --mode production\" \"cd webviews && webpack --mode production\"",
     "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\""
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",
-    "@types/mocha": "^9.1.0",
+    "@types/mocha": "^10.0.0",
     "@types/node": "^16.11.57",
     "@types/vscode": "^1.64.0",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
-    "@vscode/l10n-dev": "^0.0.15",
+    "@vscode/l10n-dev": "^0.0.16",
     "@vscode/test-electron": "^2.1.2",
     "concurrently": "^7.4.0",
     "copy-webpack-plugin": "^11.0.0",
     "dotenv-webpack": "^8.0.1",
-    "electron": "^20.1.3",
+    "electron": "^21.2.0",
     "eslint": "^8.9.0",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",

@@ -230,10 +230,10 @@ export class Context {
         }
       }
     }
-    const editors = window.visibleTextEditors.filter((te) => isUriEqual(docUri, te.document.uri));
+    const editors = window.visibleTextEditors.filter((te) => isUriEqual(docUri, te.document.uri) && te !== window.activeTextEditor); // don't reveal in the active editor
     if (editors.length) {
       const doc = editors[0].document;
-      const section = nodeType + "." + name;
+      const section = `[${nodeType}.${name}`;
       for (let i = 0; i < doc.lineCount; i++) {
         const line = doc.lineAt(i);
         const p = line.text.indexOf(section);
