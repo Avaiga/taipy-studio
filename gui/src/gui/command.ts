@@ -53,6 +53,7 @@ export class GenerateGuiCommand {
             detail: propertyObject[label as keyof typeof propertyObject],
         }));
         quickPick.canSelectMany = true;
+        quickPick.title = `Select properties for element '${guiElement.elementName}'`;
         quickPick.onDidAccept(() => {
             guiElement.propertyList = quickPick.selectedItems.map((v) => v.label);
             console.log(guiElement);
@@ -65,11 +66,8 @@ export class GenerateGuiCommand {
 
     static addGuiElement(guiElement: GuiElement) {
         let propertyList: string[] = [];
-        if (guiElement.elementValue) {
-            propertyList.push(guiElement.elementValue);
-        }
-        propertyList.push(guiElement.elementName);
-        propertyList = [...propertyList, ...guiElement.propertyList];
+        guiElement.elementValue && propertyList.push(guiElement.elementValue);
+        propertyList = [...propertyList, guiElement.elementName, ...guiElement.propertyList];
         const elementString = `<|${propertyList.join("|")}|>`;
         let edit = new WorkspaceEdit();
         let activeEditor = window.activeTextEditor;
