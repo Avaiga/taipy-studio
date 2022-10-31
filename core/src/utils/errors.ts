@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, languages, Range, TextDocument, ThemeColor, window, workspace } from "vscode";
+import { Diagnostic, DiagnosticSeverity, languages, Range, TextDocument, ThemeColor, Uri, window, workspace } from "vscode";
 import { JsonMap } from "@iarna/toml";
 import { ErrorObject } from "ajv";
 
@@ -39,9 +39,8 @@ export const handleTomlParseError = (doc: TextDocument, e: Error & TomlInfo) => 
   setTimeout(() => sbi.dispose(), workspace.getConfiguration(TaipyStudioSettingsName).get("status.timeout", 2000));
 };
 
-export const cleanTomlParseError = (doc: TextDocument) => {
-  DiagnoticsCollection.delete(getOriginalUri(doc.uri));
-};
+export const cleanTomlParseError = (uri: Uri) => 
+  DiagnoticsCollection.delete(getOriginalUri(uri));
 
 export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaErrors: ErrorObject[] | null) => {
   // @ts-ignore

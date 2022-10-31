@@ -168,6 +168,7 @@ export class Context {
   }
 
   private async onFileCreateDelete(uri: Uri): Promise<void> {
+    cleanTomlParseError(uri);
     this.configFilesView.refresh(this.selectUri?.toString());
   }
 
@@ -279,7 +280,7 @@ export class Context {
       const toml = (this.tomlByUri[document.uri.toString()] = workspace.getConfiguration(TaipyStudioSettingsName).get("parser.usePositions", true)
         ? await parseAsync(document.getText())
         : await parse.async(document.getText()));
-      cleanTomlParseError(document);
+      cleanTomlParseError(document.uri);
       this.validateSchema(toml);
       reportInconsistencies(document, toml, this.validateSchema.errors);
       return true;
