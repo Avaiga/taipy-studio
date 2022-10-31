@@ -76,5 +76,6 @@ export class GenerateGuiCommand {
         }
         edit.insert(activeEditor?.document.uri, activeEditor?.selection.active, elementString);
         workspace.applyEdit(edit);
+        window.showInformationMessage('Gui Element Added');
     }
 }
