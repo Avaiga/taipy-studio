@@ -50,7 +50,7 @@ export class Context {
   }
   private static readonly cacheName = "taipy.selectedNodes.cache";
 
-  private configFileUri: Uri | null = null;
+  private configFileUri?: Uri;
   private readonly configFilesView: ConfigFilesView;
   private readonly treeProviders: ConfigNodesProvider<ConfigItem>[] = [];
   private readonly treeViews: TreeView<TreeItem>[] = [];
@@ -95,14 +95,14 @@ export class Context {
     // file system watcher
     const fileSystemWatcher = workspace.createFileSystemWatcher(configFilePattern);
     fileSystemWatcher.onDidChange(this.onFileChange, this);
-    fileSystemWatcher.onDidCreate(this.onFileCreateDelete, this);
-    fileSystemWatcher.onDidDelete(this.onFileCreateDelete, this);
+    fileSystemWatcher.onDidCreate(this.onFileCreate, this);
+    fileSystemWatcher.onDidDelete(this.onFileDelete, this);
     vsContext.subscriptions.push(fileSystemWatcher);
     // directory watcher
     const directoriesWatcher = workspace.createFileSystemWatcher("**/");
     directoriesWatcher.onDidChange(this.onFileChange, this);
-    directoriesWatcher.onDidCreate(this.onFileCreateDelete, this);
-    directoriesWatcher.onDidDelete(this.onFileCreateDelete, this);
+    directoriesWatcher.onDidCreate(this.onFileCreate, this);
+    directoriesWatcher.onDidDelete(this.onFileDelete, this);
     vsContext.subscriptions.push(directoriesWatcher);
     // Json schema validator
     getValidationFunction()
@@ -167,9 +167,17 @@ export class Context {
     }
   }
 
-  private async onFileCreateDelete(uri: Uri): Promise<void> {
+  private async onFileCreate(uri: Uri): Promise<void> {
+    this.configFilesView.refresh(this.configFileUri?.toString());
+  }
+
+  private async onFileDelete(uri: Uri): Promise<void> {
     cleanTomlParseError(uri);
-    this.configFilesView.refresh(this.selectUri?.toString());
+    if (isUriEqual(uri, this.configFileUri)) {
+      this.configFileUri = undefined;
+      this.treeProviders.forEach((p) => p.refresh(this));
+    } 
+    this.configFilesView.refresh(this.configFileUri?.toString());
   }
 
   getConfigUri() {
