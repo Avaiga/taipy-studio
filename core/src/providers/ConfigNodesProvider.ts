@@ -119,14 +119,18 @@ export class ConfigNodesProvider<T extends ConfigItem = ConfigItem> implements T
     return this.configItems.find((i) => i.resourceUri.toString() == uri);
   }
 
-  async refresh(context: Context, uri: Uri): Promise<void> {
-    const configNodeEntries = context.getConfigNodes(this.nodeType);
-    const configNodes: T[] = configNodeEntries.map(([key, node]) => {
-      const item = new this.nodeCtor(key, node);
-      item.setResourceUri(uri);
-      return item;
-    });
-    this.configItems = configNodes;
+  async refresh(context: Context, uri?: Uri): Promise<void> {
+    if (uri) {
+      const configNodeEntries = context.getConfigNodes(this.nodeType);
+      const configNodes: T[] = configNodeEntries.map(([key, node]) => {
+        const item = new this.nodeCtor(key, node);
+        item.setResourceUri(uri);
+        return item;
+      });
+      this.configItems = configNodes;
+    } else {
+      this.configItems = [];
+    }
     this._onDidChangeTreeData.fire(undefined);
   }
 

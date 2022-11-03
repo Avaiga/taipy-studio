@@ -102,13 +102,14 @@ export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaEr
         })
   );
   schemaErrors && schemaErrors.forEach(err => {
-    const element = err.instancePath.split("/").filter(p => p).reduce((o, path) => o && o[path], toml);
+    const paths = err.instancePath.split("/").filter(p => p);
+    const element = paths.reduce((o, path) => o && o[path], toml);
     // @ts-ignore
     const codePos = element && Array.isArray(element[PosSymbol]) && element[PosSymbol][0] as CodePos;
     codePos && diagnostics.push({
       severity: DiagnosticSeverity.Warning,
       range: new Range(codePos.line, codePos.col, codePos.line, codePos.col),
-      message: `${err.message}: ${err.keyword == "enum" ? err.params.allowedValues : ""}`,
+      message: `${paths.join(".")} ${err.message}${err.keyword == "enum" ? `: ${err.params.allowedValues}` : ""}.`,
       source: "schema validation",
     });
   })
