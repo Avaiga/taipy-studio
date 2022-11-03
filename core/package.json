@@ -312,7 +312,7 @@
     "@types/vscode": "^1.64.0",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
-    "@vscode/l10n-dev": "^0.0.16",
+    "@vscode/l10n-dev": "^0.0.17",
     "@vscode/test-electron": "^2.1.2",
     "concurrently": "^7.4.0",
     "copy-webpack-plugin": "^11.0.0",

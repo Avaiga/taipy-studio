@@ -36,6 +36,7 @@ import {
   Refresh,
   RemoveExtraEntities,
   RemoveNode,
+  SaveAsPngUrl,
   SaveDocument,
   Select,
   SetExtraEntities,
@@ -208,6 +209,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     // Setup initial content for the webview
     webviewPanel.webview.options = {
       enableScripts: true,
+      localResourceRoots: [this.joinPaths()],
     };
     // retrieve and work with the original document
     const realDocument = await getOriginalDocument(document);
@@ -270,6 +272,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
         case SaveDocument:
           this.saveDocument(realDocument);
           break;
+        case SaveAsPngUrl:
+          this.saveAsPng(e.url);
+          break;
       }
     }, this);
 
@@ -285,6 +290,11 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
   private async saveDocument(document: TextDocument) {
     return !document.isDirty || document.save();
+  }
+
+  private async saveAsPng(url: string) {
+    const newFileUri = await window.showSaveDialog({ filters: { Images: ["png"] } });
+    newFileUri && workspace.fs.writeFile(newFileUri, Buffer.from(url.split(",", 2).at(-1), "base64url"));
   }
 
   private async applyEdits(uri: Uri, edits: TextEdit[]) {
@@ -343,7 +353,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
         if (table) {
           // @ts-ignore
           const codePos = table[PosSymbol].at(-1) as CodePos;
-          edits.push(TextEdit.insert(new Position(codePos.line, codePos.col), property + " = " + stringify.value(create ? [getSectionName(childName)] : []) + "\n"));
+          edits.push(
+            TextEdit.insert(new Position(codePos.line, codePos.col), property + " = " + stringify.value(create ? [getSectionName(childName)] : []) + "\n")
+          );
           return edits;
         }
       }
@@ -550,7 +562,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   }
 
   private joinPaths(...pathSegments: string[]): Uri {
-    // TODO remove dist from production ?
     return Uri.joinPath(this.extensionPath, "dist", ...pathSegments);
   }
 
@@ -566,7 +577,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const config = workspace.getConfiguration(TaipyStudioSettingsName);
     const configObj = nodeTypes4config.reduce(
       (co, nodeType) => {
-        co["icons"][nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");
+        co.icons[nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");
         return co;
       },
       { icons: {} }
@@ -582,7 +593,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
                   <meta charSet="utf-8"/>
                   <meta http-equiv="Content-Security-Policy" 
                         content="default-src 'none';
-                        img-src vscode-resource: https:;
+                        img-src vscode-resource: https: data:;
                         font-src ${webview.cspSource};
                         style-src ${webview.cspSource} 'unsafe-inline';
                         script-src ${getCspScriptSrc(nonce)};">             
