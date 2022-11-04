@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, QuickPickItem, window, workspace, WorkspaceEdit } from "vscode";
+import { commands, ExtensionContext, window, workspace, WorkspaceEdit } from "vscode";
 import { defaultElementList, defaultElementProperties } from "./constant";
 import { countChar } from "./utils";
 
@@ -56,7 +56,6 @@ export class GenerateGuiCommand {
         quickPick.title = `Select properties for element '${guiElement.elementName}'`;
         quickPick.onDidAccept(() => {
             guiElement.propertyList = quickPick.selectedItems.map((v) => v.label);
-            console.log(guiElement);
             quickPick.dispose();
             GenerateGuiCommand.addGuiElement(guiElement);
         });
