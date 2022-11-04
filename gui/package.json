@@ -14,7 +14,7 @@
     "workspaceContains:**/*.py",
     "onLanguage:python",
     "onLanguage:markdown",
-    "onCommand:guiStudio.generateElement"
+    "onCommand:taipy.gui.md.generate"
   ],
   "main": "./dist/extension.js",
   "capabilities": {
@@ -27,7 +27,7 @@
   "contributes": {
 		"commands": [
 			{
-				"command": "guiStudio.generateElement",
+				"command": "taipy.gui.md.generate",
 				"title": "Generate Gui Element"
 			}
 		]

@@ -39,8 +39,8 @@ export class GuiContext {
     }
 
     private registerCompletionItemProvider(context: ExtensionContext): void {
-        const markdownFilter: DocumentFilter = { language: "markdown", scheme: "file" };
-        const pythonFilter: DocumentFilter = { language: "python", scheme: "file" };
+        const markdownFilter: DocumentFilter = { language: "markdown" };
+        const pythonFilter: DocumentFilter = { language: "python" };
         context.subscriptions.push(
             languages.registerCompletionItemProvider(markdownFilter, new GuiCompletionItemProvider(), "|")
         );

@@ -15,11 +15,11 @@ export class GenerateGuiCommand {
 
     private constructor(readonly context: ExtensionContext) {
         context.subscriptions.push(
-            commands.registerCommand("guiStudio.generateElement", GenerateGuiCommand.handleGenerateElementCommand)
+            commands.registerCommand("taipy.gui.md.generate", GenerateGuiCommand.handleGenerateElementCommand)
         );
     }
 
-    static async handleGenerateElementCommand() {
+    private static async handleGenerateElementCommand() {
         const result = await window.showQuickPick(defaultElementList, {
             placeHolder: "Select an element type",
         });
@@ -27,7 +27,7 @@ export class GenerateGuiCommand {
         await GenerateGuiCommand.handleElementNameSelection(guiElement);
     }
 
-    static async handleElementNameSelection(guiElement: GuiElement) {
+    private static async handleElementNameSelection(guiElement: GuiElement) {
         const result = await window.showInputBox({
             placeHolder: "Enter element value",
             validateInput: (text) => {
@@ -41,7 +41,7 @@ export class GenerateGuiCommand {
         await GenerateGuiCommand.handleElementPropertySelection(guiElement);
     }
 
-    static async handleElementPropertySelection(guiElement: GuiElement) {
+    private static async handleElementPropertySelection(guiElement: GuiElement) {
         const quickPick = window.createQuickPick();
         const propertyObject = defaultElementProperties[guiElement.elementName as keyof typeof defaultElementProperties];
         if (Object.keys(propertyObject).length === 0) {
@@ -63,12 +63,12 @@ export class GenerateGuiCommand {
         quickPick.show();
     }
 
-    static addGuiElement(guiElement: GuiElement) {
+    private static addGuiElement(guiElement: GuiElement) {
         let propertyList: string[] = [];
         guiElement.elementValue && propertyList.push(guiElement.elementValue);
         propertyList = [...propertyList, guiElement.elementName, ...guiElement.propertyList];
         const elementString = `<|${propertyList.join("|")}|>`;
-        let edit = new WorkspaceEdit();
+        const edit = new WorkspaceEdit();
         let activeEditor = window.activeTextEditor;
         if (!activeEditor) {
             return;
