@@ -6,7 +6,7 @@ export const getMdDiagnostics = async (doc: TextDocument): Promise<Diagnostic[]>
     text.forEach((s, i) => {
         if (s.includes("<|") && !s.includes("|>")) {
             diagnostics.push(
-                createInfoDiagnostic(
+                createWarningDiagnostic(
                     "Missing closing syntax `|>'",
                     "missing-closing-tag",
                     new Range(i, s.indexOf("<|"), i, s.length)
@@ -15,7 +15,7 @@ export const getMdDiagnostics = async (doc: TextDocument): Promise<Diagnostic[]>
         }
         if (s.includes("|>") && !s.includes("<|")) {
             diagnostics.push(
-                createInfoDiagnostic("Missing opening syntax `<|'", "missing-opening-tag", new Range(i, 0, i, s.indexOf("|>")))
+                createWarningDiagnostic("Missing opening syntax `<|'", "missing-opening-tag", new Range(i, 0, i, s.indexOf("|>")))
             );
         }
     });
@@ -28,7 +28,7 @@ export const getPyDiagnostics = async (doc: TextDocument): Promise<Diagnostic[]>
     text.forEach((s, i) => {
         if (s.includes("<|") && !s.includes("|>")) {
             diagnostics.push(
-                createInfoDiagnostic(
+                createWarningDiagnostic(
                     "Missing closing syntax `|>'",
                     "missing-closing-tag",
                     new Range(i, s.indexOf("<|"), i, s.length)
@@ -37,19 +37,19 @@ export const getPyDiagnostics = async (doc: TextDocument): Promise<Diagnostic[]>
         }
         if (s.includes("|>") && !s.includes("<|")) {
             diagnostics.push(
-                createInfoDiagnostic("Missing opening syntax `<|'", "missing-opening-tag", new Range(i, 0, i, s.indexOf("|>")))
+                createWarningDiagnostic("Missing opening syntax `<|'", "missing-opening-tag", new Range(i, 0, i, s.indexOf("|>")))
             );
         }
     });
     return diagnostics;
 };
 
-const createInfoDiagnostic = (message: string, code: string, range: Range): Diagnostic => {
+const createWarningDiagnostic = (message: string, code: string, range: Range): Diagnostic => {
     return {
-        severity: DiagnosticSeverity.Information,
+        severity: DiagnosticSeverity.Warning,
         message: message,
         code: code,
-        source: "Taipy Studio Gui",
+        source: "taipy-studio-gui",
         range: range,
     };
 };

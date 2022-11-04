@@ -13,7 +13,8 @@
     "workspaceContains:**/*.md",
     "workspaceContains:**/*.py",
     "onLanguage:python",
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onCommand:taipy.gui.md.generate"
   ],
   "main": "./dist/extension.js",
   "capabilities": {
@@ -23,6 +24,14 @@
       "triggerCharacters": ["."]
     }
   },
+  "contributes": {
+		"commands": [
+			{
+				"command": "taipy.gui.md.generate",
+				"title": "Generate Gui Element"
+			}
+		]
+	},
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",

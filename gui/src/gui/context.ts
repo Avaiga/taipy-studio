@@ -1,4 +1,5 @@
 import { Diagnostic, DocumentFilter, ExtensionContext, languages, TextDocument, window, workspace } from "vscode";
+import { GenerateGuiCommand } from "./command";
 import { GuiCompletionItemProvider } from "./completion";
 import { getMdDiagnostics, getPyDiagnostics } from "./diagnostics";
 
@@ -10,6 +11,7 @@ export class GuiContext {
     private constructor(readonly context: ExtensionContext) {
         this.registerMarkdownDiagnostics(context);
         this.registerCompletionItemProvider(context);
+        this.registerGenerateElementCommand(context);
     }
 
     private registerMarkdownDiagnostics(context: ExtensionContext): void {
@@ -37,9 +39,15 @@ export class GuiContext {
     }
 
     private registerCompletionItemProvider(context: ExtensionContext): void {
-        const markdownFilter: DocumentFilter = { language: "markdown", scheme: "file" };
-        const pythonFilter: DocumentFilter = { language: "python", scheme: "file" };
-        context.subscriptions.push(languages.registerCompletionItemProvider(markdownFilter, new GuiCompletionItemProvider(), '|'));
-        context.subscriptions.push(languages.registerCompletionItemProvider(pythonFilter, new GuiCompletionItemProvider(), '|'));
+        const markdownFilter: DocumentFilter = { language: "markdown" };
+        const pythonFilter: DocumentFilter = { language: "python" };
+        context.subscriptions.push(
+            languages.registerCompletionItemProvider(markdownFilter, new GuiCompletionItemProvider(), "|")
+        );
+        context.subscriptions.push(languages.registerCompletionItemProvider(pythonFilter, new GuiCompletionItemProvider(), "|"));
+    }
+
+    private registerGenerateElementCommand(context: ExtensionContext): void {
+        GenerateGuiCommand.register(context);
     }
 }
