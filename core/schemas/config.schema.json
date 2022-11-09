@@ -56,7 +56,13 @@
           },
           "default_data": {
             "description": "storage_type: pickle, in_memory specific.",
-            "type": ["string", "array", "object", "integer", "boolean"]
+            "type": [
+              "string",
+              "array",
+              "object",
+              "integer",
+              "boolean"
+            ]
           },
           "has_header": {
             "description": "storage_type: csv, excel specific. Boolean value as a string.",
@@ -243,7 +249,14 @@
           },
           "frequency": {
             "description": "The recurrence of the scenarios instantiated from this configuration. Based on this frequency the scenarios will be attached to the right cycles.",
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "DAILY",
+              "WEEKLY",
+              "MONTHLY",
+              "QUARTERLY",
+              "YEARLY"
+            ]
           },
           "comparators": {
             "description": "The list of functions used to compare scenarios. A comparator function is attached to a scenario's data node configuration. During the scenario comparison, each comparator is applied to all the data nodes instantiated from the data node configuration attached to the comparator.",
@@ -278,7 +291,7 @@
       }
     },
     "JOB": {
-      "description": "Scenarios",
+      "description": "Job",
       "type": "object",
       "properties": {
         "mode": {

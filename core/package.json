@@ -32,63 +32,63 @@
     "commands": [
       {
         "command": "taipy.hello",
-        "title": "%extension.commands.taipy.hello%"
+        "title": "%taipy.config.commands.taipy.hello%"
       },
       {
         "command": "taipy.config.refresh",
-        "title": "%extension.commands.taipy.config.refresh%",
+        "title": "%taipy.config.commands.taipy.config.refresh%",
         "icon": "$(refresh)"
       },
       {
         "command": "taipy.config.clearCache",
-        "title": "%extension.commands.taipy.config.clearCache%",
+        "title": "%taipy.config.commands.taipy.config.clearCache%",
         "icon": "$(clear-all)"
       },
       {
         "command": "taipy.perspective.show",
-        "title": "%extension.commands.taipy.perspective.show%",
+        "title": "%taipy.config.commands.taipy.perspective.show%",
         "icon": "$(type-hierarchy)"
       },
       {
         "command": "taipy.perspective.showFromDiagram",
-        "title": "%extension.commands.taipy.perspective.show%",
+        "title": "%taipy.config.commands.taipy.perspective.show%",
         "icon": "$(type-hierarchy)"
       },
       {
         "command": "taipy.diagram.addNode",
-        "title": "%extension.commands.taipy.diagram.addNode%",
+        "title": "%taipy.config.commands.taipy.diagram.addNode%",
         "icon": "$(add)"
       },
       {
         "command": "taipy.config.datanode.create",
-        "title": "%extension.commands.taipy.config.datanode.create%",
+        "title": "%taipy.config.commands.taipy.config.datanode.create%",
         "icon": "$(add)"
       },
       {
         "command": "taipy.config.task.create",
-        "title": "%extension.commands.taipy.config.task.create%",
+        "title": "%taipy.config.commands.taipy.config.task.create%",
         "icon": "$(add)"
       },
       {
         "command": "taipy.config.pipeline.create",
-        "title": "%extension.commands.taipy.config.pipeline.create%",
+        "title": "%taipy.config.commands.taipy.config.pipeline.create%",
         "icon": "$(add)"
       },
       {
         "command": "taipy.config.scenario.create",
-        "title": "%extension.commands.taipy.config.scenario.create%",
+        "title": "%taipy.config.commands.taipy.config.scenario.create%",
         "icon": "$(add)"
       },
       {
         "command": "taipy.config.revealInExplorer",
-        "title": "%extension.commands.taipy.config.revealInExplorer%",
+        "title": "%taipy.config.commands.taipy.config.revealInExplorer%",
         "icon": "$(go-to-file)"
       }
     ],
     "customEditors": [
       {
         "viewType": "taipy.config.editor.diagram",
-        "displayName": "%extension.customEditors.taipy-config-editor%",
+        "displayName": "%taipy.config.customEditors.taipy-config-editor%",
         "selector": [
           {
             "filenamePattern": "*.toml"
@@ -101,7 +101,7 @@
       "activitybar": [
         {
           "id": "taipy-config-panel",
-          "title": "%extension.viewsContainers.activitybar.taipy-config-panel%",
+          "title": "%taipy.config.viewsContainers.activitybar.taipy-config-panel%",
           "icon": "assets/TaipyLogoBW.svg"
         }
       ]
@@ -110,37 +110,37 @@
       "taipy-config-panel": [
         {
           "id": "taipy-configs",
-          "name": "%extension.views.taipy-config-panel.taipy-configs%"
+          "name": "%taipy.config.views.taipy-config-panel.taipy-configs%"
         },
         {
           "id": "taipy-config-datanodes",
-          "name": "%extension.views.taipy-config-panel.taipy-config-datanodes%",
+          "name": "%taipy.config.views.taipy-config-panel.taipy-config-datanodes%",
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
           "id": "taipy-config-tasks",
-          "name": "%extension.views.taipy-config-panel.taipy-config-tasks%",
+          "name": "%taipy.config.views.taipy-config-panel.taipy-config-tasks%",
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
           "id": "taipy-config-pipelines",
-          "name": "%extension.views.taipy-config-panel.taipy-config-pipelines%",
+          "name": "%taipy.config.views.taipy-config-panel.taipy-config-pipelines%",
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
           "id": "taipy-config-scenarios",
-          "name": "%extension.views.taipy-config-panel.taipy-config-scenarios%",
+          "name": "%taipy.config.views.taipy-config-panel.taipy-config-scenarios%",
           "when": "taipy:numberOfConfigFiles>0"
         },
         {
           "id": "taipy-config-auth",
-          "name": "%extension.views.taipy-config-panel.taipy-config-auth%",
+          "name": "%taipy.config.views.taipy-config-panel.taipy-config-auth%",
           "visibility": "collapsed"
         },
         {
           "type": "webview",
           "id": "taipy-config-details",
-          "name": "%extension.views.taipy-config-panel.taipy-config-details%",
+          "name": "%taipy.config.views.taipy-config-panel.taipy-config-details%",
           "icon": "assets/TaipyLogoBW.svg"
         }
       ]
@@ -148,23 +148,23 @@
     "viewsWelcome": [
       {
         "view": "taipy-configs",
-        "contents": "%extension.viewsWelcome.taipy-configs%"
+        "contents": "%taipy.config.viewsWelcome.taipy-configs%"
       },
       {
         "view": "taipy-config-datanodes",
-        "contents": "%extension.viewsWelcome.taipy-config-datanodes%"
+        "contents": "%taipy.config.viewsWelcome.taipy-config-datanodes%"
       },
       {
         "view": "taipy-config-tasks",
-        "contents": "%extension.viewsWelcome.taipy-config-tasks%"
+        "contents": "%taipy.config.viewsWelcome.taipy-config-tasks%"
       },
       {
         "view": "taipy-config-pipelines",
-        "contents": "%extension.viewsWelcome.taipy-config-pipelines%"
+        "contents": "%taipy.config.viewsWelcome.taipy-config-pipelines%"
       },
       {
         "view": "taipy-config-scenarios",
-        "contents": "%extension.viewsWelcome.taipy-config-scenarios%"
+        "contents": "%taipy.config.viewsWelcome.taipy-config-scenarios%"
       }
     ],
     "menus": {
@@ -222,75 +222,75 @@
         "taipyStudio.editor.drop.enabled": {
           "type": "boolean",
           "default": "true",
-          "description": "%config.editor.drop.enabled%"
+          "description": "%taipy.config.settings.editor.drop.enabled%"
         },
         "taipyStudio.editor.reveal.enabled": {
           "type": "boolean",
           "default": "true",
-          "description": "%config.editor.reveal.enabled%"
+          "description": "%taipy.config.settings.editor.reveal.enabled%"
         },
         "taipyStudio.editor.type.suffix.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "%config.editor.type.suffix.enabled.desc%"
+          "description": "%taipy.config.settings.editor.type.suffix.enabled.desc%"
         },
         "taipyStudio.diagram.datanode.color": {
           "type": "string",
           "format": "color-hex",
           "default": "#283282",
-          "description": "%config.diagram.datanode.color.desc%"
+          "description": "%taipy.config.settings.diagram.datanode.color.desc%"
         },
         "taipyStudio.diagram.datanode.icon": {
           "type": "string",
           "format": "icon",
           "default": "eye",
-          "description": "%config.diagram.datanode.icon.desc%"
+          "description": "%taipy.config.settings.diagram.datanode.icon.desc%"
         },
         "taipyStudio.diagram.task.color": {
           "type": "string",
           "format": "color-hex",
           "default": "#ff462b",
-          "description": "%config.diagram.task.color.desc%"
+          "description": "%taipy.config.settings.diagram.task.color.desc%"
         },
         "taipyStudio.diagram.task.icon": {
           "type": "string",
           "format": "icon",
           "default": "extensions",
-          "description": "%config.diagram.task.icon.desc%"
+          "description": "%taipy.config.settings.diagram.task.icon.desc%"
         },
         "taipyStudio.diagram.pipeline.color": {
           "type": "string",
           "format": "color-hex",
           "default": "#08a87d",
-          "description": "%config.diagram.pipeline.color.desc%"
+          "description": "%taipy.config.settings.diagram.pipeline.color.desc%"
         },
         "taipyStudio.diagram.pipeline.icon": {
           "type": "string",
           "format": "icon",
           "default": "symbol-class",
-          "description": "%config.diagram.pipeline.icon.desc%"
+          "description": "%taipy.config.settings.diagram.pipeline.icon.desc%"
         },
         "taipyStudio.diagram.scenario.color": {
           "type": "string",
           "format": "color-hex",
           "default": "#f0faff",
-          "description": "%config.diagram.scenario.color.desc%"
+          "description": "%taipy.config.settings.diagram.scenario.color.desc%"
         },
         "taipyStudio.diagram.scenario.icon": {
           "type": "string",
           "format": "icon",
           "default": "output",
-          "description": "%config.diagram.scenario.icon.desc%"
+          "description": "%taipy.config.settings.diagram.scenario.icon.desc%"
         },
         "taipyStudio.parser.usePositions": {
           "type": "boolean",
           "default": true,
-          "description": "%config.parser.usePositions.desc%"
+          "description": "%taipy.config.settings.parser.usePositions.desc%"
         },
         "taipyStudio.status.timeout": {
           "type": "integer",
           "default": 3000,
-          "description": "%config.status.timeout.desc%"
+          "description": "%taipy.config.settings.status.timeout.desc%"
         }
       }
     }
@@ -312,7 +312,7 @@
     "@types/vscode": "^1.64.0",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
-    "@vscode/l10n-dev": "^0.0.16",
+    "@vscode/l10n-dev": "^0.0.17",
     "@vscode/test-electron": "^2.1.2",
     "concurrently": "^7.4.0",
     "copy-webpack-plugin": "^11.0.0",
