@@ -13,3 +13,4 @@ export const UpdateExtraEntities = "updateExtraEntities";
 export const RemoveExtraEntities = "removeExtraEntities";
 export const SaveDocument = "saveDocument";
 export const SaveAsPngUrl = "saveAsPngUrl";
+export const EditProperty = "editProperty";

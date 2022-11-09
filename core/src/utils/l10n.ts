@@ -27,3 +27,9 @@ export const getNewNameInputError = (nodeType: string, nodeName: string, emptyOr
 export const getTomlError = (file: string) => localize("ConfigEditor.tomlError", "Document '{0}' is not valid toml.", file.split("/").at(-1));
 export const getConsistencyWarning = (nodeType: string, nodeName: string) => localize("ConfigEditor.consistencyWarning", "Element '{0}.{1}' does not exist.", nodeType, nodeName);
 export const getUnreferencedELement = (nodeType: string, nodeName: string) => localize("ConfigEditor.unreferencedELement", "No reference to Element '{0}.{1}'.", nodeType, nodeName);
+
+export const getSelectPropertyTitle = (nodeType: string) => localize("ConfigDetails.selectPropertyTitle", "Select property for {0}.", nodeType);
+export const getNoTypeEntityFound = (nodeType: string) => localize("ConfigDetails.noTypeEntityFound", "No {0} entity in toml.", nodeType);
+export const getSelectChildEntities = (childType: string, nodeType: string, propertyName: string) => localize("ConfigDetails.selectChildEntities", "Select {0} entities for {1}.{2}", childType, nodeType, propertyName);
+export const getSelectValueForProperty = (nodeType: string, propertyName: string) => localize("ConfigDetails.selectValueForProperty", "Select value for {0}.{1}", nodeType, propertyName);
+export const getEnterValueForProperty = (nodeType: string, propertyName: string) => localize("ConfigDetails.enterValueForProperty", "Enter value for {0}.{1}", nodeType, propertyName);
