@@ -17,12 +17,12 @@ export class GuiContext {
     private registerMarkdownDiagnostics(context: ExtensionContext): void {
         const markdownDiagnosticCollection = languages.createDiagnosticCollection("gui-markdown");
 
-        const handler = async (doc: TextDocument) => {
+        const handler = (doc: TextDocument) => {
             let diagnostics: Diagnostic[] | undefined = undefined;
             if (doc.fileName.endsWith(".md")) {
-                diagnostics = await getMdDiagnostics(doc);
+                diagnostics = getMdDiagnostics(doc);
             } else if (doc.fileName.endsWith(".py")) {
-                diagnostics = await getPyDiagnostics(doc);
+                diagnostics = getPyDiagnostics(doc);
             }
             diagnostics && markdownDiagnosticCollection.set(doc.uri, diagnostics);
         };
