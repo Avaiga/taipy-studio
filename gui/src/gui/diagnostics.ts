@@ -4,7 +4,6 @@ import { defaultElementList, defaultBlockElementList } from "./constant";
 const CONTROL_RE = /<\|(.*?)\|>/;
 const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
 const CLOSING_TAG_RE = /^\s*\|([0-9a-zA-Z\_\.]*)>/;
-const LINK_RE = /(\[[^\]]*?\]\([^\)]*?\))/;
 const SPLIT_RE = /(?<!\\\\)\|/;
 const PROPERTY_RE = /((?:don'?t|not)\s+)?([a-zA-Z][\.a-zA-Z_$0-9]*(?:\[(?:.*?)\])?)\s*(?:=(.*))?$/;
 
@@ -84,7 +83,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 diagnostics.push(
                     createWarningDiagnostic(
                         "Missing closing tags",
-                        "MCT_CONTROL",
+                        "MCT",
                         getRangeFromPosition(
                             initialPosition,
                             getRangeOfStringInline(line, openingTagSearch[0], new Position(lineCount, 0))
@@ -92,6 +91,16 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                     )
                 );
             }
+        }
+        // Other Elements
+        for (const elementMatch of line.matchAll(new RegExp(CONTROL_RE, "g"))) {
+            const [d, e] = processElement(
+                elementMatch[1],
+                new Position(lineCount, line.indexOf(elementMatch[1])),
+                initialPosition
+            );
+            console.log(e);
+            diagnostics.push(...d);
         }
     });
     return diagnostics;
