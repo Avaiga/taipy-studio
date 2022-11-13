@@ -1,5 +1,5 @@
 import { Diagnostic, DiagnosticSeverity, Position, Range, TextDocument } from "vscode";
-import { defaultElementList } from "./constant";
+import { defaultElementList, defaultBlockElementList } from "./constant";
 
 const CONTROL_RE = /<\|(.*?)\|>/;
 const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
@@ -58,12 +58,11 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
     const initialPosition = diagnosticSection.initialPosition || new Position(0, 0);
     const tagQueue = [];
     textByLine.forEach((line, lineCount) => {
-        let lastIndex = 0;
-        let e = buildEmptyTaipyElement();
         // Find opening tags
         const openingTagSearch = OPENING_TAG_RE.exec(line);
         if (openingTagSearch) {
-            e.type = "part";
+            let element = buildEmptyTaipyElement();
+            element.type = "part";
             const openingTagProperty = openingTagSearch[2];
             if (openingTagProperty) {
                 const [d, e] = processElement(
@@ -71,20 +70,39 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                     new Position(lineCount, line.indexOf(openingTagProperty)),
                     initialPosition
                 );
+                element = e;
                 diagnostics.push(...d);
+            }
+            if (defaultBlockElementList.includes(element.type)) {
+                tagQueue.push([
+                    element,
+                    getRangeOfStringInline(line, openingTagSearch[0], new Position(lineCount, 0)),
+                    initialPosition,
+                    openingTagSearch[1],
+                ]);
+            } else {
+                diagnostics.push(
+                    createWarningDiagnostic(
+                        "Missing closing tags",
+                        "MCT_CONTROL",
+                        getRangeFromPosition(
+                            initialPosition,
+                            getRangeOfStringInline(line, openingTagSearch[0], new Position(lineCount, 0))
+                        )
+                    )
+                );
             }
         }
     });
     return diagnostics;
 };
 
-const processElement = (s: string, p: Position, initialPosition: Position): [Diagnostic[], TaipyElement] => {
+const processElement = (s: string, inlinePosition: Position, initialPosition: Position): [Diagnostic[], TaipyElement] => {
     const d: Diagnostic[] = [];
-    const diagnosticRange = new Range(p.line, p.character, p.line, p.character + s.length);
     const fragments = s.split(SPLIT_RE).filter((v) => !!v);
     const e = buildEmptyTaipyElement();
     fragments.forEach((fragment) => {
-        if (!e.type && fragment in defaultElementList) {
+        if (!e.type && defaultElementList.includes(fragment)) {
             e.type = fragment;
             return;
         }
@@ -95,7 +113,11 @@ const processElement = (s: string, p: Position, initialPosition: Position): [Dia
         const propMatch = PROPERTY_RE.exec(fragment);
         if (!propMatch) {
             d.push(
-                createWarningDiagnostic("Invalid property format", "PE01", getRangeFromPosition(initialPosition, diagnosticRange))
+                createWarningDiagnostic(
+                    "Invalid property format",
+                    "PE01",
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
+                )
             );
             return;
         }
@@ -105,9 +127,9 @@ const processElement = (s: string, p: Position, initialPosition: Position): [Dia
         if (notPrefix && val) {
             d.push(
                 createWarningDiagnostic(
-                    `Negated property ${propName} value will be ignored`,
+                    `Negated value of property '${propName}' will be ignored`,
                     "PE02",
-                    getRangeFromPosition(initialPosition, diagnosticRange)
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
             );
         }
@@ -125,6 +147,15 @@ const getTextFromPositions = (text: string, start: Position, end: Position): str
     }
     l.push(textByLine[end.line].slice(0, end.character));
     return l.join("\n");
+};
+
+const getRangeOfStringInline = (s: string, subString: string, initialPosition: Position): Range => {
+    return new Range(
+        initialPosition.line,
+        initialPosition.character + s.indexOf(subString),
+        initialPosition.line,
+        initialPosition.character + s.indexOf(subString) + subString.length
+    );
 };
 
 const getRangeFromPosition = (initialPosition: Position, range: Range): Range => {
