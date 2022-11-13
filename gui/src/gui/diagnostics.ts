@@ -1,4 +1,12 @@
 import { Diagnostic, DiagnosticSeverity, Position, Range, TextDocument } from "vscode";
+import { defaultElementList } from "./constant";
+
+const CONTROL_RE = /<\|(.*?)\|>/;
+const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
+const CLOSING_TAG_RE = /^\s*\|([0-9a-zA-Z\_\.]*)>/;
+const LINK_RE = /(\[[^\]]*?\]\([^\)]*?\))/;
+const SPLIT_RE = /(?<!\\\\)\|/;
+const PROPERTY_RE = /((?:don'?t|not)\s+)?([a-zA-Z][\.a-zA-Z_$0-9]*(?:\[(?:.*?)\])?)\s*(?:=(.*))?$/;
 
 interface DiagnosticSection {
     content: string;
@@ -15,6 +23,10 @@ interface TaipyElement {
     type: string;
     properties: TaipyElementProperty[];
 }
+
+const buildEmptyTaipyElement = (): TaipyElement => {
+    return { value: "", type: "", properties: [] };
+};
 
 export const getMdDiagnostics = (doc: TextDocument): Diagnostic[] => {
     return getSectionDiagnostics({ content: doc.getText() });
@@ -41,30 +53,68 @@ export const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
 };
 
 const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic[] => {
-    const diagnostics = new Array<Diagnostic>();
+    const diagnostics: Diagnostic[] = [];
     const textByLine = diagnosticSection.content.split(/\r?\n/);
     const initialPosition = diagnosticSection.initialPosition || new Position(0, 0);
-    textByLine.forEach((s, i) => {
-        if (s.includes("<|") && !s.includes("|>")) {
-            diagnostics.push(
-                createWarningDiagnostic(
-                    "Missing closing syntax `|>'",
-                    "missing-closing-tag",
-                    getRangeFromPosition(initialPosition, new Range(i, s.indexOf("<|"), i, s.length))
-                )
-            );
-        }
-        if (s.includes("|>") && !s.includes("<|")) {
-            diagnostics.push(
-                createWarningDiagnostic(
-                    "Missing opening syntax `<|'",
-                    "missing-opening-tag",
-                    getRangeFromPosition(initialPosition, new Range(i, 0, i, s.indexOf("|>")))
-                )
-            );
+    const tagQueue = [];
+    textByLine.forEach((line, lineCount) => {
+        let lastIndex = 0;
+        let e = buildEmptyTaipyElement();
+        // Find opening tags
+        const openingTagSearch = OPENING_TAG_RE.exec(line);
+        if (openingTagSearch) {
+            e.type = "part";
+            const openingTagProperty = openingTagSearch[2];
+            if (openingTagProperty) {
+                const [d, e] = processElement(
+                    openingTagProperty,
+                    new Position(lineCount, line.indexOf(openingTagProperty)),
+                    initialPosition
+                );
+                diagnostics.push(...d);
+            }
         }
     });
     return diagnostics;
+};
+
+const processElement = (s: string, p: Position, initialPosition: Position): [Diagnostic[], TaipyElement] => {
+    const d: Diagnostic[] = [];
+    const diagnosticRange = new Range(p.line, p.character, p.line, p.character + s.length);
+    const fragments = s.split(SPLIT_RE).filter((v) => !!v);
+    const e = buildEmptyTaipyElement();
+    fragments.forEach((fragment) => {
+        if (!e.type && fragment in defaultElementList) {
+            e.type = fragment;
+            return;
+        }
+        if (!e.type && !e.value) {
+            e.value = fragment;
+            return;
+        }
+        const propMatch = PROPERTY_RE.exec(fragment);
+        if (!propMatch) {
+            d.push(
+                createWarningDiagnostic("Invalid property format", "PE01", getRangeFromPosition(initialPosition, diagnosticRange))
+            );
+            return;
+        }
+        const notPrefix = propMatch[1];
+        const propName = propMatch[2];
+        const val = propMatch[3];
+        if (notPrefix && val) {
+            d.push(
+                createWarningDiagnostic(
+                    `Negated property ${propName} value will be ignored`,
+                    "PE02",
+                    getRangeFromPosition(initialPosition, diagnosticRange)
+                )
+            );
+        }
+        e.properties.push({ name: propName, value: notPrefix ? "False" : val ? val : "True" });
+    });
+    e.type = e.type ? e.type : "text";
+    return [d, e];
 };
 
 const getTextFromPositions = (text: string, start: Position, end: Position): string => {
