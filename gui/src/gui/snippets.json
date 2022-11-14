@@ -1,0 +1,17 @@
+{
+	"Taipy Control Visual Element": {
+		"prefix": "tpc",
+		"body": [
+			"<|$1|$0|>"
+		],
+		"description": "Taipy Control Syntax"
+	},
+	"Taipy Block Visual Element": {
+		"prefix": "tpb",
+		"body": [
+			"<|$1|$0",
+			"|>"
+		],
+		"description": "Taipy Block Syntax"
+	}
+}
