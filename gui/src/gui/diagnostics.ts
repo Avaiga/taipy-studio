@@ -201,7 +201,7 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
         const propName = propMatch[2];
         const val = propMatch[3];
         const validPropertyList = Object.keys(defaultElementProperties[e.type] || []);
-        if (!validPropertyList.includes(propName)) {
+        if (validPropertyList.length !== 0 && !validPropertyList.includes(propName)) {
             const bestMatch = findBestMatch(propName, validPropertyList).bestMatch;
             let dS = `Invalid property name '${propName}'`;
             if (bestMatch.rating >= BEST_MATCH_THRESHOLD) {
