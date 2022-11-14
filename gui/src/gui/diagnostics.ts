@@ -1,6 +1,6 @@
 import { Diagnostic, DiagnosticSeverity, Position, Range, TextDocument } from "vscode";
-import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
 import { findBestMatch } from "string-similarity";
+import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
 
 const CONTROL_RE = /<\|(.*?)\|>/;
 const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
