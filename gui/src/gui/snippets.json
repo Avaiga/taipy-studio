@@ -1,13 +1,13 @@
 {
 	"Taipy Control Visual Element": {
-		"prefix": "tpc",
+		"prefix": "<|c",
 		"body": [
 			"<|$1|$0|>"
 		],
 		"description": "Taipy Control Syntax"
 	},
 	"Taipy Block Visual Element": {
-		"prefix": "tpb",
+		"prefix": "<|b",
 		"body": [
 			"<|$1|$0",
 			"|>"
