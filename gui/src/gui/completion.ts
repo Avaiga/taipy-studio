@@ -29,7 +29,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
             return symbols.map((v) => new CompletionItem(v.name, CompletionItemKind.Property));
         }
         let completionList: CompletionItem[] = [];
-        let foundElements = defaultElementList.reduce((p: string[], c: string) => {
+        const foundElements = defaultElementList.reduce((p: string[], c: string) => {
             linePrefix.includes(`|${c}`) && p.push(c);
             return p;
         }, []);
