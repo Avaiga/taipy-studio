@@ -44,7 +44,9 @@ export class GuiContext {
         context.subscriptions.push(
             languages.registerCompletionItemProvider(markdownFilter, new GuiCompletionItemProvider(), "|")
         );
-        context.subscriptions.push(languages.registerCompletionItemProvider(pythonFilter, new GuiCompletionItemProvider(), "|"));
+        context.subscriptions.push(
+            languages.registerCompletionItemProvider(pythonFilter, new GuiCompletionItemProvider(), "|", "{")
+        );
     }
 
     private registerGenerateElementCommand(context: ExtensionContext): void {

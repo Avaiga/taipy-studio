@@ -1,10 +1,12 @@
 import {
     CancellationToken,
+    commands,
     CompletionItem,
     CompletionItemKind,
     CompletionItemProvider,
     MarkdownString,
     Position,
+    SymbolInformation,
     TextDocument,
 } from "vscode";
 import { defaultElementList, defaultElementProperties } from "./constant";
@@ -12,13 +14,20 @@ import { defaultElementList, defaultElementProperties } from "./constant";
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
 
 export class GuiCompletionItemProvider implements CompletionItemProvider {
-    public provideCompletionItems(
+    public async provideCompletionItems(
         document: TextDocument,
         position: Position,
         token: CancellationToken
-    ): Thenable<CompletionItem[]> {
+    ): Promise<CompletionItem[]> {
         const line = document.lineAt(position).text;
         const linePrefix = line.slice(0, position.character);
+        if ((document.fileName.endsWith(".py") || document.languageId === "python") && linePrefix.endsWith("{")) {
+            const symbols = (await commands.executeCommand(
+                "vscode.executeDocumentSymbolProvider",
+                document.uri
+            )) as SymbolInformation[];
+            return symbols.map((v) => new CompletionItem(v.name, CompletionItemKind.Property));
+        }
         let completionList: CompletionItem[] = [];
         let foundElements = defaultElementList.reduce((p: string[], c: string) => {
             linePrefix.includes(`|${c}`) && p.push(c);
@@ -39,6 +48,6 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
                 return completionItem;
             });
         }
-        return Promise.resolve(completionList);
+        return completionList;
     }
 }
