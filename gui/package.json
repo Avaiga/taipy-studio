@@ -30,6 +30,16 @@
 				"command": "taipy.gui.md.generate",
 				"title": "Generate Gui Element"
 			}
+		],
+    "snippets": [
+			{
+				"language": "python",
+				"path": "./src/gui/snippets.json"
+			},
+      {
+				"language": "markdown",
+				"path": "./src/gui/snippets.json"
+			}
 		]
 	},
   "scripts": {
