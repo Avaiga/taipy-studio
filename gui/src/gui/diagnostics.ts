@@ -1,5 +1,5 @@
 import { Diagnostic, DiagnosticSeverity, Position, Range, TextDocument } from "vscode";
-import { defaultElementList, defaultBlockElementList } from "./constant";
+import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
 
 const CONTROL_RE = /<\|(.*?)\|>/;
 const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
@@ -55,9 +55,9 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
     const diagnostics: Diagnostic[] = [];
     const textByLine = diagnosticSection.content.split(/\r?\n/);
     const initialPosition = diagnosticSection.initialPosition || new Position(0, 0);
-    const tagQueue = [];
+    const tagQueue: [TaipyElement, Range, Position, string][] = [];
     textByLine.forEach((line, lineCount) => {
-        // Find opening tags
+        // Opening tags (<|)
         const openingTagSearch = OPENING_TAG_RE.exec(line);
         if (openingTagSearch) {
             let element = buildEmptyTaipyElement();
@@ -82,8 +82,8 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             } else {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        "Missing closing tags",
-                        "MCT",
+                        "Missing closing syntax",
+                        "MCS",
                         getRangeFromPosition(
                             initialPosition,
                             getRangeOfStringInline(line, openingTagSearch[0], new Position(lineCount, 0))
@@ -92,17 +92,80 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 );
             }
         }
-        // Other Elements
+        // Other Elements (<||>)
         for (const elementMatch of line.matchAll(new RegExp(CONTROL_RE, "g"))) {
-            const [d, e] = processElement(
+            const [d, _] = processElement(
                 elementMatch[1],
                 new Position(lineCount, line.indexOf(elementMatch[1])),
                 initialPosition
             );
-            console.log(e);
             diagnostics.push(...d);
         }
+        // Closing tags (|>)
+        const closingTagSearch = CLOSING_TAG_RE.exec(line);
+        if (closingTagSearch && tagQueue.length >= 0) {
+            const openTag = tagQueue.pop();
+            if (!openTag) {
+                diagnostics.push(
+                    createWarningDiagnostic(
+                        "Missing Opening Tag",
+                        "MOT",
+                        getRangeFromPosition(
+                            initialPosition,
+                            getRangeOfStringInline(line, closingTagSearch[0], new Position(lineCount, 0))
+                        )
+                    )
+                );
+                return;
+            }
+            const [_, inlineP, p, tagId] = openTag;
+            const closeTagId = closingTagSearch[1];
+            if (closeTagId && !tagId) {
+                diagnostics.push(
+                    createWarningDiagnostic(
+                        `Missing Matching Opening Tag Identifier '${closeTagId}'`,
+                        "MOTI",
+                        getRangeFromPosition(
+                            initialPosition,
+                            getRangeOfStringInline(line, closingTagSearch[0], new Position(lineCount, 0))
+                        )
+                    )
+                );
+            }
+            if (tagId && !closeTagId) {
+                diagnostics.push(
+                    createWarningDiagnostic(
+                        `Missing Matching Closing Tag Identifier '${tagId}'`,
+                        "MCTI",
+                        getRangeFromPosition(p, inlineP)
+                    )
+                );
+            }
+            if (closeTagId && tagId && tagId !== closeTagId) {
+                diagnostics.push(
+                    createWarningDiagnostic(
+                        `Unmatch Opening Tag Identifier '${tagId}'`,
+                        "UOTI",
+                        getRangeFromPosition(
+                            initialPosition,
+                            getRangeOfStringInline(line, closingTagSearch[0], new Position(lineCount, 0))
+                        )
+                    )
+                );
+                diagnostics.push(
+                    createWarningDiagnostic(
+                        `Unmatch Closing Tag Identifier '${closeTagId}'`,
+                        "UCTI",
+                        getRangeFromPosition(p, inlineP)
+                    )
+                );
+            }
+        }
     });
+    for (const tag of tagQueue) {
+        const [_, inlineP, p, tagId] = tag;
+        diagnostics.push(createWarningDiagnostic(`Missing closing tag with tag identifier ${tagId}`, "MCT", getRangeFromPosition(p, inlineP)));
+    }
     return diagnostics;
 };
 
