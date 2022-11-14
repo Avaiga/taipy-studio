@@ -1,11 +1,13 @@
 import { Diagnostic, DiagnosticSeverity, Position, Range, TextDocument } from "vscode";
 import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
+import { findBestMatch } from "string-similarity";
 
 const CONTROL_RE = /<\|(.*?)\|>/;
 const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
 const CLOSING_TAG_RE = /^\s*\|([0-9a-zA-Z\_\.]*)>/;
 const SPLIT_RE = /(?<!\\\\)\|/;
 const PROPERTY_RE = /((?:don'?t|not)\s+)?([a-zA-Z][\.a-zA-Z_$0-9]*(?:\[(?:.*?)\])?)\s*(?:=(.*))?$/;
+const BEST_MATCH_THRESHOLD = 0.8;
 
 interface DiagnosticSection {
     content: string;
@@ -164,7 +166,9 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
     });
     for (const tag of tagQueue) {
         const [_, inlineP, p, tagId] = tag;
-        diagnostics.push(createWarningDiagnostic(`Missing closing tag with tag identifier ${tagId}`, "MCT", getRangeFromPosition(p, inlineP)));
+        diagnostics.push(
+            createWarningDiagnostic(`Missing closing tag with tag identifier ${tagId}`, "MCT", getRangeFromPosition(p, inlineP))
+        );
     }
     return diagnostics;
 };
@@ -196,11 +200,27 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
         const notPrefix = propMatch[1];
         const propName = propMatch[2];
         const val = propMatch[3];
+        const validPropertyList = Object.keys(defaultElementProperties[e.type] || []);
+        if (!validPropertyList.includes(propName)) {
+            const bestMatch = findBestMatch(propName, validPropertyList).bestMatch;
+            let dS = `Invalid property name '${propName}'`;
+            if (bestMatch.rating >= BEST_MATCH_THRESHOLD) {
+                dS += `. Do you mean ${bestMatch.target}?`;
+            }
+            d.push(
+                createWarningDiagnostic(
+                    dS,
+                    "PE02",
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
+                )
+            );
+            return;
+        }
         if (notPrefix && val) {
             d.push(
                 createWarningDiagnostic(
                     `Negated value of property '${propName}' will be ignored`,
-                    "PE02",
+                    "PE03",
                     getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
             );
