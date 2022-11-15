@@ -87,9 +87,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   private cache: ProviderCache;
   // original Uri => perspective Id => panels
   private panelsByUri: Record<string, Record<string, WebviewPanel[]>> = {};
-  //undo/redo
-  private undoCommand: Disposable;
-  private redoCommand: Disposable;
 
   private constructor(private readonly context: ExtensionContext, private readonly taipyContext: Context) {
     this.extensionPath = context.extensionUri;
@@ -114,23 +111,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       }
     }
   }
-
-  private registerUndoCommands() {
-    this.undoCommand = commands.registerCommand("undo", async (args) => {
-        // Call custom undo handler
-        //triggerCustomUndo(appJsonFilePath, extensionWebView.webview);
-        console.log("undo", args);
-        // Execute default undo handler
-        return commands.executeCommand("default:undo", args);
-    });
-    this.redoCommand = commands.registerCommand("redo", async (args) => {
-        // Call custom redo handler
-        //triggerCustomRedo(appJsonFilePath, extensionWebView.webview);
-        console.log("redo", args);
-        // Execute default redo handler
-        return commands.executeCommand("default:redo", args);
-    });
-  };
 
   private doCreateElement(doc: TextDocument, nodeType: string, nodeName: string, edits: TextEdit[] = []) {
     edits.push(
@@ -248,16 +228,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
 
-    this.registerUndoCommands();
-    webviewPanel.onDidChangeViewState((e: WebviewPanelOnDidChangeViewStateEvent) => {
-      if (e.webviewPanel.active) {
-        this.registerUndoCommands();
-      } else {
-        this.undoCommand.dispose();
-        this.redoCommand.dispose();
-      }
-    }, this, this.context.subscriptions);
-    
     const docListener = (textDocument: TextDocument) => {
       if (isUriEqual(document.uri, textDocument.uri)) {
         this.updateWebview(document.uri, textDocument.isDirty);
@@ -607,6 +577,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const styleUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "config-editor.css"));
 
     const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
+    const taipyiconsUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "taipy-icons.css"));
 
     const config = workspace.getConfiguration(TaipyStudioSettingsName);
     const configObj = nodeTypes4config.reduce(
@@ -634,6 +605,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
                   <link href="${styleUri}" rel="stylesheet" />
                   <link href="${codiconsUri}" rel="stylesheet" />
+                  <link href="${taipyiconsUri}" rel="stylesheet" />
                   <script nonce="${nonce}" defer type="text/javascript" src="${scriptUri}"></script>
                   <script nonce="${nonce}" type="text/javascript">window.taipyConfig=${JSON.stringify(configObj)};</script>
               </head>

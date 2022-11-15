@@ -111,5 +111,6 @@ export const getSectionName = (name: string, withSection?: boolean, sectionName 
   if (withSection === undefined) {
     withSection = workspace.getConfiguration(TaipyStudioSettingsName).get("editor.type.suffix.enabled", true)
   }
+  name = getUnsuffixedName(name);
   return withSection ? name + ":" + sectionName : name;
 };

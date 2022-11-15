@@ -80,7 +80,7 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
     <div className="diagram-root">
       <div className="diagram-icon-group" data-html2canvas-ignore>
         <div className="diagram-button icon" title="re-layout" onClick={relayout}>
-          <i className="codicon codicon-layout"></i>
+          <i className="taipy-icon-relayout"></i>
         </div>
         <div className="diagram-button icon" title="refresh" onClick={postRefreshMessage}>
           <i className="codicon codicon-refresh"></i>
@@ -99,7 +99,7 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
       <div className="diagram-icon-group" data-html2canvas-ignore>
         {getNodeTypes(perspectiveId).map((nodeType) => (
           <div className={"diagram-button icon " + nodeType.toLowerCase()} title={nodeType} key={nodeType} data-node-type={nodeType} onClick={onCreateNode}>
-            <i className={"codicon codicon-" + getNodeIcon(nodeType)}></i>
+            <i className={getNodeIcon(nodeType) + "-add"}></i>
           </div>
         ))}
       </div>

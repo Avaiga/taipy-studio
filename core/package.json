@@ -243,7 +243,7 @@
         "taipyStudio.diagram.datanode.icon": {
           "type": "string",
           "format": "icon",
-          "default": "eye",
+          "default": "taipy-icon-datanode",
           "description": "%taipy.config.settings.diagram.datanode.icon.desc%"
         },
         "taipyStudio.diagram.task.color": {
@@ -255,7 +255,7 @@
         "taipyStudio.diagram.task.icon": {
           "type": "string",
           "format": "icon",
-          "default": "extensions",
+          "default": "taipy-icon-task",
           "description": "%taipy.config.settings.diagram.task.icon.desc%"
         },
         "taipyStudio.diagram.pipeline.color": {
@@ -267,7 +267,7 @@
         "taipyStudio.diagram.pipeline.icon": {
           "type": "string",
           "format": "icon",
-          "default": "symbol-class",
+          "default": "taipy-icon-pipeline",
           "description": "%taipy.config.settings.diagram.pipeline.icon.desc%"
         },
         "taipyStudio.diagram.scenario.color": {
@@ -279,7 +279,7 @@
         "taipyStudio.diagram.scenario.icon": {
           "type": "string",
           "format": "icon",
-          "default": "output",
+          "default": "taipy-icon-scenario",
           "description": "%taipy.config.settings.diagram.scenario.icon.desc%"
         },
         "taipyStudio.parser.usePositions": {
@@ -293,7 +293,14 @@
           "description": "%taipy.config.settings.status.timeout.desc%"
         }
       }
-    }
+    },
+    "productIconThemes": [
+      {
+        "id": "taipy-core",
+        "label": "%taipy.config.icon.theme.label%",
+        "path": "./assets/taipy-product-icon-theme.json"
+      }
+    ]
   },
   "scripts": {
     "build-this": "webpack --mode development",

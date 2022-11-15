@@ -8,7 +8,7 @@ import { emptyNodeDetailContent, getEnterValueForProperty, getNoTypeEntityFound,
 import { Context } from "../context";
 import { getOriginalUri, isUriEqual } from "./PerpectiveContentProvider";
 import { getEnum, getEnumProps, getProperties } from "../schema/validation";
-import { getDescendantProperties } from "../utils/toml";
+import { getDescendantProperties, getSectionName, getUnsuffixedName } from "../utils/toml";
 import { getChildType } from "../../shared/toml";
 import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
 import { stringify } from "@iarna/toml";
@@ -111,8 +111,8 @@ export class ConfigDetailsView implements WebviewViewProvider {
     const linksProp = getDescendantProperties(nodeType).find(p => p.toLowerCase() == propertyName?.toLowerCase());
     if (linksProp) {
       const childType = getChildType(nodeType);
-      const values = ((propertyValue || []) as string[]).map(v => v.toLowerCase());
-      const childNames = Object.keys(toml[childType] || {}).map(k => ({label: k, picked: values.includes(k.toLowerCase())} as QuickPickItem));
+      const values = ((propertyValue || []) as string[]).map(v => getUnsuffixedName(v.toLowerCase()));
+      const childNames = Object.keys(toml[childType] || {}).map(k => ({label: getSectionName(k), picked: values.includes(getUnsuffixedName(k.toLowerCase()))} as QuickPickItem));
       if (!childNames.length) {
         window.showInformationMessage(getNoTypeEntityFound(childType));
         return;
