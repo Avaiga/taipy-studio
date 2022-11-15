@@ -27,13 +27,23 @@
     }
   },
   "contributes": {
-    "commands": [
+		"commands": [
+			{
+				"command": "taipy.gui.md.generate",
+				"title": "Generate Gui Element"
+			}
+		],
+    "snippets": [
+			{
+				"language": "python",
+				"path": "./src/gui/snippets.json"
+			},
       {
-        "command": "taipy.gui.md.generate",
-        "title": "Generate Gui Element"
-      }
-    ]
-  },
+				"language": "markdown",
+				"path": "./src/gui/snippets.json"
+			}
+		]
+	},
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
