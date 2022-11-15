@@ -1,0 +1,18 @@
+{
+  "Select an element type": "Select an element type",
+  "Enter element value": "Enter element value",
+  "Unmatch number of curly braces for expression": "Unmatch number of curly braces for expression",
+  "Select properties for element '{0}'": "Select properties for element '{0}'",
+  "Gui Element Added": "Gui Element Added",
+  "Missing closing syntax": "Missing closing syntax",
+  "Missing Opening Tag": "Missing Opening Tag",
+  "Missing Matching Opening Tag Identifier '{0}'": "Missing Matching Opening Tag Identifier '{0}'",
+  "Missing Matching Closing Tag Identifier '{0}'": "Missing Matching Closing Tag Identifier '{0}'",
+  "Unmatch Opening Tag Identifier '{0}'": "Unmatch Opening Tag Identifier '{0}'",
+  "Unmatch Closing Tag Identifier '{closeTagId}'": "Unmatch Closing Tag Identifier '{closeTagId}'",
+  "Missing closing tag with tag identifier '{0}'": "Missing closing tag with tag identifier '{0}'",
+  "Invalid property format": "Invalid property format",
+  "Invalid property name '{0}'": "Invalid property name '{0}'",
+  ". Do you mean '{0}'?": ". Do you mean '{0}'?",
+  "Negated value of property '{0}' will be ignored": "Negated value of property '{0}' will be ignored"
+}

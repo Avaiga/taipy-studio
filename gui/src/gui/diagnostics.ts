@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, Position, Range, TextDocument } from "vscode";
+import { Diagnostic, DiagnosticSeverity, l10n, Position, Range, TextDocument } from "vscode";
 import { findBestMatch } from "string-similarity";
 import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
 
@@ -84,7 +84,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             } else {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        "Missing closing syntax",
+                        l10n.t("Missing closing syntax"),
                         "MCS",
                         getRangeFromPosition(
                             initialPosition,
@@ -110,7 +110,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (!openTag) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        "Missing Opening Tag",
+                        l10n.t("Missing Opening Tag"),
                         "MOT",
                         getRangeFromPosition(
                             initialPosition,
@@ -125,7 +125,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (closeTagId && !tagId) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        `Missing Matching Opening Tag Identifier '${closeTagId}'`,
+                        l10n.t("Missing Matching Opening Tag Identifier '{0}'", closeTagId),
                         "MOTI",
                         getRangeFromPosition(
                             initialPosition,
@@ -137,7 +137,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (tagId && !closeTagId) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        `Missing Matching Closing Tag Identifier '${tagId}'`,
+                        l10n.t("Missing Matching Closing Tag Identifier '{0}'", tagId),
                         "MCTI",
                         getRangeFromPosition(p, inlineP)
                     )
@@ -146,7 +146,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (closeTagId && tagId && tagId !== closeTagId) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        `Unmatch Opening Tag Identifier '${tagId}'`,
+                        l10n.t("Unmatch Opening Tag Identifier '{0}'", tagId),
                         "UOTI",
                         getRangeFromPosition(
                             initialPosition,
@@ -156,7 +156,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 );
                 diagnostics.push(
                     createWarningDiagnostic(
-                        `Unmatch Closing Tag Identifier '${closeTagId}'`,
+                        l10n.t("Unmatch Closing Tag Identifier '{0}'", closeTagId),
                         "UCTI",
                         getRangeFromPosition(p, inlineP)
                     )
@@ -167,7 +167,11 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
     for (const tag of tagQueue) {
         const [_, inlineP, p, tagId] = tag;
         diagnostics.push(
-            createWarningDiagnostic(`Missing closing tag with tag identifier ${tagId}`, "MCT", getRangeFromPosition(p, inlineP))
+            createWarningDiagnostic(
+                l10n.t("Missing closing tag with tag identifier '{0}'", tagId),
+                "MCT",
+                getRangeFromPosition(p, inlineP)
+            )
         );
     }
     return diagnostics;
@@ -190,7 +194,7 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
         if (!propMatch) {
             d.push(
                 createWarningDiagnostic(
-                    "Invalid property format",
+                    l10n.t("Invalid property format"),
                     "PE01",
                     getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
@@ -203,9 +207,9 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
         const validPropertyList = Object.keys(defaultElementProperties[e.type] || []);
         if (validPropertyList.length !== 0 && !validPropertyList.includes(propName)) {
             const bestMatch = findBestMatch(propName, validPropertyList).bestMatch;
-            let dS = `Invalid property name '${propName}'`;
+            let dS = l10n.t("Invalid property name '{0}'", propName);
             if (bestMatch.rating >= BEST_MATCH_THRESHOLD) {
-                dS += `. Do you mean ${bestMatch.target}?`;
+                dS += l10n.t(". Do you mean '{0}'?", bestMatch.target);
             }
             d.push(
                 createWarningDiagnostic(
@@ -219,7 +223,7 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
         if (notPrefix && val) {
             d.push(
                 createWarningDiagnostic(
-                    `Negated value of property '${propName}' will be ignored`,
+                    l10n.t("Negated value of property '{0}' will be ignored", propName),
                     "PE03",
                     getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )

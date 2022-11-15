@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, window, workspace, WorkspaceEdit } from "vscode";
+import { commands, ExtensionContext, l10n, window, workspace, WorkspaceEdit } from "vscode";
 import { defaultElementList, defaultElementProperties } from "./constant";
 import { countChar } from "./utils";
 
@@ -21,7 +21,7 @@ export class GenerateGuiCommand {
 
     private static async handleGenerateElementCommand() {
         const result = await window.showQuickPick(defaultElementList, {
-            placeHolder: "Select an element type",
+            placeHolder: l10n.t("Select an element type"),
         });
         let guiElement: GuiElement = { elementName: result || "", elementValue: "", propertyList: [] };
         await GenerateGuiCommand.handleElementNameSelection(guiElement);
@@ -29,10 +29,10 @@ export class GenerateGuiCommand {
 
     private static async handleElementNameSelection(guiElement: GuiElement) {
         const result = await window.showInputBox({
-            placeHolder: "Enter element value",
+            placeHolder: l10n.t("Enter element value"),
             validateInput: (text) => {
                 if (countChar(text, "{") !== countChar(text, "}")) {
-                    return "Unmatch number of curly braces for expression";
+                    return l10n.t("Unmatch number of curly braces for expression");
                 }
                 return null;
             },
@@ -53,7 +53,7 @@ export class GenerateGuiCommand {
             detail: propertyObject[label as keyof typeof propertyObject],
         }));
         quickPick.canSelectMany = true;
-        quickPick.title = `Select properties for element '${guiElement.elementName}'`;
+        quickPick.title = l10n.t("Select properties for element '{0}'", guiElement.elementName);
         quickPick.onDidAccept(() => {
             guiElement.propertyList = quickPick.selectedItems.map((v) => v.label);
             quickPick.dispose();
@@ -75,6 +75,6 @@ export class GenerateGuiCommand {
         }
         edit.insert(activeEditor?.document.uri, activeEditor?.selection.active, elementString);
         workspace.applyEdit(edit);
-        window.showInformationMessage('Gui Element Added');
+        window.showInformationMessage(l10n.t("Gui Element Added"));
     }
 }
