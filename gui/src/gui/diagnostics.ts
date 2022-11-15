@@ -110,7 +110,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (!openTag) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        l10n.t("Missing Opening Tag"),
+                        l10n.t("Missing opening tag"),
                         "MOT",
                         getRangeFromPosition(
                             initialPosition,
@@ -125,7 +125,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (closeTagId && !tagId) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        l10n.t("Missing Matching Opening Tag Identifier '{0}'", closeTagId),
+                        l10n.t("Missing matching opening tag identifier '{0}'", closeTagId),
                         "MOTI",
                         getRangeFromPosition(
                             initialPosition,
@@ -137,7 +137,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (tagId && !closeTagId) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        l10n.t("Missing Matching Closing Tag Identifier '{0}'", tagId),
+                        l10n.t("Missing matching closing tag identifier '{0}'", tagId),
                         "MCTI",
                         getRangeFromPosition(p, inlineP)
                     )
@@ -146,7 +146,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             if (closeTagId && tagId && tagId !== closeTagId) {
                 diagnostics.push(
                     createWarningDiagnostic(
-                        l10n.t("Unmatch Opening Tag Identifier '{0}'", tagId),
+                        l10n.t("Unmatched opening tag identifier '{0}'", tagId),
                         "UOTI",
                         getRangeFromPosition(
                             initialPosition,
@@ -156,7 +156,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 );
                 diagnostics.push(
                     createWarningDiagnostic(
-                        l10n.t("Unmatch Closing Tag Identifier '{0}'", closeTagId),
+                        l10n.t("Unmatched closing tag identifier '{0}'", closeTagId),
                         "UCTI",
                         getRangeFromPosition(p, inlineP)
                     )

@@ -32,7 +32,7 @@ export class GenerateGuiCommand {
             placeHolder: l10n.t("Enter element value"),
             validateInput: (text) => {
                 if (countChar(text, "{") !== countChar(text, "}")) {
-                    return l10n.t("Unmatch number of curly braces for expression");
+                    return l10n.t("Unmatched number of curly braces for expression");
                 }
                 return null;
             },
@@ -75,6 +75,6 @@ export class GenerateGuiCommand {
         }
         edit.insert(activeEditor?.document.uri, activeEditor?.selection.active, elementString);
         workspace.applyEdit(edit);
-        window.showInformationMessage(l10n.t("Gui Element Added"));
+        window.showInformationMessage(l10n.t("Element added"));
     }
 }
