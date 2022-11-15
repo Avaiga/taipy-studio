@@ -35,7 +35,7 @@ export const getMdDiagnostics = (doc: TextDocument): Diagnostic[] => {
 
 export const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
     const text = doc.getText();
-    const diagnosticSections: DiagnosticSection[] = [];
+    const d: Diagnostic[] = [];
     const quotePositions: Position[] = text.split(/\r?\n/).reduce<Position[]>((obj: Position[], v: string, i: number) => {
         return [...obj, ...[...v.matchAll(new RegExp('"""', "gi"))].map((a) => new Position(i, a.index || 0))];
     }, []);
@@ -43,14 +43,14 @@ export const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
         return [];
     }
     for (let i = 0; i < quotePositions.length; i += 2) {
-        diagnosticSections.push({
-            content: getTextFromPositions(text, quotePositions[i], quotePositions[i + 1]),
-            initialPosition: new Position(quotePositions[i].line, quotePositions[i].character + 3),
-        });
+        d.push(
+            ...getSectionDiagnostics({
+                content: getTextFromPositions(text, quotePositions[i], quotePositions[i + 1]),
+                initialPosition: new Position(quotePositions[i].line, quotePositions[i].character + 3),
+            })
+        );
     }
-    return diagnosticSections.reduce<Diagnostic[]>((obj: Diagnostic[], v: DiagnosticSection) => {
-        return [...obj, ...getSectionDiagnostics(v)];
-    }, []);
+    return d;
 };
 
 const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic[] => {
