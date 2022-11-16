@@ -1,4 +1,5 @@
 import { Fragment, MouseEvent, useCallback } from "react";
+import * as l10n from "@vscode/l10n";
 
 import { postEditProperty } from "../utils/messaging";
 import { DataNodeDetailsProps } from "../../../shared/views";
@@ -22,14 +23,14 @@ const DataNodePanel = ({ nodeType, nodeName, node }: DataNodeDetailsProps) => {
           <Fragment key={k}>
             <div>{k}</div>
             <div>{getAsString(n)}</div>
-            <div className="panel-button icon" data-property-name={k} title="edit" onClick={editPropertyValue}>
+            <div className="panel-button icon" data-property-name={k} title={l10n.t("edit")} onClick={editPropertyValue}>
               <i className="codicon codicon-edit"></i>
             </div>
           </Fragment>
         ))}
-        <div>New property</div>
+        <div>{l10n.t("New Property")}</div>
         <div></div>
-        <div className="panel-button icon" title="edit" onClick={editPropertyValue}>
+        <div className="panel-button icon" title={l10n.t("edit")} onClick={editPropertyValue}>
           <i className="codicon codicon-edit"></i>
         </div>
       </div>

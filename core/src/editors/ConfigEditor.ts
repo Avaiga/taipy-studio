@@ -19,7 +19,7 @@ import {
   WorkspaceEdit,
 } from "vscode";
 
-import { configFilePattern, getCspScriptSrc, getNonce } from "../utils/utils";
+import { configFilePattern, getCspScriptSrc, getDefaultConfig, getNonce } from "../utils/utils";
 import { revealConfigNodeCmd } from "../utils/commands";
 import {
   getCleanPerpsectiveUriString,
@@ -78,7 +78,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
   private static readonly cacheName = "taipy.editor.cache";
   static readonly viewType = "taipy.config.editor.diagram";
-  
+
   private readonly extensionPath: Uri;
   // Perspective Uri => cache
   private cache: ProviderCache;
@@ -211,7 +211,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       enableScripts: true,
       localResourceRoots: [this.joinPaths()],
     };
-    
+
     // retrieve and work with the original document
     const realDocument = await getOriginalDocument(document);
 
@@ -577,13 +577,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const taipyiconsUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "taipy-icons.css"));
 
     const config = workspace.getConfiguration(TaipyStudioSettingsName);
-    const configObj = nodeTypes4config.reduce(
-      (co, nodeType) => {
-        co.icons[nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");
-        return co;
-      },
-      { icons: {} }
-    );
+    const configObj = nodeTypes4config.reduce((co, nodeType) => {
+      co.icons[nodeType] = config.get("diagram." + nodeType + ".icon", "codicon-refresh");
+      return co;
+    }, getDefaultConfig(webview));
 
     const cssVars = nodeTypes4config
       .map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";")

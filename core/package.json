@@ -308,10 +308,12 @@
     "vscode-package": "vsce package",
     "vscode-prepublish": "npm run prod",
     "package": "rm -rf *.vsix && npm run prod && vsce package",
+    "prebuild": "npm run generate-l10n-bundle",
     "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
     "prod": "concurrently -n vscode,webviews \"webpack --mode production\" \"cd webviews && webpack --mode production\"",
     "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\"",
-    "generate-l10n-bundle": "@vscode/l10n-dev ./src --out ./l10n"
+    "generate-l10n-bundle": "vscode-l10n-dev export --outDir ./l10n ./src ./webviews/src",
+    "generate-l10n-pseudo": "vscode-l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json"
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",

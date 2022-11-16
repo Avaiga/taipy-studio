@@ -1,6 +1,20 @@
-import { WebviewViewProvider, WebviewView, Webview, Uri, window, ExtensionContext, QuickPickItemKind, QuickPickItem, workspace, Range, TextEdit, WorkspaceEdit, TextDocument, l10n } from "vscode";
+import {
+  WebviewViewProvider,
+  WebviewView,
+  Webview,
+  Uri,
+  window,
+  ExtensionContext,
+  QuickPickItem,
+  workspace,
+  Range,
+  TextEdit,
+  WorkspaceEdit,
+  TextDocument,
+  l10n,
+} from "vscode";
 
-import { getCspScriptSrc, getNonce } from "../utils/utils";
+import { getCspScriptSrc, getDefaultConfig, getNonce } from "../utils/utils";
 import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName, containerId, DataNodeDetailsProps, NoDetailsProps } from "../../shared/views";
 import { Action, EditProperty, Refresh } from "../../shared/commands";
 import { ViewMessage } from "../../shared/messages";
@@ -48,7 +62,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
       localResourceRoots: [this.extensionUri],
       enableCommandUris: true,
     };
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
     this._view = webviewView;
     this._view.webview.onDidReceiveMessage(
       (e) => {
@@ -76,7 +90,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
     this.taipyContext.registerDocChangeListener(this.docListener, this);
     this._view.onDidDispose(() => {
       this.taipyContext.unregisterDocChangeListener(this.docListener, this);
-    })
+    });
   }
 
   private docListener(textDocument: TextDocument) {
@@ -86,9 +100,8 @@ export class ConfigDetailsView implements WebviewViewProvider {
         viewId: DataNodeDetailsId,
         props: { nodeType: this.nodeType, nodeName: this.nodeName, node: toml[this.nodeType][this.nodeName] } as DataNodeDetailsProps,
       } as ViewMessage);
-  
     }
-  };
+  }
 
   private async editProperty(nodeType: string, nodeName: string, propertyName?: string, propertyValue?: string | string[]) {
     const toml = this.taipyContext.getToml(this.configUri.toString());
@@ -97,30 +110,35 @@ export class ConfigDetailsView implements WebviewViewProvider {
     if (!propertyName) {
       const entity = toml[nodeType][nodeName];
       pos = entity[PosSymbol];
-      const currentProps = Object.keys(entity).map(k => k.toLowerCase());
-      const properties = (await getProperties(nodeType)).filter(p => !currentProps.includes(p.toLowerCase()));
+      const currentProps = Object.keys(entity).map((k) => k.toLowerCase());
+      const properties = (await getProperties(nodeType)).filter((p) => !currentProps.includes(p.toLowerCase()));
       propertyName = await window.showQuickPick(properties, { canPickMany: false, title: l10n.t("Select property for {0}.", nodeType) });
       if (!propertyName) {
         return;
       }
     } else {
-      pos = toml[nodeType][nodeName][propertyName][PosSymbol]
+      pos = toml[nodeType][nodeName][propertyName][PosSymbol];
     }
     let newVal: string | string[];
-    const linksProp = getDescendantProperties(nodeType).find(p => p.toLowerCase() == propertyName?.toLowerCase());
+    const linksProp = getDescendantProperties(nodeType).find((p) => p.toLowerCase() == propertyName?.toLowerCase());
     if (linksProp) {
       const childType = getChildType(nodeType);
-      const values = ((propertyValue || []) as string[]).map(v => getUnsuffixedName(v.toLowerCase()));
-      const childNames = Object.keys(toml[childType] || {}).map(k => ({label: getSectionName(k), picked: values.includes(getUnsuffixedName(k.toLowerCase()))} as QuickPickItem));
+      const values = ((propertyValue || []) as string[]).map((v) => getUnsuffixedName(v.toLowerCase()));
+      const childNames = Object.keys(toml[childType] || {}).map(
+        (k) => ({ label: getSectionName(k), picked: values.includes(getUnsuffixedName(k.toLowerCase())) } as QuickPickItem)
+      );
       if (!childNames.length) {
         window.showInformationMessage(l10n.t("No {0} entity in toml.", childType));
         return;
       }
-      const res = await window.showQuickPick(childNames, { canPickMany: true, title: l10n.t("Select {0} entities for {1}.{2}", childType, nodeType, propertyName) });
+      const res = await window.showQuickPick(childNames, {
+        canPickMany: true,
+        title: l10n.t("Select {0} entities for {1}.{2}", childType, nodeType, propertyName),
+      });
       if (!res) {
         return;
       }
-      newVal = res.map(q => q.label);
+      newVal = res.map((q) => q.label);
     } else {
       const enumProps = await getEnumProps();
       const enumProp = enumProps.find((p) => p.toLowerCase() == propertyName?.toLowerCase());
@@ -129,7 +147,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
             getEnum(enumProp).map((v) => ({ label: v, picked: v == propertyValue })),
             { canPickMany: false, title: l10n.t("Select value for {0}.{1}", nodeType, propertyName) }
           )
-        : await window.showInputBox({title: l10n.t("Enter value for {0}.{1}", nodeType, propertyName), value: propertyValue as string});
+        : await window.showInputBox({ title: l10n.t("Enter value for {0}.{1}", nodeType, propertyName), value: propertyValue as string });
       if (res === undefined) {
         return;
       }
@@ -145,7 +163,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
         if (line.text.includes(search)) {
           sectionFound = true;
           if (insert) {
-            propertyRange = new Range(line.range.end.line +1, 0, line.range.end.line +1, 0);
+            propertyRange = new Range(line.range.end.line + 1, 0, line.range.end.line + 1, 0);
             break;
           }
         } else if (sectionFound) {
@@ -155,19 +173,23 @@ export class ConfigDetailsView implements WebviewViewProvider {
           const parts = line.text.split("=", 2);
           if (parts[0].trim() == propertyName) {
             const pos = parts[0].length + (parts.length > 1 ? 1 + (parts[1].length - parts[1].trimStart().length) : 0);
-            propertyRange = line.range.with({start: line.range.start.with({character: pos})});
+            propertyRange = line.range.with({ start: line.range.start.with({ character: pos }) });
             break;
           }
         }
       }
     } else {
       if (insert) {
-        propertyRange = propertyRange.with({end: propertyRange.end.with({character: 0})});
+        propertyRange = propertyRange.with({ end: propertyRange.end.with({ character: 0 }) });
       }
     }
     if (propertyRange) {
       const we = new WorkspaceEdit();
-      we.set(this.configUri, [insert ? TextEdit.insert(propertyRange.end, `${propertyName} = ${stringify.value(newVal).trim()}\n`): TextEdit.replace(propertyRange, stringify.value(newVal).trim())]);
+      we.set(this.configUri, [
+        insert
+          ? TextEdit.insert(propertyRange.end, `${propertyName} = ${stringify.value(newVal).trim()}\n`)
+          : TextEdit.replace(propertyRange, stringify.value(newVal).trim()),
+      ]);
       return workspace.applyEdit(we);
     }
   }
@@ -176,7 +198,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
     return Uri.joinPath(this.extensionUri, "dist", ...pathSegments);
   }
 
-  private _getHtmlForWebview(webview: Webview) {
+  private getHtmlForWebview(webview: Webview) {
     // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
     // Script to handle user action
     const scriptUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, webviewsLibraryName));
@@ -200,6 +222,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
 					<link href="${styleUri}" rel="stylesheet" />
 					<link href="${codiconsUri}" rel="stylesheet" />
 					<script nonce="${nonce}" defer type="text/javascript" src="${scriptUri}"></script>
+          <script nonce="${nonce}" type="text/javascript">window.taipyConfig=${JSON.stringify(getDefaultConfig(webview))};</script>
 				</head>
 				<body>
 					<div id="${containerId}"></div>
