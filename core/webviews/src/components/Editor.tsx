@@ -2,6 +2,7 @@ import { MouseEvent, useEffect, useRef } from "react";
 import { CanvasWidget } from "@projectstorm/react-canvas-core";
 import html2canvas from "html2canvas";
 import * as deepEqual from "fast-deep-equal";
+import * as l10n from "@vscode/l10n";
 
 import { ConfigEditorProps, perspectiveRootId } from "../../../shared/views";
 import { postGetNodeName, postSaveAsPngUrl, postRefreshMessage, postSaveMessage, postSetExtraEntities } from "../utils/messaging";
@@ -79,19 +80,19 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
   return (
     <div className="diagram-root">
       <div className="diagram-icon-group" data-html2canvas-ignore>
-        <div className="diagram-button icon" title="re-layout" onClick={relayout}>
-          <i className="codicon codicon-layout"></i>
+        <div className="diagram-button icon" title={l10n.t("re-layout")} onClick={relayout}>
+          <i className="taipy-icon-relayout"></i>
         </div>
-        <div className="diagram-button icon" title="refresh" onClick={postRefreshMessage}>
+        <div className="diagram-button icon" title={l10n.t("refresh")} onClick={postRefreshMessage}>
           <i className="codicon codicon-refresh"></i>
         </div>
-        <div className="diagram-button icon" title={isDirty ? "save" : ""} {...(isDirty ? { onClick: postSaveMessage } : {})}>
+        <div className="diagram-button icon" title={isDirty ? l10n.t("save") : ""} {...(isDirty ? { onClick: postSaveMessage } : {})}>
           <i className={"codicon codicon-" + (isDirty ? "circle-filled" : "circle-outline")}></i>
         </div>
-        <div className="diagram-button icon" title="save as PNG" onClick={saveAsPng}>
+        <div className="diagram-button icon" title={l10n.t("save as PNG")} onClick={saveAsPng}>
           <i className="codicon codicon-save-as"></i>
         </div>
-        <div className="diagram-button icon" title="zoom to fit" onClick={zoomToFit}>
+        <div className="diagram-button icon" title={l10n.t("zoom to fit")} onClick={zoomToFit}>
           <i className="codicon codicon-zap"></i>
         </div>
       </div>
@@ -99,7 +100,7 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
       <div className="diagram-icon-group" data-html2canvas-ignore>
         {getNodeTypes(perspectiveId).map((nodeType) => (
           <div className={"diagram-button icon " + nodeType.toLowerCase()} title={nodeType} key={nodeType} data-node-type={nodeType} onClick={onCreateNode}>
-            <i className={"codicon codicon-" + getNodeIcon(nodeType)}></i>
+            <i className={getNodeIcon(nodeType) + "-add"}></i>
           </div>
         ))}
       </div>

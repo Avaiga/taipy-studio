@@ -46,7 +46,7 @@ class PosParser extends Parser {
         if (val && typeof val == "object" && !val[_pos]) {
           Object.defineProperty(val, _pos, { value: [{ line: this.state.line, col: this.state.col + 1 }] });
         }
-        addCodePos(this._ctx, this.line, this.col -1);
+        addCodePos(this._ctx, this.line, this.col < 1 ? 0 : this.col -1);
         this._ctx = val;
       },
       get: () => {
@@ -65,7 +65,7 @@ class PosParser extends Parser {
     return super.return(val);
   }
   finish () {
-    addCodePos(this.obj, this.line, this.col -1);
+    addCodePos(this.obj, this.line, this.col < 1 ? 0 : this.col -1);
     return super.finish()
   }
 }

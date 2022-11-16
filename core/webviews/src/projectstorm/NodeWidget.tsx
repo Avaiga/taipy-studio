@@ -76,7 +76,7 @@ const NodeWidget = ({ node, baseUri, engine }: NodeProps) => {
     >
       <S.Title>
         <S.TitleIcon className="icon" title={node.getType()}>
-          <i className={"codicon codicon-" + getNodeIcon(node.getType())}></i>
+          <i className={getNodeIcon(node.getType())}></i>
         </S.TitleIcon>
         <S.TitleName>{node.getOptions().name}</S.TitleName>
       </S.Title>

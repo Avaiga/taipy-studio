@@ -36,6 +36,10 @@ const config = (env, argv) => ({
         {
           from: path.resolve(__dirname, "css"),
           to: "webviews",
+        },
+        {
+          from: path.resolve(__dirname, "l10n"),
+          to: "l10n",
         }
       ],
     }),

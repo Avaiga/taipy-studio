@@ -14,7 +14,7 @@
   },
   "icon": "assets/taipy-logo.png",
   "engines": {
-    "vscode": "^1.64.0"
+    "vscode": "^1.73.1"
   },
   "categories": [
     "Other"
@@ -27,7 +27,7 @@
     "onFileSystem:taipy-perspective"
   ],
   "main": "./dist/taipy-studio.js",
-  "l10n": "./10n",
+  "l10n": "./l10n",
   "contributes": {
     "commands": [
       {
@@ -243,7 +243,7 @@
         "taipyStudio.diagram.datanode.icon": {
           "type": "string",
           "format": "icon",
-          "default": "eye",
+          "default": "taipy-icon-datanode",
           "description": "%taipy.config.settings.diagram.datanode.icon.desc%"
         },
         "taipyStudio.diagram.task.color": {
@@ -255,7 +255,7 @@
         "taipyStudio.diagram.task.icon": {
           "type": "string",
           "format": "icon",
-          "default": "extensions",
+          "default": "taipy-icon-task",
           "description": "%taipy.config.settings.diagram.task.icon.desc%"
         },
         "taipyStudio.diagram.pipeline.color": {
@@ -267,7 +267,7 @@
         "taipyStudio.diagram.pipeline.icon": {
           "type": "string",
           "format": "icon",
-          "default": "symbol-class",
+          "default": "taipy-icon-pipeline",
           "description": "%taipy.config.settings.diagram.pipeline.icon.desc%"
         },
         "taipyStudio.diagram.scenario.color": {
@@ -279,7 +279,7 @@
         "taipyStudio.diagram.scenario.icon": {
           "type": "string",
           "format": "icon",
-          "default": "output",
+          "default": "taipy-icon-scenario",
           "description": "%taipy.config.settings.diagram.scenario.icon.desc%"
         },
         "taipyStudio.parser.usePositions": {
@@ -293,7 +293,14 @@
           "description": "%taipy.config.settings.status.timeout.desc%"
         }
       }
-    }
+    },
+    "productIconThemes": [
+      {
+        "id": "taipy-core",
+        "label": "%taipy.config.icon.theme.label%",
+        "path": "./assets/taipy-product-icon-theme.json"
+      }
+    ]
   },
   "scripts": {
     "build-this": "webpack --mode development",
@@ -301,18 +308,21 @@
     "vscode-package": "vsce package",
     "vscode-prepublish": "npm run prod",
     "package": "rm -rf *.vsix && npm run prod && vsce package",
+    "prebuild": "npm run generate-l10n-bundle",
     "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
     "prod": "concurrently -n vscode,webviews \"webpack --mode production\" \"cd webviews && webpack --mode production\"",
-    "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\""
+    "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\"",
+    "generate-l10n-bundle": "vscode-l10n-dev export --outDir ./l10n ./src ./webviews/src",
+    "generate-l10n-pseudo": "vscode-l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json"
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "^16.11.57",
-    "@types/vscode": "^1.64.0",
+    "@types/vscode": "^1.73.1",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
-    "@vscode/l10n-dev": "^0.0.17",
+    "@vscode/l10n-dev": "^0.0.19",
     "@vscode/test-electron": "^2.1.2",
     "concurrently": "^7.4.0",
     "copy-webpack-plugin": "^11.0.0",
@@ -331,7 +341,6 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "@vscode/codicons": "^0.0.32",
-    "ajv": "^8.11.0",
-    "vscode-nls": "^5.2.0"
+    "ajv": "^8.11.0"
   }
 }

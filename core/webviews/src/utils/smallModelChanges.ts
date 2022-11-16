@@ -2,7 +2,7 @@ import { getDiff } from "recursive-diff";
 import { DisplayModel } from "../../../shared/diagram";
 
 import { TaipyDiagramModel, TaipyPortModel } from "../projectstorm/models";
-import { createLink, createNode, getNodeByName, InPortName, OutPortName } from "./diagram";
+import { createNode, getNodeByName, InPortName, OutPortName } from "./diagram";
 
 export const applySmallChanges = (model: TaipyDiagramModel, displayModel: DisplayModel, oldDisplayModel?: DisplayModel) => {
   if (!oldDisplayModel) {
