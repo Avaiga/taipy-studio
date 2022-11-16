@@ -1,10 +1,9 @@
-import { WebviewViewProvider, WebviewView, Webview, Uri, window, ExtensionContext, QuickPickItemKind, QuickPickItem, workspace, Range, TextEdit, WorkspaceEdit, TextDocument } from "vscode";
+import { WebviewViewProvider, WebviewView, Webview, Uri, window, ExtensionContext, QuickPickItemKind, QuickPickItem, workspace, Range, TextEdit, WorkspaceEdit, TextDocument, l10n } from "vscode";
 
 import { getCspScriptSrc, getNonce } from "../utils/utils";
 import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName, containerId, DataNodeDetailsProps, NoDetailsProps } from "../../shared/views";
 import { Action, EditProperty, Refresh } from "../../shared/commands";
 import { ViewMessage } from "../../shared/messages";
-import { emptyNodeDetailContent, getEnterValueForProperty, getNoTypeEntityFound, getSelectChildEntities, getSelectPropertyTitle, getSelectValueForProperty } from "../utils/l10n";
 import { Context } from "../context";
 import { getOriginalUri, isUriEqual } from "./PerpectiveContentProvider";
 import { getEnum, getEnumProps, getProperties } from "../schema/validation";
@@ -28,7 +27,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
   setEmptyContent(): void {
     this._view?.webview.postMessage({
       viewId: NoDetailsId,
-      props: { message: emptyNodeDetailContent } as NoDetailsProps,
+      props: { message: l10n.t("No selected element.") } as NoDetailsProps,
     } as ViewMessage);
   }
 
@@ -100,7 +99,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
       pos = entity[PosSymbol];
       const currentProps = Object.keys(entity).map(k => k.toLowerCase());
       const properties = (await getProperties(nodeType)).filter(p => !currentProps.includes(p.toLowerCase()));
-      propertyName = await window.showQuickPick(properties, { canPickMany: false, title: getSelectPropertyTitle(nodeType) });
+      propertyName = await window.showQuickPick(properties, { canPickMany: false, title: l10n.t("Select property for {0}.", nodeType) });
       if (!propertyName) {
         return;
       }
@@ -114,10 +113,10 @@ export class ConfigDetailsView implements WebviewViewProvider {
       const values = ((propertyValue || []) as string[]).map(v => getUnsuffixedName(v.toLowerCase()));
       const childNames = Object.keys(toml[childType] || {}).map(k => ({label: getSectionName(k), picked: values.includes(getUnsuffixedName(k.toLowerCase()))} as QuickPickItem));
       if (!childNames.length) {
-        window.showInformationMessage(getNoTypeEntityFound(childType));
+        window.showInformationMessage(l10n.t("No {0} entity in toml.", childType));
         return;
       }
-      const res = await window.showQuickPick(childNames, { canPickMany: true, title: getSelectChildEntities(childType, nodeType, propertyName) });
+      const res = await window.showQuickPick(childNames, { canPickMany: true, title: l10n.t("Select {0} entities for {1}.{2}", childType, nodeType, propertyName) });
       if (!res) {
         return;
       }
@@ -128,9 +127,9 @@ export class ConfigDetailsView implements WebviewViewProvider {
       const res = enumProp
         ? await window.showQuickPick(
             getEnum(enumProp).map((v) => ({ label: v, picked: v == propertyValue })),
-            { canPickMany: false, title: getSelectValueForProperty(nodeType, propertyName) }
+            { canPickMany: false, title: l10n.t("Select value for {0}.{1}", nodeType, propertyName) }
           )
-        : await window.showInputBox({title: getEnterValueForProperty(nodeType, propertyName), value: propertyValue as string});
+        : await window.showInputBox({title: l10n.t("Enter value for {0}.{1}", nodeType, propertyName), value: propertyValue as string});
       if (res === undefined) {
         return;
       }

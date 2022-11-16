@@ -14,7 +14,7 @@
   },
   "icon": "assets/taipy-logo.png",
   "engines": {
-    "vscode": "^1.64.0"
+    "vscode": "^1.73.1"
   },
   "categories": [
     "Other"
@@ -27,7 +27,7 @@
     "onFileSystem:taipy-perspective"
   ],
   "main": "./dist/taipy-studio.js",
-  "l10n": "./10n",
+  "l10n": "./l10n",
   "contributes": {
     "commands": [
       {
@@ -310,16 +310,17 @@
     "package": "rm -rf *.vsix && npm run prod && vsce package",
     "build": "concurrently -n vscode,webviews \"webpack --mode development\" \"cd webviews && webpack --mode development\"",
     "prod": "concurrently -n vscode,webviews \"webpack --mode production\" \"cd webviews && webpack --mode production\"",
-    "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\""
+    "watch": "concurrently -n vscode,webviews \"webpack watch --mode development\" \"cd webviews && webpack watch --mode development\"",
+    "generate-l10n-bundle": "@vscode/l10n-dev ./src --out ./l10n"
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "^16.11.57",
-    "@types/vscode": "^1.64.0",
+    "@types/vscode": "^1.73.1",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
-    "@vscode/l10n-dev": "^0.0.18",
+    "@vscode/l10n-dev": "^0.0.19",
     "@vscode/test-electron": "^2.1.2",
     "concurrently": "^7.4.0",
     "copy-webpack-plugin": "^11.0.0",
@@ -338,7 +339,6 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "@vscode/codicons": "^0.0.32",
-    "ajv": "^8.11.0",
-    "vscode-nls": "^5.2.0"
+    "ajv": "^8.11.0"
   }
 }

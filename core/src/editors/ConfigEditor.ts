@@ -3,8 +3,8 @@ import {
   CancellationToken,
   commands,
   CustomTextEditorProvider,
-  Disposable,
   ExtensionContext,
+  l10n,
   languages,
   Position,
   Range,
@@ -14,7 +14,6 @@ import {
   Uri,
   Webview,
   WebviewPanel,
-  WebviewPanelOnDidChangeViewStateEvent,
   window,
   workspace,
   WorkspaceEdit,
@@ -34,7 +33,6 @@ import {
   CreateLink,
   CreateNode,
   DeleteLink,
-  EditProperty,
   GetNodeName,
   Refresh,
   RemoveExtraEntities,
@@ -49,7 +47,6 @@ import {
 import { EditorAddNodeMessage, ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
 import { TaipyStudioSettingsName } from "../utils/constants";
-import { getInvalidEntityTypeForPerspective, getNewNameInputError, getNewNameInputPrompt, getNewNameInputTitle } from "../utils/l10n";
 import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
 import { getDefaultContent, getDescendantProperties, getParentType, getPropertyValue, getSectionName, getUnsuffixedName, toDisplayModel } from "../utils/toml";
@@ -155,7 +152,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
               }
             }
             if (!childType) {
-              window.showWarningMessage(getInvalidEntityTypeForPerspective(perspType, nodeType));
+              window.showWarningMessage(l10n.t("Cannot show a {0} entity in a {1} Perpective.", nodeType, perspType));
               return;
             }
           }
@@ -428,16 +425,16 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       }, nodeType + "-1");
     const validateNodeName = (value: string) => {
       if (!value || /[\s\.]/.test(value) || value.toLowerCase() == "default") {
-        return getNewNameInputError(nodeType, value, true);
+        return l10n.t("Entity {0} Name should not contain space, '.' or be empty or be default '{1}'", nodeType, value);
       }
       if (Object.keys(entity).some((n) => n.toLowerCase() == value.toLowerCase())) {
-        return getNewNameInputError(nodeType, value);
+        return l10n.t("Another {0} entity has the name {1}", nodeType, value);
       }
       return undefined as string;
     };
     const newName = await window.showInputBox({
-      prompt: getNewNameInputPrompt(nodeType),
-      title: getNewNameInputTitle(nodeType),
+      prompt: l10n.t("Enter a name for a new {0} entity.", nodeType),
+      title: l10n.t("new {0} name", nodeType),
       validateInput: validateNodeName,
       value: nodeName,
     });

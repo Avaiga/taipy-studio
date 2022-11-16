@@ -1,10 +1,9 @@
-import { Diagnostic, DiagnosticSeverity, languages, Range, TextDocument, ThemeColor, Uri, window, workspace } from "vscode";
+import { Diagnostic, DiagnosticSeverity, l10n, languages, Range, TextDocument, ThemeColor, Uri, window, workspace } from "vscode";
 import { JsonMap } from "@iarna/toml";
 import { ErrorObject } from "ajv";
 
 import { TaipyStudioSettingsName } from "./constants";
 import { getOriginalUri } from "../providers/PerpectiveContentProvider";
-import { getConsistencyWarning, getTomlError, getUnreferencedELement } from "./l10n";
 import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
 import { getDescendantProperties, getUnsuffixedName } from "./toml";
 import { getChildType } from "../../shared/toml";
@@ -31,7 +30,7 @@ export const handleTomlParseError = (doc: TextDocument, e: Error & TomlInfo) => 
     },
   ]);
   const sbi = window.createStatusBarItem();
-  sbi.text = getTomlError(doc.uri.path);
+  sbi.text = l10n.t("Document '{0}' is not valid toml.", doc.uri.path.split("/").at(-1));
   sbi.backgroundColor = new ThemeColor("statusBarItem.warningBackground");
   sbi.tooltip = e.message;
   sbi.command = { title: "Open Editor", command: "vscode.open", arguments: [uri.with({ fragment: `L${line}C${col}` })] };
@@ -73,7 +72,7 @@ export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaEr
                   diagnostics.push({
                     severity: DiagnosticSeverity.Warning,
                     range: new Range(codePos.line, codePos.col, codePos.line, codePos.col + childName.length),
-                    message: getConsistencyWarning(childType, childName),
+                    message: l10n.t("Element '{0}.{1}' does not exist.", childType, childName),
                     source: "consistency checker",
                   });
                 }
@@ -95,7 +94,7 @@ export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaEr
             diagnostics.push({
               severity: DiagnosticSeverity.Information,
               range: new Range(codePos.line, codePos.col, codePos.line, codePos.col + nodeName.length),
-              message: getUnreferencedELement(nodeType, nodeName),
+              message: l10n.t("No reference to Element '{0}.{1}'.", nodeType, nodeName),
               source: "consistency checker",
             });
           }
