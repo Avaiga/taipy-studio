@@ -4,8 +4,9 @@
   "description": "Provide support for taipy-gui package",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.72.0"
+    "vscode": "^1.73.1"
   },
+  "l10n": "./l10n",
   "categories": [
     "Other"
   ],
@@ -27,23 +28,23 @@
     }
   },
   "contributes": {
-		"commands": [
-			{
-				"command": "taipy.gui.md.generate",
-				"title": "Generate Gui Element"
-			}
-		],
-    "snippets": [
-			{
-				"language": "python",
-				"path": "./src/gui/snippets.json"
-			},
+    "commands": [
       {
-				"language": "markdown",
-				"path": "./src/gui/snippets.json"
-			}
-		]
-	},
+        "command": "taipy.gui.md.generate",
+        "title": "%taipy.gui.md.generate.title%"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "python",
+        "path": "./snippets.json"
+      },
+      {
+        "language": "markdown",
+        "path": "./snippets.json"
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
@@ -60,9 +61,10 @@
     "@types/mocha": "^10.0.0",
     "@types/node": "16.x",
     "@types/string-similarity": "^4.0.0",
-    "@types/vscode": "^1.72.0",
+    "@types/vscode": "^1.73.1",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
+    "@vscode/l10n-dev": "^0.0.19",
     "@vscode/test-electron": "^2.1.5",
     "eslint": "^8.24.0",
     "glob": "^8.0.3",

@@ -41,11 +41,11 @@ export const getElementProperties = (visualElements: object): Record<string, Rec
     // handle all blocks object
     Object.keys(blocks).forEach((v: string) => {
         let elementDetail: ElementDetail = blocks[v];
-        blocksProperties[v] = parseElementDetail(elementDetail, blocks, controls, undocumented);
+        blocksProperties[v] = getElementDetailProperties(elementDetail, blocks, controls, undocumented);
     });
     Object.keys(controls).forEach((v: string) => {
         let elementDetail: ElementDetail = controls[v];
-        controlsProperties[v] = parseElementDetail(elementDetail, blocks, controls, undocumented);
+        controlsProperties[v] = getElementDetailProperties(elementDetail, blocks, controls, undocumented);
     });
     return { ...blocksProperties, ...controlsProperties };
 };
@@ -78,7 +78,7 @@ const parsePropertyList = (propertyList: ElementProperty[] | undefined): Record<
     }, {} as Record<string, string>);
 };
 
-const handleInherits = (
+const handleElementDetailInherits = (
     inherits: string[] | undefined,
     blocks: Record<string, ElementDetail>,
     controls: Record<string, ElementDetail>,
@@ -97,12 +97,12 @@ const handleInherits = (
         } else {
             elementDetail = blocks[v];
         }
-        properties = { ...properties, ...parseElementDetail(elementDetail, blocks, controls, undocumented) };
+        properties = { ...properties, ...getElementDetailProperties(elementDetail, blocks, controls, undocumented) };
     });
     return properties;
 };
 
-const parseElementDetail = (
+const getElementDetailProperties = (
     elementDetail: ElementDetail,
     blocks: Record<string, ElementDetail>,
     controls: Record<string, ElementDetail>,
@@ -110,6 +110,6 @@ const parseElementDetail = (
 ): Record<string, string> => {
     return {
         ...parsePropertyList(elementDetail.properties),
-        ...handleInherits(elementDetail.inherits, blocks, controls, undocumented),
+        ...handleElementDetailInherits(elementDetail.inherits, blocks, controls, undocumented),
     };
 };
