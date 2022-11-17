@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, l10n, Position, Range, TextDocument } from "vscode";
+import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, l10n, Position, Range, TextDocument } from "vscode";
 import { findBestMatch } from "string-similarity";
 import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
 
@@ -29,11 +29,21 @@ const buildEmptyTaipyElement = (): TaipyElement => {
     return { value: "", type: "", properties: [] };
 };
 
-export const getMdDiagnostics = (doc: TextDocument): Diagnostic[] => {
+export const refreshDiagnostics = (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
+    let diagnostics: Diagnostic[] | undefined = undefined;
+    if (doc.fileName.endsWith(".md")) {
+        diagnostics = getMdDiagnostics(doc);
+    } else if (doc.fileName.endsWith(".py")) {
+        diagnostics = getPyDiagnostics(doc);
+    }
+    diagnostics && diagnosticCollection.set(doc.uri, diagnostics);
+};
+
+const getMdDiagnostics = (doc: TextDocument): Diagnostic[] => {
     return getSectionDiagnostics({ content: doc.getText() });
 };
 
-export const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
+const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
     const text = doc.getText();
     const d: Diagnostic[] = [];
     const quotePositions: Position[] = text.split(/\r?\n/).reduce<Position[]>((obj: Position[], v: string, i: number) => {

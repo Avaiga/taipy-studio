@@ -1,7 +1,7 @@
 import { Diagnostic, DocumentFilter, ExtensionContext, languages, TextDocument, window, workspace } from "vscode";
 import { GenerateGuiCommand } from "./command";
 import { GuiCompletionItemProvider } from "./completion";
-import { getMdDiagnostics, getPyDiagnostics } from "./diagnostics";
+import { refreshDiagnostics } from "./diagnostics";
 
 export class GuiContext {
     static register(vsContext: ExtensionContext): void {
@@ -15,27 +15,17 @@ export class GuiContext {
     }
 
     private registerMarkdownDiagnostics(context: ExtensionContext): void {
-        const markdownDiagnosticCollection = languages.createDiagnosticCollection("gui-markdown");
+        const mdDiagnosticCollection = languages.createDiagnosticCollection("gui-markdown");
 
-        const handler = (doc: TextDocument) => {
-            let diagnostics: Diagnostic[] | undefined = undefined;
-            if (doc.fileName.endsWith(".md")) {
-                diagnostics = getMdDiagnostics(doc);
-            } else if (doc.fileName.endsWith(".py")) {
-                diagnostics = getPyDiagnostics(doc);
-            }
-            diagnostics && markdownDiagnosticCollection.set(doc.uri, diagnostics);
-        };
-
-        // handle active text editor
         if (window.activeTextEditor) {
-            (async () => window.activeTextEditor && (await handler(window.activeTextEditor.document)))();
+            window.activeTextEditor && refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection);
         }
 
-        const didOpen = workspace.onDidOpenTextDocument((doc) => handler(doc));
-        const didChange = workspace.onDidChangeTextDocument((e) => handler(e.document));
+        const didOpen = workspace.onDidOpenTextDocument((doc) => refreshDiagnostics(doc, mdDiagnosticCollection));
+        const didChange = workspace.onDidChangeTextDocument((e) => refreshDiagnostics(e.document, mdDiagnosticCollection));
+        const didClose = workspace.onDidCloseTextDocument((doc) => mdDiagnosticCollection.delete(doc.uri));
 
-        context.subscriptions.push(markdownDiagnosticCollection, didOpen, didChange);
+        context.subscriptions.push(mdDiagnosticCollection, didOpen, didChange, didClose);
     }
 
     private registerCompletionItemProvider(context: ExtensionContext): void {
