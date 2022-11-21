@@ -1,4 +1,5 @@
 import { useEffect, lazy, useState, Suspense } from "react";
+import * as l10n from "@vscode/l10n";
 
 import { ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, DataNodeDetailsId, DataNodeDetailsProps, NoDetailsId, NoDetailsProps } from "../../shared/views";
@@ -54,7 +55,7 @@ const WebView = () => {
   }
   return (
     <>
-      <div className="icon" title="refresh" onClick={postRefreshMessage}>
+      <div className="icon" title={l10n.t("refresh")} onClick={postRefreshMessage}>
         <i className="codicon codicon-refresh"></i>
       </div>
       <Loading />

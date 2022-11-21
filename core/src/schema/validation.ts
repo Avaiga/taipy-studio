@@ -24,14 +24,15 @@ export const getEnum = (property: string) => enums[property];
 
 export const getEnumProps = async () => {
   const props = Object.keys(enums);
-  if (!props.length) {
-    const schema = (await getValidationSchema()) as SchemaObject;
-    Object.values(schema.properties).forEach((v: any) => {
-      v.properties && addPropEnums(v.properties);
-      v.additionalProperties?.properties && addPropEnums(v.additionalProperties.properties);
-    });
+  if (props.length) {
+    return props;
   }
-  return props;
+  const schema = (await getValidationSchema()) as SchemaObject;
+  Object.values(schema.properties).forEach((v: any) => {
+    v.properties && addPropEnums(v.properties);
+    v.additionalProperties?.properties && addPropEnums(v.additionalProperties.properties);
+  });
+  return Object.keys(enums);
 };
 
 const addPropEnums = (properties: any) => {
@@ -42,3 +43,16 @@ const addPropEnums = (properties: any) => {
         enums[property] = ((p as any).enum as string[]).filter((v) => v).map((v) => v);
       });
 };
+
+const properties = {} as Record<string, string[]>;
+export const getProperties = async (nodeType: string) => {
+  const props = Object.keys(properties);
+  if (!props.length) {
+    const schema = (await getValidationSchema()) as SchemaObject;
+    Object.entries(schema.properties).forEach(([k, v]: [string, any]) => {
+      properties[k] = Object.keys(v.properties);
+      properties[k].push(...Object.keys(v.additionalProperties?.properties || {}));
+    });
+  }
+  return properties[nodeType] || [];
+}

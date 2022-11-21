@@ -4,6 +4,7 @@ import {
   DataTransfer,
   Event,
   EventEmitter,
+  l10n,
   ProviderResult,
   TreeDataProvider,
   TreeDragAndDropController,
@@ -16,13 +17,12 @@ import { selectConfigNodeCmd } from "../utils/commands";
 import { Context } from "../context";
 import { getPerspectiveUri } from "./PerpectiveContentProvider";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
-import { selectDatanodeTitle, selectPipelineTitle, selectScenarioTitle, selectTaskTitle } from "../utils/l10n";
 
 const titles = {
-  [DataNode]: selectDatanodeTitle,
-  [Task]: selectTaskTitle,
-  [Pipeline]: selectPipelineTitle,
-  [Scenario]: selectScenarioTitle,
+  [DataNode]: l10n.t("Select data node"),
+  [Task]: l10n.t("Select task"),
+  [Pipeline]: l10n.t("Select pipeline"),
+  [Scenario]: l10n.t("Select scenario"),
 };
 const getTitleFromType = (nodeType: string) => titles[nodeType] || "Select Something";
 

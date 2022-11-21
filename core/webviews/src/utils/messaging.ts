@@ -12,6 +12,7 @@ import {
   SetExtraEntities,
   SetPositions,
   UpdateExtraEntities,
+  EditProperty,
 } from "../../../shared/commands";
 import { Positions } from "../../../shared/diagram";
 
@@ -48,3 +49,4 @@ export const postUpdateExtraEntities = (extraEntities: string) => getVsCodeApi()
 export const postRemoveExtraEntities = (extraEntities: string) => getVsCodeApi()?.postMessage({ command: RemoveExtraEntities, extraEntities });
 export const postSaveMessage = () => getVsCodeApi()?.postMessage({ command: SaveDocument });
 export const postSaveAsPngUrl = (pngAsUrl: string) => getVsCodeApi()?.postMessage({ command: SaveAsPngUrl, url: pngAsUrl });
+export const postEditProperty = (nodeType: string, nodeName: string, propertyName?: string, propertyValue?: string | string[]) => getVsCodeApi()?.postMessage({ command: EditProperty, nodeType, nodeName, propertyName, propertyValue });

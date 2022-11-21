@@ -1,8 +1,7 @@
-import { commands, EventEmitter, ProviderResult, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from "vscode";
+import { commands, EventEmitter, l10n, ProviderResult, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeView, Uri, window, workspace } from "vscode";
 
 import { selectConfigFileCmd } from "../utils/commands";
 import { Context } from "../context";
-import { configFileItemTitle } from "../utils/l10n";
 import { configFileExt, configFilePattern } from "../utils/utils";
 
 class ConfigFileItem extends TreeItem {
@@ -10,7 +9,7 @@ class ConfigFileItem extends TreeItem {
     super(baseName, TreeItemCollapsibleState.None);
     this.command = {
       command: selectConfigFileCmd,
-      title: configFileItemTitle,
+      title: l10n.t("Select file"),
       arguments: [resourceUri],
     };
   }

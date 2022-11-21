@@ -4,6 +4,7 @@ import {
   commands,
   CustomTextEditorProvider,
   ExtensionContext,
+  l10n,
   languages,
   Position,
   Range,
@@ -18,7 +19,7 @@ import {
   WorkspaceEdit,
 } from "vscode";
 
-import { configFilePattern, getCspScriptSrc, getNonce } from "../utils/utils";
+import { configFilePattern, getCspScriptSrc, getDefaultConfig, getNonce } from "../utils/utils";
 import { revealConfigNodeCmd } from "../utils/commands";
 import {
   getCleanPerpsectiveUriString,
@@ -46,7 +47,6 @@ import {
 import { EditorAddNodeMessage, ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
 import { TaipyStudioSettingsName } from "../utils/constants";
-import { getInvalidEntityTypeForPerspective, getNewNameInputError, getNewNameInputPrompt, getNewNameInputTitle } from "../utils/l10n";
 import { getChildType } from "../../shared/toml";
 import { Context } from "../context";
 import { getDefaultContent, getDescendantProperties, getParentType, getPropertyValue, getSectionName, getUnsuffixedName, toDisplayModel } from "../utils/toml";
@@ -152,7 +152,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
               }
             }
             if (!childType) {
-              window.showWarningMessage(getInvalidEntityTypeForPerspective(perspType, nodeType));
+              window.showWarningMessage(l10n.t("Cannot show a {0} entity in a {1} Perpective.", nodeType, perspType));
               return;
             }
           }
@@ -211,6 +211,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       enableScripts: true,
       localResourceRoots: [this.joinPaths()],
     };
+
     // retrieve and work with the original document
     const realDocument = await getOriginalDocument(document);
 
@@ -424,16 +425,16 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       }, nodeType + "-1");
     const validateNodeName = (value: string) => {
       if (!value || /[\s\.]/.test(value) || value.toLowerCase() == "default") {
-        return getNewNameInputError(nodeType, value, true);
+        return l10n.t("Entity {0} Name should not contain space, '.' or be empty or be default '{1}'", nodeType, value);
       }
       if (Object.keys(entity).some((n) => n.toLowerCase() == value.toLowerCase())) {
-        return getNewNameInputError(nodeType, value);
+        return l10n.t("Another {0} entity has the name {1}", nodeType, value);
       }
       return undefined as string;
     };
     const newName = await window.showInputBox({
-      prompt: getNewNameInputPrompt(nodeType),
-      title: getNewNameInputTitle(nodeType),
+      prompt: l10n.t("Enter a name for a new {0} entity.", nodeType),
+      title: l10n.t("new {0} name", nodeType),
       validateInput: validateNodeName,
       value: nodeName,
     });
@@ -573,15 +574,13 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const styleUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "config-editor.css"));
 
     const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
+    const taipyiconsUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "taipy-icons.css"));
 
     const config = workspace.getConfiguration(TaipyStudioSettingsName);
-    const configObj = nodeTypes4config.reduce(
-      (co, nodeType) => {
-        co.icons[nodeType] = config.get("diagram." + nodeType + ".icon", "refresh");
-        return co;
-      },
-      { icons: {} }
-    );
+    const configObj = nodeTypes4config.reduce((co, nodeType) => {
+      co.icons[nodeType] = config.get("diagram." + nodeType + ".icon", "codicon-refresh");
+      return co;
+    }, getDefaultConfig(webview));
 
     const cssVars = nodeTypes4config
       .map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";")
@@ -600,6 +599,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
                   <link href="${styleUri}" rel="stylesheet" />
                   <link href="${codiconsUri}" rel="stylesheet" />
+                  <link href="${taipyiconsUri}" rel="stylesheet" />
                   <script nonce="${nonce}" defer type="text/javascript" src="${scriptUri}"></script>
                   <script nonce="${nonce}" type="text/javascript">window.taipyConfig=${JSON.stringify(configObj)};</script>
               </head>

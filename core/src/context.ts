@@ -41,6 +41,7 @@ const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a
 
 interface NodeSelectionCache {
   fileUri?: string;
+  lastView?: string;
   [key: string]: string;
 }
 
@@ -88,7 +89,7 @@ export class Context {
     // Config editor
     this.configEditorProvider = ConfigEditorProvider.register(vsContext, this);
     // Details
-    this.configDetailsView = new ConfigDetailsView(vsContext?.extensionUri);
+    this.configDetailsView = new ConfigDetailsView(vsContext, this);
     vsContext.subscriptions.push(window.registerWebviewViewProvider(CONFIG_DETAILS_ID, this.configDetailsView));
     // Document change listener
     workspace.onDidChangeTextDocument(this.onDocumentChanged, this, vsContext.subscriptions);
@@ -121,10 +122,10 @@ export class Context {
     }
   }
 
-  registerDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
+  registerDocChangeListener(listener: (document: TextDocument) => void, thisArg: any) {
     this.docChangedListener.push([thisArg, listener]);
   }
-  unregisterDocChangeListener<T extends ConfigEditorProvider>(listener: (document: TextDocument) => void, thisArg: T) {
+  unregisterDocChangeListener(listener: (document: TextDocument) => void, thisArg: any) {
     const idx = this.docChangedListener.findIndex(([t, l]) => t === thisArg && l === listener);
     idx > -1 && this.docChangedListener.splice(idx, 1);
   }
@@ -153,12 +154,13 @@ export class Context {
           const item = p.getNodeForUri(lastSelectedUri);
           if (item && this.treeViews[idx].visible) {
             this.treeViews[idx].reveal(item, { select: true });
-            self.selectConfigNode(nodeType, item.label as string, item.getNode(), item.resourceUri);
+            self.selectConfigNode(nodeType, item.label as string, item.getNode(), item.resourceUri, false);
           }
         }, 1);
       }
     });
   }
+
   private async onFileChange(uri: Uri): Promise<void> {
     if (uri && this.configFileUri?.toString() == uri.toString()) {
       if (await this.readToml(await this.getDocFromUri(uri))) {
@@ -215,9 +217,19 @@ export class Context {
   }
 
   private async selectConfigNode(nodeType: string, name: string, configNode: object, uri: Uri, reveal = true): Promise<void> {
-    this.configDetailsView.setConfigNodeContent(nodeType, name, configNode);
+    let updateCache = false;
+    if (reveal || this.selectionCache.lastView == nodeType) {
+      this.configDetailsView.setConfigNodeContent(nodeType, name, configNode, uri);
+    }
     if (this.selectionCache[nodeType] != uri.toString()) {
       this.selectionCache[nodeType] = uri.toString();
+      updateCache = true;
+    }
+    if (this.selectionCache.lastView != nodeType) {
+      this.selectionCache.lastView = nodeType;
+      updateCache = true;
+    }
+    if (updateCache) {
       this.vsContext.workspaceState.update(Context.cacheName, this.selectionCache);
     }
     if (reveal) {
