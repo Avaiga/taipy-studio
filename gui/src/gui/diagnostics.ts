@@ -1,4 +1,16 @@
-import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, l10n, Position, Range, TextDocument } from "vscode";
+import {
+    Diagnostic,
+    DiagnosticCollection,
+    DiagnosticSeverity,
+    ExtensionContext,
+    l10n,
+    languages,
+    Position,
+    Range,
+    TextDocument,
+    window,
+    workspace,
+} from "vscode";
 import { findBestMatch } from "string-similarity";
 import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
 
@@ -29,7 +41,34 @@ const buildEmptyTaipyElement = (): TaipyElement => {
     return { value: "", type: "", properties: [] };
 };
 
-export const refreshDiagnostics = (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
+export enum DiagnosticCode {
+    missCSyntax = "MCS",
+    missOTag = "MOT",
+    missCTag = "MCT",
+    missOTagId = "MOTI",
+    missCTagId = "MCTI",
+    unmatchedOTagId = "UOTI",
+    unmatchedCTagId = "UCTI",
+    invalidPropertyFormat = "PE01",
+    invalidPropertyName = "PE02",
+    ignoreNegatedValue = "PE03",
+}
+
+export const registerDiagnostics = (context: ExtensionContext): void => {
+    const mdDiagnosticCollection = languages.createDiagnosticCollection("gui-markdown");
+
+    if (window.activeTextEditor) {
+        window.activeTextEditor && refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection);
+    }
+
+    const didOpen = workspace.onDidOpenTextDocument((doc) => refreshDiagnostics(doc, mdDiagnosticCollection));
+    const didChange = workspace.onDidChangeTextDocument((e) => refreshDiagnostics(e.document, mdDiagnosticCollection));
+    const didClose = workspace.onDidCloseTextDocument((doc) => mdDiagnosticCollection.delete(doc.uri));
+
+    context.subscriptions.push(mdDiagnosticCollection, didOpen, didChange, didClose);
+};
+
+const refreshDiagnostics = (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
     let diagnostics: Diagnostic[] | undefined = undefined;
     if (doc.fileName.endsWith(".md")) {
         diagnostics = getMdDiagnostics(doc);
@@ -95,7 +134,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 diagnostics.push(
                     createWarningDiagnostic(
                         l10n.t("Missing closing syntax"),
-                        "MCS",
+                        DiagnosticCode.missCSyntax,
                         getRangeFromPosition(
                             initialPosition,
                             getRangeOfStringInline(line, openingTagSearch[0], new Position(lineCount, 0))
@@ -121,7 +160,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 diagnostics.push(
                     createWarningDiagnostic(
                         l10n.t("Missing opening tag"),
-                        "MOT",
+                        DiagnosticCode.missOTag,
                         getRangeFromPosition(
                             initialPosition,
                             getRangeOfStringInline(line, closingTagSearch[0], new Position(lineCount, 0))
@@ -136,7 +175,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 diagnostics.push(
                     createWarningDiagnostic(
                         l10n.t("Missing matching opening tag identifier '{0}'", closeTagId),
-                        "MOTI",
+                        DiagnosticCode.missOTagId,
                         getRangeFromPosition(
                             initialPosition,
                             getRangeOfStringInline(line, closingTagSearch[0], new Position(lineCount, 0))
@@ -148,7 +187,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 diagnostics.push(
                     createWarningDiagnostic(
                         l10n.t("Missing matching closing tag identifier '{0}'", tagId),
-                        "MCTI",
+                        DiagnosticCode.missCTagId,
                         getRangeFromPosition(p, inlineP)
                     )
                 );
@@ -157,7 +196,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 diagnostics.push(
                     createWarningDiagnostic(
                         l10n.t("Unmatched opening tag identifier '{0}'", tagId),
-                        "UOTI",
+                        DiagnosticCode.unmatchedOTagId,
                         getRangeFromPosition(
                             initialPosition,
                             getRangeOfStringInline(line, closingTagSearch[0], new Position(lineCount, 0))
@@ -167,7 +206,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
                 diagnostics.push(
                     createWarningDiagnostic(
                         l10n.t("Unmatched closing tag identifier '{0}'", closeTagId),
-                        "UCTI",
+                        DiagnosticCode.unmatchedCTagId,
                         getRangeFromPosition(p, inlineP)
                     )
                 );
@@ -179,7 +218,7 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
         diagnostics.push(
             createWarningDiagnostic(
                 l10n.t("Missing closing tag with tag identifier '{0}'", tagId),
-                "MCT",
+                DiagnosticCode.missCTag,
                 getRangeFromPosition(p, inlineP)
             )
         );
@@ -205,7 +244,7 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
             d.push(
                 createWarningDiagnostic(
                     l10n.t("Invalid property format"),
-                    "PE01",
+                    DiagnosticCode.invalidPropertyFormat,
                     getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
             );
@@ -224,7 +263,7 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
             d.push(
                 createWarningDiagnostic(
                     dS,
-                    "PE02",
+                    DiagnosticCode.invalidPropertyName,
                     getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
             );
@@ -234,7 +273,7 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
             d.push(
                 createWarningDiagnostic(
                     l10n.t("Negated value of property '{0}' will be ignored", propName),
-                    "PE03",
+                    DiagnosticCode.ignoreNegatedValue,
                     getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
             );
