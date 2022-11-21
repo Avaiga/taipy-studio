@@ -18,7 +18,7 @@ import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
 
 export class MarkdownActionProvider implements CodeActionProvider {
     public static readonly providedCodeActionKinds = [CodeActionKind.QuickFix];
-    public readonly codeActionMap: Record<string, (document: TextDocument, diagnostic: Diagnostic) => CodeAction> = {
+    private readonly codeActionMap: Record<string, (document: TextDocument, diagnostic: Diagnostic) => CodeAction> = {
         [DiagnosticCode.missCSyntax]: this.createMCSCodeAction,
     };
 
@@ -58,10 +58,13 @@ export class MarkdownActionProvider implements CodeActionProvider {
     }
 
     private createMCSCodeAction(document: TextDocument, diagnostic: Diagnostic): CodeAction {
-        const action = new CodeAction("Add a closing syntax", CodeActionKind.QuickFix);
+        const action = new CodeAction("Add closing tag", CodeActionKind.QuickFix);
         action.diagnostics = [diagnostic];
         action.isPreferred = true;
         action.edit = new WorkspaceEdit();
+        const diagnosticText = document.getText(diagnostic.range);
+        let insertString = diagnosticText.endsWith("|") ? ">" : "|>";
+        action.edit.insert(document.uri, diagnostic.range.end, insertString);
         return action;
     }
 }
