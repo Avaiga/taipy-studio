@@ -1,7 +1,9 @@
 import {
   commands,
+  DocumentSymbol,
   ExtensionContext,
   Range,
+  SymbolInformation,
   TextDocument,
   TextDocumentChangeEvent,
   TextEditorRevealType,
@@ -11,11 +13,11 @@ import {
   window,
   workspace,
 } from "vscode";
-import { JsonMap, parse } from "@iarna/toml";
+import { JsonMap } from "@iarna/toml";
 
 import { ConfigFilesView } from "./views/ConfigFilesView";
 import { revealConfigNodeCmd, selectConfigFileCmd, selectConfigNodeCmd } from "./utils/commands";
-import { CONFIG_DETAILS_ID, TaipyStudioSettingsName } from "./utils/constants";
+import { CONFIG_DETAILS_ID, TAIPY_STUDIO_SETTINGS_NAME } from "./utils/constants";
 import { ConfigDetailsView } from "./providers/ConfigDetails";
 import { configFilePattern } from "./utils/utils";
 import {
@@ -30,14 +32,14 @@ import {
   TaskItem,
   TreeNodeCtor,
 } from "./providers/ConfigNodesProvider";
-import { PerspectiveContentProvider, PerspectiveScheme, isUriEqual, getOriginalUri, getPerspectiveUri } from "./providers/PerpectiveContentProvider";
+import { PerspectiveContentProvider, PERSPECTIVE_SCHEME, isUriEqual, getOriginalUri, getPerspectiveUri } from "./providers/PerpectiveContentProvider";
 import { ConfigEditorProvider } from "./editors/ConfigEditor";
-import { cleanTomlParseError, handleTomlParseError, reportInconsistencies } from "./utils/errors";
-import { parseAsync } from "./iarna-toml/AsyncParser";
+import { cleanDocumentDiagnostics, reportInconsistencies } from "./utils/errors";
 import { ValidateFunction } from "ajv/dist/2020";
 import { getValidationFunction } from "./schema/validation";
+import { getSymbol } from "./utils/symbols";
 
-const configNodeKeySort = ([a]: [string, unknown], [b]: [string, unknown]) => (a == b ? 0 : a == "default" ? -1 : b == "default" ? 1 : a > b ? 1 : -1);
+const configNodeKeySort = (a: DocumentSymbol, b: DocumentSymbol) => (a === b ? 0 : a.name === "default" ? -1 : b.name === "default" ? 1 : a.name > b.name ? 1 : -1);
 
 interface NodeSelectionCache {
   fileUri?: string;
@@ -57,8 +59,8 @@ export class Context {
   private readonly treeViews: TreeView<TreeItem>[] = [];
   private readonly configDetailsView: ConfigDetailsView;
   private readonly selectionCache: NodeSelectionCache;
-  // original Uri => toml
-  private readonly tomlByUri: Record<string, JsonMap> = {};
+  // original Uri => symbols
+  private readonly symbolsByUri: Record<string, Array<DocumentSymbol>> = {};
   // docChanged listeners
   private readonly docChangedListener: Array<[ConfigEditorProvider, (document: TextDocument) => void]> = [];
   // editors
@@ -78,7 +80,7 @@ export class Context {
     commands.registerCommand("taipy.perspective.show", this.showPerspective, this);
     commands.registerCommand("taipy.perspective.showFromDiagram", this.showPerspectiveFromDiagram, this);
     // Perspective Provider
-    vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PerspectiveScheme, new PerspectiveContentProvider()));
+    vsContext.subscriptions.push(workspace.registerTextDocumentContentProvider(PERSPECTIVE_SCHEME, new PerspectiveContentProvider()));
     // Create Tree Views
     this.treeViews.push(this.createTreeView(DataNodeItem));
     this.treeViews.push(this.createTreeView(TaskItem));
@@ -112,8 +114,8 @@ export class Context {
   }
 
   private async onDocumentChanged(e: TextDocumentChangeEvent) {
-    if (this.tomlByUri[getOriginalUri(e.document.uri).toString()]) {
-      await this.refreshToml(e.document);
+    if (this.symbolsByUri[getOriginalUri(e.document.uri).toString()]) {
+      await this.refreshSymbols(e.document);
       this.docChangedListener.forEach(([t, l]) => l.call(t, e.document));
     }
     if (isUriEqual(this.configFileUri, e.document.uri)) {
@@ -162,8 +164,8 @@ export class Context {
   }
 
   private async onFileChange(uri: Uri): Promise<void> {
-    if (uri && this.configFileUri?.toString() == uri.toString()) {
-      if (await this.readToml(await this.getDocFromUri(uri))) {
+    if (uri && this.configFileUri?.toString() === uri.toString()) {
+      if (await this.readSymbols(await this.getDocFromUri(uri))) {
         this.treeProviders.forEach((p) => p.refresh(this, uri));
       }
     }
@@ -174,11 +176,10 @@ export class Context {
   }
 
   private async onFileDelete(uri: Uri): Promise<void> {
-    cleanTomlParseError(uri);
     if (isUriEqual(uri, this.configFileUri)) {
       this.configFileUri = undefined;
       this.treeProviders.forEach((p) => p.refresh(this));
-    } 
+    }
     this.configFilesView.refresh(this.configFileUri?.toString());
   }
 
@@ -186,13 +187,11 @@ export class Context {
     return this.configFileUri;
   }
 
-  getConfigNodes(nodeType: string): Array<[string, any]> {
-    const toml = this.getToml(this.configFileUri?.toString());
-    const configNodes = toml && toml[nodeType];
+  getConfigNodes(nodeType: string): Array<DocumentSymbol> {
+    const symbols = this.getSymbols(this.configFileUri?.toString());
+    const typeSymbol = getSymbol(symbols, nodeType);
     // Sort keys so that 'default' is always the first entry.
-    return Object.entries(configNodes || {})
-      .sort(configNodeKeySort)
-      .map((a) => a);
+    return (typeSymbol && typeSymbol.children.sort(configNodeKeySort)) || [];
   }
 
   async selectUri(uri: Uri): Promise<void> {
@@ -200,32 +199,32 @@ export class Context {
       return;
     }
     this.configFileUri = uri;
-    if (!this.tomlByUri[uri.toString()]) {
-      await this.readToml(await this.getDocFromUri(uri));
+    if (!this.symbolsByUri[uri.toString()]) {
+      await this.readSymbols(await this.getDocFromUri(uri));
     }
     this.treeProviders.forEach((p) => p.refresh(this, uri));
     this.revealConfigNodesInTrees();
 
-    if (this.selectionCache.fileUri != uri.toString()) {
+    if (this.selectionCache.fileUri !== uri.toString()) {
       this.selectionCache.fileUri = uri.toString();
       this.vsContext.workspaceState.update(Context.cacheName, this.selectionCache);
     }
   }
 
-  private getDocFromUri(uri: Uri): Thenable<TextDocument> {
+  getDocFromUri(uri: Uri): Thenable<TextDocument> {
     return workspace.openTextDocument(getOriginalUri(uri));
   }
 
   private async selectConfigNode(nodeType: string, name: string, configNode: object, uri: Uri, reveal = true): Promise<void> {
     let updateCache = false;
-    if (reveal || this.selectionCache.lastView == nodeType) {
+    if (reveal || this.selectionCache.lastView === nodeType) {
       this.configDetailsView.setConfigNodeContent(nodeType, name, configNode, uri);
     }
-    if (this.selectionCache[nodeType] != uri.toString()) {
+    if (this.selectionCache[nodeType] !== uri.toString()) {
       this.selectionCache[nodeType] = uri.toString();
       updateCache = true;
     }
-    if (this.selectionCache.lastView != nodeType) {
+    if (this.selectionCache.lastView !== nodeType) {
       this.selectionCache.lastView = nodeType;
       updateCache = true;
     }
@@ -238,11 +237,11 @@ export class Context {
   }
 
   private revealConfigNodeInEditors(docUri: Uri, nodeType: string, name: string) {
-    if (!workspace.getConfiguration(TaipyStudioSettingsName).get("editor.reveal.enabled", true)) {
+    if (!workspace.getConfiguration(TAIPY_STUDIO_SETTINGS_NAME).get("editor.reveal.enabled", true)) {
       return;
     }
     if (isUriEqual(docUri, this.configFileUri)) {
-      const providerIndex = this.treeProviders.findIndex((p) => p.getNodeType() == nodeType);
+      const providerIndex = this.treeProviders.findIndex((p) => p.getNodeType() === nodeType);
       if (providerIndex > -1) {
         const item = this.treeProviders[providerIndex].getItem(name);
         if (item) {
@@ -277,36 +276,29 @@ export class Context {
     commands.executeCommand("vscode.openWith", getPerspectiveUri(Uri.parse(item.baseUri, true), item.perspective), ConfigEditorProvider.viewType);
   }
 
-  getToml(uri: string) {
-    return (uri && this.tomlByUri[uri]) || {};
+  getSymbols(uri: string) {
+    return (uri && this.symbolsByUri[uri]) || [];
   }
 
-  private async refreshToml(document: TextDocument) {
+  private async refreshSymbols(document: TextDocument) {
     const uri = document.uri.toString();
-    if (this.tomlByUri[uri]) {
-      await this.readToml(document);
+    if (this.symbolsByUri[uri]) {
+      await this.readSymbols(document);
     }
   }
 
-  async readTomlIfNeeded(document: TextDocument) {
+  async readSymbolsIfNeeded(document: TextDocument) {
     const uri = document.uri.toString();
-    if (!this.tomlByUri[uri]) {
-      await this.readToml(document);
+    if (!this.symbolsByUri[uri]) {
+      await this.readSymbols(document);
     }
   }
 
-  private async readToml(document: TextDocument) {
-    try {
-      const toml = (this.tomlByUri[document.uri.toString()] = workspace.getConfiguration(TaipyStudioSettingsName).get("parser.usePositions", true)
-        ? await parseAsync(document.getText())
-        : await parse.async(document.getText()));
-      cleanTomlParseError(document.uri);
-      this.validateSchema(toml);
-      reportInconsistencies(document, toml, this.validateSchema.errors);
-      return true;
-    } catch (e) {
-      handleTomlParseError(document, e);
-    }
-    return false;
+  private async readSymbols(document: TextDocument) {
+    cleanDocumentDiagnostics(document.uri);
+    const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", document.uri)) as DocumentSymbol[];
+    this.symbolsByUri[document.uri.toString()] = symbols;
+    reportInconsistencies(document, symbols, null);
+    return true;
   }
 }

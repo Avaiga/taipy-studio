@@ -1,12 +1,12 @@
 import { MouseEvent, useEffect, useRef } from "react";
 import { CanvasWidget } from "@projectstorm/react-canvas-core";
-import html2canvas from "html2canvas";
+import DomToImage from "dom-to-image-more";
 import * as deepEqual from "fast-deep-equal";
 import * as l10n from "@vscode/l10n";
 
 import { ConfigEditorProps, perspectiveRootId } from "../../../shared/views";
 import { postGetNodeName, postSaveAsPngUrl, postRefreshMessage, postSaveMessage, postSetExtraEntities } from "../utils/messaging";
-import { applyPerspective, getNodeTypes } from "../utils/toml";
+import { applyPerspective, getNodeTypes } from "../utils/nodes";
 import { EditorAddNodeMessage } from "../../../shared/messages";
 import { getNodeIcon } from "../utils/config";
 import { diagramListener, initDiagram, populateModel, relayoutDiagram, setBaseUri, showNode } from "../utils/diagram";
@@ -23,11 +23,9 @@ const onCreateNode = (evt: MouseEvent<HTMLDivElement>) => {
   nodeType && postGetNodeName(nodeType);
 };
 
-const saveAsPng = async () => {
-  html2canvas(document.querySelector("body") as HTMLElement, { foreignObjectRendering: true }).then((canvas) => {
-    postSaveAsPngUrl(canvas.toDataURL("image/png"));
-  });
-};
+const filter4Print = (node: Node) => node.nodeName !== "DIV" || !(node as HTMLDivElement).dataset.printIgnore;
+
+const saveAsPng = () => DomToImage.toPng(document.body, {filter: filter4Print}).then(postSaveAsPngUrl).catch(console.warn);
 
 const zoomToFit = () => engine.zoomToFit();
 
@@ -40,7 +38,7 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
   const [displayModel, extraEntities] = applyPerspective(propsDisplayModel, perspectiveId, propsExtraEntities);
 
   useEffect(() => {
-    propsExtraEntities && extraEntities && extraEntities != propsExtraEntities && postSetExtraEntities(extraEntities);
+    propsExtraEntities && extraEntities && extraEntities !== propsExtraEntities && postSetExtraEntities(extraEntities);
   }, [propsExtraEntities, extraEntities]);
 
   useEffect(() => {
@@ -53,10 +51,10 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
   }, []);
 
   useEffect(() => {
-    if (!displayModel || (perspectiveId == oldPerspId.current && deepEqual(displayModel.current, displayModel))) {
+    if (!displayModel || (perspectiveId === oldPerspId.current && deepEqual(displayModel.current, displayModel))) {
       return;
     }
-    if (perspectiveId == oldPerspId.current && applySmallChanges(engine.getModel(), displayModel, oldDisplayModel.current)) {
+    if (perspectiveId === oldPerspId.current && applySmallChanges(engine.getModel(), displayModel, oldDisplayModel.current)) {
       oldDisplayModel.current = displayModel;
       return;
     }
@@ -79,7 +77,7 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
 
   return (
     <div className="diagram-root">
-      <div className="diagram-icon-group" data-html2canvas-ignore>
+      <div className="diagram-icon-group" data-print-ignore>
         <div className="diagram-button icon" title={l10n.t("re-layout")} onClick={relayout}>
           <i className="taipy-icon-relayout"></i>
         </div>
@@ -96,8 +94,8 @@ const Editor = ({ displayModel: propsDisplayModel, perspectiveId, baseUri, extra
           <i className="codicon codicon-zap"></i>
         </div>
       </div>
-      <div>{perspectiveId != perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>
-      <div className="diagram-icon-group" data-html2canvas-ignore>
+      <div>{perspectiveId !== perspectiveRootId ? <h2>{perspectiveId}</h2> : ""}</div>
+      <div className="diagram-icon-group" data-print-ignore>
         {getNodeTypes(perspectiveId).map((nodeType) => (
           <div className={"diagram-button icon " + nodeType.toLowerCase()} title={nodeType} key={nodeType} data-node-type={nodeType} onClick={onCreateNode}>
             <i className={getNodeIcon(nodeType) + "-add"}></i>

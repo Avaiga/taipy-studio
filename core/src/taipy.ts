@@ -9,8 +9,20 @@ export async function activate(vsContext: ExtensionContext) {
 				workspace.workspaceFolders && workspace.workspaceFolders.length > 0
 					? workspace.workspaceFolders[0].uri.fsPath
 					: undefined;
-			window.showInformationMessage("Hello Taipy!")
-			console.log(`### Info ###: RootPath=${rootPath}`)
+			window.showInformationMessage("Hello Taipy!");
+			console.log(`### Info ###: RootPath=${rootPath}`);
+		}
+	));
+	vsContext.subscriptions.push(commands.registerCommand(
+		"taipy.config.showSymbols",
+		async () => {
+			const uri = window.activeTextEditor?.document?.uri;
+			if (uri) {
+				const symbols = await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri);
+				console.log("symbols", symbols);
+			} else {
+				window.showInformationMessage("No Active Text Editor");
+			}
 		}
 	));
 	commands.executeCommand('setContext', 'taipy.numberOfConfigs', 0);

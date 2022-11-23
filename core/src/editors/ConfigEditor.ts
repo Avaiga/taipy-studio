@@ -7,7 +7,6 @@ import {
   l10n,
   languages,
   Position,
-  Range,
   TextDocument,
   TextEdit,
   TreeItem,
@@ -19,7 +18,7 @@ import {
   WorkspaceEdit,
 } from "vscode";
 
-import { configFilePattern, getCspScriptSrc, getDefaultConfig, getNonce } from "../utils/utils";
+import { configFilePattern, getCspScriptSrc, getDefaultConfig, getNonce, joinPaths } from "../utils/utils";
 import { revealConfigNodeCmd } from "../utils/commands";
 import {
   getCleanPerpsectiveUriString,
@@ -46,12 +45,11 @@ import {
 } from "../../shared/commands";
 import { EditorAddNodeMessage, ViewMessage } from "../../shared/messages";
 import { ConfigEditorId, ConfigEditorProps, containerId, webviewsLibraryDir, webviewsLibraryName } from "../../shared/views";
-import { TaipyStudioSettingsName } from "../utils/constants";
-import { getChildType } from "../../shared/toml";
+import { TAIPY_STUDIO_SETTINGS_NAME } from "../utils/constants";
+import { getChildType } from "../../shared/childtype";
 import { Context } from "../context";
-import { getDefaultContent, getDescendantProperties, getParentType, getPropertyValue, getSectionName, getUnsuffixedName, toDisplayModel } from "../utils/toml";
+import { getDefaultContent, getDescendantProperties, getParentType, getSectionName, getSymbol, getSymbolArrayValue, getUnsuffixedName, toDisplayModel } from "../utils/symbols";
 import { Positions } from "../../shared/diagram";
-import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
 import { ConfigCompletionItemProvider } from "../providers/CompletionItemProvider";
 import { ConfigDropEditProvider } from "../providers/DocumentDropEditProvider";
 
@@ -79,14 +77,14 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   private static readonly cacheName = "taipy.editor.cache";
   static readonly viewType = "taipy.config.editor.diagram";
 
-  private readonly extensionPath: Uri;
+  private readonly extensionUri: Uri;
   // Perspective Uri => cache
   private cache: ProviderCache;
   // original Uri => perspective Id => panels
   private panelsByUri: Record<string, Record<string, WebviewPanel[]>> = {};
 
   private constructor(private readonly context: ExtensionContext, private readonly taipyContext: Context) {
-    this.extensionPath = context.extensionUri;
+    this.extensionUri = context.extensionUri;
     this.cache = context.workspaceState.get(ConfigEditorProvider.cacheName, {} as ProviderCache);
     // Drop Edit Provider
     context.subscriptions.push(languages.registerDocumentDropEditProvider({ pattern: configFilePattern }, ConfigDropEditProvider.register(this.taipyContext)));
@@ -100,9 +98,9 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   }
 
   async createNewElement(uri: Uri, nodeType: string) {
-    const nodeName = await this.getNodeName(uri, nodeType, false);
+    const doc = await workspace.openTextDocument(getOriginalUri(uri));
+    const nodeName = await this.getNodeName(doc, nodeType, false);
     if (nodeName) {
-      const doc = await workspace.openTextDocument(getOriginalUri(uri));
       if (await this.applyEdits(doc.uri, this.doCreateElement(doc, nodeType, nodeName))) {
         this.addNodeToActiveDiagram(nodeType, nodeName, false);
       }
@@ -147,7 +145,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
             const perspType = pId.split(".", 2)[0];
             let childType = perspType;
             while ((childType = getChildType(childType))) {
-              if (childType == nodeType) {
+              if (childType === nodeType) {
                 break;
               }
             }
@@ -171,15 +169,15 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     }
   }
 
-  async updateWebview(uri: Uri, isDirty = false) {
-    const originalUri = getOriginalUri(uri);
+  async updateWebview(doc: TextDocument, isDirty = false) {
+    const originalUri = getOriginalUri(doc.uri);
     const baseUri = originalUri.toString();
     const panelsByPersp = this.panelsByUri[baseUri];
-    const toml = this.taipyContext.getToml(baseUri);
+    const symbols = this.taipyContext.getSymbols(baseUri);
     if (panelsByPersp) {
       Object.entries(panelsByPersp).forEach(([perspectiveId, panels]) => {
         const cache = this.getCache(getPerspectiveUri(originalUri, perspectiveId).toString());
-        const model = toDisplayModel(toml, cache.positions);
+        const model = toDisplayModel(doc, symbols, cache.positions);
         panels.forEach((p) => {
           try {
             p.webview.postMessage({
@@ -209,13 +207,13 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     // Setup initial content for the webview
     webviewPanel.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.joinPaths()],
+      localResourceRoots: [joinPaths(this.extensionUri)],
     };
 
     // retrieve and work with the original document
     const realDocument = await getOriginalDocument(document);
 
-    await this.taipyContext.readTomlIfNeeded(realDocument);
+    await this.taipyContext.readSymbolsIfNeeded(realDocument);
 
     const perspId = getPerspectiveFromUri(document.uri);
     const originalUri = getOriginalUri(document.uri).toString();
@@ -227,7 +225,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
     const docListener = (textDocument: TextDocument) => {
       if (isUriEqual(document.uri, textDocument.uri)) {
-        this.updateWebview(document.uri, textDocument.isDirty);
+        this.updateWebview(document, textDocument.isDirty);
       }
     };
 
@@ -241,7 +239,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
           this.revealSection(document.uri, e.id, e.msg);
           return;
         case Refresh:
-          this.updateWebview(document.uri);
+          this.updateWebview(document);
           break;
         case SetPositions:
           this.setPositions(document.uri, e.positions);
@@ -259,7 +257,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
           this.removeNodeFromPerspective(realDocument, e.nodeType, e.nodeName) && this.removeExtraEntitiesInCache(document.uri, `${e.nodeType}.${e.nodeName}`);
           break;
         case GetNodeName:
-          this.getNodeName(realDocument.uri, e.nodeType);
+          this.getNodeName(realDocument, e.nodeType);
           break;
         case SetExtraEntities:
           this.setExtraEntitiesInCache(document.uri, e.extraEntities);
@@ -294,6 +292,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   }
 
   private async saveAsPng(url: string) {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     const newFileUri = await window.showSaveDialog({ filters: { Images: ["png"] } });
     newFileUri && workspace.fs.writeFile(newFileUri, Buffer.from(url.split(",", 2).at(-1), "base64url"));
   }
@@ -332,90 +331,38 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const [inputProp, outputProp] = getDescendantProperties(nodeType);
     const property = deleteAll ? targetType : reverse ? inputProp : outputProp;
 
-    const toml = this.taipyContext.getToml(realDocument.uri.toString());
-    const [links, found] = getPropertyValue(toml, [] as string[], nodeType, nodeName, property);
+    const symbols = this.taipyContext.getSymbols(realDocument.uri.toString());
+    const linksSymbol = getSymbol(symbols, nodeType, nodeName, property);
+    const links = linksSymbol && getSymbolArrayValue(realDocument, linksSymbol);
 
-    if (!create && links.length == 0) {
+    if (!create && links.length === 0) {
       return edits;
     }
-    // @ts-ignore
-    if (toml[PosSymbol]) {
-      if (found) {
-        // @ts-ignore
-        const linksPos = links[PosSymbol] as CodePos[];
-        const propertyRange = linksPos && linksPos.length && new Range(linksPos[0].line, linksPos[0].col, linksPos.at(-1).line, linksPos.at(-1).col);
-        if (propertyRange) {
-          const newLinks = create ? [...links, getSectionName(childName)] : deleteAll ? [] : links.filter((l) => getUnsuffixedName(l) != childName);
-          edits.push(TextEdit.replace(propertyRange, stringify.value(newLinks).trimEnd()));
-          return edits;
-        }
-      } else {
-        const table = toml[nodeType] && toml[nodeType][nodeName];
-        if (table) {
-          // @ts-ignore
-          const codePos = table[PosSymbol].at(-1) as CodePos;
-          edits.push(
-            TextEdit.insert(new Position(codePos.line, codePos.col), property + " = " + stringify.value(create ? [getSectionName(childName)] : []) + "\n")
-          );
-          return edits;
-        }
+    if (linksSymbol) {
+        const newLinks = create ? [...links, getSectionName(childName)] : deleteAll ? [] : links.filter((l) => getUnsuffixedName(l) !== childName);
+        edits.push(TextEdit.replace(linksSymbol.range, stringify.value(newLinks).trimEnd()));
+        return edits;
+    } else {
+      const nameSymbol = getSymbol(symbols, nodeType, nodeName);
+      if (nameSymbol) {
+        edits.push(
+          TextEdit.insert(nameSymbol.range.end, property + " = " + stringify.value(create ? [getSectionName(childName)] : []) + "\n")
+        );
+        return edits;
       }
     }
-    const sectionHead = "[" + nodeType + "." + nodeName + "]";
-    let sectionFound = false;
-    for (let i = 0; i < realDocument.lineCount; i++) {
-      const line = realDocument.lineAt(i);
-      const text = line.text.trim();
-      if (sectionFound) {
-        if (text.split("=", 2)[0].trim() == property) {
-          const targetFound = (!create && deleteAll) || links.some((n) => getUnsuffixedName(n) == childName);
-          if (create == targetFound || (!found && !create && deleteAll)) {
-            break;
-          }
-          const range = line.range.with({ start: line.range.start.with({ character: line.firstNonWhitespaceCharacterIndex }) });
-          const newLinks = create ? [...links, getSectionName(childName)] : deleteAll ? [] : links.filter((l) => getUnsuffixedName(l) != childName);
-          edits.push(
-            TextEdit.replace(
-              range,
-              property +
-                " = " +
-                stringify
-                  .value(newLinks)
-                  .trimEnd()
-                  .split(/\r\n|\n/)
-                  .map((e) => e.trim())
-                  .join(" ")
-            )
-          );
-          break;
-        }
-        if (text.startsWith("[")) {
-          //property not found in section
-          break;
-        }
-      }
-      if (!sectionFound && text == sectionHead) {
-        if (!found) {
-          const start =
-            i + 1 < realDocument.lineCount ? realDocument.lineAt(i + 1).text.substring(0, realDocument.lineAt(i + 1).firstNonWhitespaceCharacterIndex) : "";
-          edits.push(TextEdit.insert(line.range.end, "\n" + start + property + " = " + stringify.value(create ? [getSectionName(childName)] : []).trimEnd()));
-          break;
-        }
-        sectionFound = true;
-      }
-    }
-    return edits;
   }
 
-  private async getNodeName(uri: Uri, nodeType: string, addNodeToActiveDiagram = true) {
-    const entity = this.taipyContext.getToml(uri.toString())[nodeType] || {};
-    const nodeName = Object.keys(entity)
-      .filter((n) => n.toLowerCase().startsWith(nodeType.toLowerCase()))
+  private async getNodeName(doc: TextDocument, nodeType: string, addNodeToActiveDiagram = true) {
+    const symbols = this.taipyContext.getSymbols(doc.uri.toString());
+    const typeSymbol = getSymbol(symbols, nodeType);
+    const nodeName = typeSymbol.children
+      .filter(s => s.name.toLowerCase().startsWith(nodeType.toLowerCase()))
       .sort()
-      .reduce((pv, name) => {
-        if (name.toLowerCase() == pv.toLowerCase()) {
+      .reduce((pv, s) => {
+        if (s.name.toLowerCase() === pv.toLowerCase()) {
           const parts = pv.split("-", 2);
-          if (parts.length == 1) {
+          if (parts.length === 1) {
             return parts[0] + "-1";
           } else {
             return parts[0] + "-" + (parseInt(parts[1]) + 1);
@@ -424,10 +371,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
         return pv;
       }, nodeType + "-1");
     const validateNodeName = (value: string) => {
-      if (!value || /[\s\.]/.test(value) || value.toLowerCase() == "default") {
+      if (!value || /[\s\.]/.test(value) || value.toLowerCase() === "default") {
         return l10n.t("Entity {0} Name should not contain space, '.' or be empty or be default '{1}'", nodeType, value);
       }
-      if (Object.keys(entity).some((n) => n.toLowerCase() == value.toLowerCase())) {
+      if (typeSymbol.children.some(s => s.name.toLowerCase() === value.toLowerCase())) {
         return l10n.t("Another {0} entity has the name {1}", nodeType, value);
       }
       return undefined as string;
@@ -448,15 +395,15 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const perspectiveId = getPerspectiveFromUri(perspectiveUri);
     const [perspType, perspName] = perspectiveId.split(".", 2);
     const uri = realDocument.uri;
-    const toml = this.taipyContext.getToml(uri.toString());
-    const node = toml[nodeType] && toml[nodeType][nodeName];
+    const symbols = this.taipyContext.getSymbols(uri.toString());
+    const nameSymbol = getSymbol(symbols, nodeType, nodeName);
     const edits = [] as TextEdit[];
-    if (getParentType(nodeType) == perspType && toml[perspType] && toml[perspType][perspName]) {
+    if (getParentType(nodeType) === perspType && getSymbol(symbols, perspType, perspName)) {
       this.createOrDeleteLink(realDocument, perspType, perspName, nodeType, nodeName, true, false, edits);
     } else {
       this.updateExtraEntitiesInCache(perspectiveUri, `${nodeType}.${nodeName}`);
     }
-    if (!node) {
+    if (!nameSymbol) {
       this.doCreateElement(realDocument, nodeType, nodeName, edits);
     }
     return this.applyEdits(uri, edits);
@@ -464,25 +411,25 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
   private async removeNodeFromPerspective(realDocument: TextDocument, nodeType: string, nodeName: string) {
     const uri = realDocument.uri;
-    const toml = this.taipyContext.getToml(uri.toString());
-    const node = toml[nodeType] && toml[nodeType][nodeName];
-    if (!node) {
+    const symbols = this.taipyContext.getSymbols(uri.toString());
+    const nameSymbol = getSymbol(symbols, nodeType, nodeName);
+    if (!nameSymbol) {
       return false;
     }
     const edits = [] as TextEdit[];
     getDescendantProperties(nodeType).forEach((p) => p && this.createOrDeleteLink(realDocument, nodeType, nodeName, p, "", false, true, edits));
     const parentType = getParentType(nodeType);
     const pp = getDescendantProperties(parentType);
-    toml[parentType] &&
-      Object.entries(toml[parentType]).forEach(([parentName, v]) => {
+    const pTypeSymbol = getSymbol(symbols, parentType);
+    pTypeSymbol && pTypeSymbol.children.forEach(parentSymbol => {
         pp.forEach((property, idx) => {
-          if (property && Array.isArray(v[property]) && v[property].some((n: string) => n == nodeName)) {
-            if (idx == 0) {
+          if (property && getSymbolArrayValue(realDocument, parentSymbol, property).some((n: string) => n === nodeName)) {
+            if (idx === 0) {
               // input property: reverse order
-              this.createOrDeleteLink(realDocument, nodeType, nodeName, parentType, parentName, false, false, edits);
+              this.createOrDeleteLink(realDocument, nodeType, nodeName, parentType, parentSymbol.name, false, false, edits);
             } else {
               // output property
-              this.createOrDeleteLink(realDocument, parentType, parentName, nodeType, nodeName, false, false, edits);
+              this.createOrDeleteLink(realDocument, parentType, parentSymbol.name, nodeType, nodeName, false, false, edits);
             }
           }
         });
@@ -562,25 +509,21 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     }
   }
 
-  private joinPaths(...pathSegments: string[]): Uri {
-    return Uri.joinPath(this.extensionPath, "dist", ...pathSegments);
-  }
-
   private getHtmlForWebview(webview: Webview, document: TextDocument) {
     // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
     // Script to handle user action
-    const scriptUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, webviewsLibraryName));
+    const scriptUri = webview.asWebviewUri(joinPaths(this.extensionUri, webviewsLibraryDir, webviewsLibraryName));
     // CSS file to handle styling
-    const styleUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "config-editor.css"));
+    const styleUri = webview.asWebviewUri(joinPaths(this.extensionUri, webviewsLibraryDir, "config-editor.css"));
 
-    const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
-    const taipyiconsUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "taipy-icons.css"));
+    const codiconsUri = webview.asWebviewUri(joinPaths(this.extensionUri, "@vscode/codicons", "dist", "codicon.css"));
+    const taipyiconsUri = webview.asWebviewUri(joinPaths(this.extensionUri, webviewsLibraryDir, "taipy-icons.css"));
 
-    const config = workspace.getConfiguration(TaipyStudioSettingsName);
+    const config = workspace.getConfiguration(TAIPY_STUDIO_SETTINGS_NAME);
     const configObj = nodeTypes4config.reduce((co, nodeType) => {
       co.icons[nodeType] = config.get("diagram." + nodeType + ".icon", "codicon-refresh");
       return co;
-    }, getDefaultConfig(webview));
+    }, getDefaultConfig(webview, this.extensionUri));
 
     const cssVars = nodeTypes4config
       .map((nodeType) => "--taipy-" + nodeType + "-color:" + config.get("diagram." + nodeType + ".color", "cyan") + ";")
@@ -592,7 +535,8 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
                   <meta charSet="utf-8"/>
                   <meta http-equiv="Content-Security-Policy" 
                         content="default-src 'none';
-                        img-src vscode-resource: https: data:;
+                        connect-src ${webview.cspSource} https:;
+                        img-src ${webview.cspSource} https: data:;
                         font-src ${webview.cspSource};
                         style-src ${webview.cspSource} 'unsafe-inline';
                         script-src ${getCspScriptSrc(nonce)};">             
@@ -604,7 +548,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
                   <script nonce="${nonce}" type="text/javascript">window.taipyConfig=${JSON.stringify(configObj)};</script>
               </head>
               <body>
-                  <div id="${containerId}"></div>
+                <div id="${containerId}"></div>
               </body>
             </html>`;
   }

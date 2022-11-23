@@ -18,9 +18,6 @@ const config = (env, argv) => ({
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: ['.ts', '.js', '.tsx'],
   },
-  plugins: [
-      // @ts-ignore
-  ],
   module: {
     rules: [
       {

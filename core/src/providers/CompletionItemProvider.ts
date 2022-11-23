@@ -2,7 +2,6 @@ import {
   CancellationToken,
   CompletionContext,
   CompletionItem,
-  CompletionItemKind,
   CompletionItemProvider,
   CompletionList,
   CompletionTriggerKind,
@@ -16,12 +15,11 @@ import {
 } from "vscode";
 
 import { DataNode, Job, Pipeline, Scenario, Taipy, Task } from "../../shared/names";
-import { getChildType } from "../../shared/toml";
+import { getChildType } from "../../shared/childtype";
 import { Context } from "../context";
-import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
-import { getEnum, getEnumProps } from "../schema/validation";
-import { TaipyStudioSettingsName } from "../utils/constants";
-import { getDescendantProperties, getSectionName, getUnsuffixedName } from "../utils/toml";
+import { getEnum, getEnumProps, getProperties } from "../schema/validation";
+import { TAIPY_STUDIO_SETTINGS_NAME } from "../utils/constants";
+import { getDescendantProperties, getSectionName, getSymbol, getSymbolArrayValue, getUnsuffixedName } from "../utils/symbols";
 import { getOriginalUri } from "./PerpectiveContentProvider";
 
 const nodeTypes = [DataNode, Task, Pipeline, Scenario];
@@ -39,22 +37,50 @@ export class ConfigCompletionItemProvider implements CompletionItemProvider<Comp
 
   private constructor(private readonly taipyContext: Context) {}
 
-  provideCompletionItems(
+  async provideCompletionItems(
     document: TextDocument,
     position: Position,
     token: CancellationToken,
     context: CompletionContext
-  ): ProviderResult<CompletionItem[] | CompletionList<CompletionItem>> {
-    if (context.triggerKind != CompletionTriggerKind.Invoke) {
+  ) {
+    if (context.triggerKind !== CompletionTriggerKind.Invoke) {
       return [];
     }
-    const lineStart = document.getText(new Range(position.translate(0, -position.character), position)).trimEnd();
+    const lineStart = document.getText(new Range(position.with({character: 0}), position)).trimEnd();
     const lineEnd = document.lineAt(position.line).text.substring(position.character).trim();
     const lineText = document.lineAt(position.line).text;
-    if (!lineStart || lineStart.trimStart() == "[") {
-      const toml = this.taipyContext.getToml(getOriginalUri(document.uri).toString());
-      const props = toml[Taipy] ? [] : [Taipy];
-      toml[Job] || props.push(Job);
+
+    if ((position.character === 0 || !lineText.trim()) && position.line && !document.lineAt(position.line -1).isEmptyOrWhitespace) {
+      // propose new property to current entity
+      const symbols = this.taipyContext.getSymbols(getOriginalUri(document.uri).toString());
+      // find 2nd level symbol (name) holding last line
+      const searchPos = position.with({line: position.line -1, character: 0});
+      const typeSymbol = symbols.find(s => s.range.contains(searchPos));
+      const nameSymbol = typeSymbol?.children.find(s => s.range.contains(searchPos));
+      const currentProps = nameSymbol?.children.map(s => s.name);
+      if (currentProps) {
+        const possibleProps = await getProperties(typeSymbol.name);
+        const proposedProps = possibleProps.filter(p => !currentProps.includes(p));
+        if (proposedProps.length) {
+          const enumProps = await getEnumProps();
+          return proposedProps.map(p => {
+            const enums = enumProps.includes(p) && getEnum(p);
+            const ci = new CompletionItem(p);
+            const si = new SnippetString(p + ' = "');
+            enums ? si.appendChoice(enums) : si.appendTabstop();
+            si.appendText('"\n');
+            ci.insertText = si;
+            return ci;
+          });
+        }
+      }
+    }
+
+    if (!lineStart || lineStart.trimStart() === "[") {
+      // propose new entity
+      const symbols = this.taipyContext.getSymbols(getOriginalUri(document.uri).toString());
+      const props = getSymbol(symbols, Taipy) ? [] : [Taipy];
+      getSymbol(symbols, Job) || props.push(Job);
       props.push(...nodeTypes);
       return props.map((nodeType) => {
         const ci = new CompletionItem(nodeType);
@@ -62,57 +88,39 @@ export class ConfigCompletionItemProvider implements CompletionItemProvider<Comp
           ? new SnippetString(nodeType + ".").appendPlaceholder("element name")
           : new SnippetString("[" + nodeType + ".")
               .appendPlaceholder("element name")
-              .appendTabstop()
-              .appendText(lineEnd.includes("]") ? "" : "]");
+              .appendText("]\n");
         return ci;
       });
     }
     const linkProp = validLinks.find((l) => lineStart.split(/\s+|=/).includes(l));
     if (linkProp) {
-      const toml = this.taipyContext.getToml(getOriginalUri(document.uri).toString());
-      // @ts-ignore
-      if (toml[PosSymbol]) {
-        for (const [nodeType, nodes] of Object.entries(toml)) {
-          const childType = getChildType(nodeType);
-          if (!childType || !toml[childType]) {
+      const symbols = this.taipyContext.getSymbols(getOriginalUri(document.uri).toString());
+        for (const typeSymbol of symbols) {
+          const childType = getChildType(typeSymbol.name);
+          const childTypeSymbol = childType && getSymbol(symbols, childType);
+          if (!childTypeSymbol) {
             continue;
           }
-          for (const e of Object.values(nodes)) {
-            for (const [_, val] of Object.entries(e).filter(([p, _]) => p == linkProp)) {
-              // @ts-ignore
-              const codePoss = val[PosSymbol] as CodePos[];
-              if (!Array.isArray(val) || !Array.isArray(codePoss)) {
-                continue;
-              }
+          for (const nameSymbol of typeSymbol.children) {
+            for (const propSymbol of nameSymbol.children.filter(s => s.name === linkProp)) {
               if (
-                position.isAfterOrEqual(new Position(codePoss[0].line, codePoss[0].col)) &&
-                position.isBeforeOrEqual(new Position(codePoss.at(-1).line, codePoss.at(-1).col))
+                propSymbol.range.contains(position)
               ) {
-                const links = ["default", ...val.map((name) => getUnsuffixedName(name).toLowerCase())];
-                const addTypeSuffix = workspace.getConfiguration(TaipyStudioSettingsName).get("editor.type.suffix.enabled", true);
-                return Object.keys(toml[childType])
+                const links = ["default", ...getSymbolArrayValue(document, propSymbol).map((name) => getUnsuffixedName(name).toLowerCase())];
+                const addTypeSuffix = workspace.getConfiguration(TAIPY_STUDIO_SETTINGS_NAME).get("editor.type.suffix.enabled", true);
+                return childTypeSymbol.children.map(s => s.name)
                   .filter((nodeName) => !links.includes(nodeName.toLowerCase()))
                   .map((nodeName) => getCompletionItemInArray(nodeName, lineText, position, addTypeSuffix));
               }
             }
           }
         }
-      }
     } else {
-      return new Promise<CompletionItem[]>((resolve, reject) => {
-        getEnumProps()
-          .then((enumProps) => {
-            const enumProp = enumProps.find((l) => lineStart.split(/\s+|=/).includes(l));
-            if (enumProp) {
-              resolve((getEnum(enumProp) || []).map((v) => getCompletionItemInString(v, lineText, position)));
-            }
-            resolve([]);
-          })
-          .catch((e) => {
-            console.warn(e);
-            reject(e);
-          });
-      });
+      const enumProps = await getEnumProps();
+      const enumProp = enumProps.find((l) => lineStart.split(/\s+|=/).includes(l));
+      if (enumProp) {
+        return (getEnum(enumProp) || []).map((v) => getCompletionItemInString(v, lineText, position));
+      }
     }
     return [];
   }
@@ -125,7 +133,7 @@ const getCompletionItemInArray = (value: string, line: string, position: Positio
   const matches = line.match(listRe);
   const matchPos = getPosFromMatches(matches, line);
   const matchIdx = matchPos.findIndex((pos, idx) => position.character >= pos && position.character <= pos + (matches[idx] ? matches[idx].length : -1));
-  if (matchIdx == 7) {
+  if (matchIdx === 7) {
     // replace last bit with choice
     let startPos = matchPos[7];
     let startVal = "";

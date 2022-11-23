@@ -17,6 +17,7 @@ import { selectConfigNodeCmd } from "../utils/commands";
 import { Context } from "../context";
 import { getPerspectiveUri } from "./PerpectiveContentProvider";
 import { DataNode, Pipeline, Scenario, Task } from "../../shared/names";
+import { getNodeFromSymbol } from "../utils/symbols";
 
 const titles = {
   [DataNode]: l10n.t("Select data node"),
@@ -55,11 +56,11 @@ export abstract class ConfigItem extends TreeItem {
   abstract getNodeType();
   constructor(name: string, private readonly node: JsonMap) {
     super(name, TreeItemCollapsibleState.None);
-    this.contextValue = name == "default" ? name : this.getNodeType();
+    this.contextValue = name === "default" ? name : this.getNodeType();
     this.tooltip = name;
   }
   setResourceUri(uri: Uri) {
-    this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, typeof this.node == "object" ? stringify(this.node) : "" + this.node);
+    this.resourceUri = getPerspectiveUri(uri, this.getNodeType() + "." + this.label, typeof this.node === "object" ? stringify(this.node) : "" + this.node);
     this.command = {
       command: selectConfigNodeCmd,
       title: getTitleFromType(this.contextValue),
@@ -116,14 +117,15 @@ export class ConfigNodesProvider<T extends ConfigItem = ConfigItem> implements T
   }
 
   getNodeForUri(uri: string) {
-    return this.configItems.find((i) => i.resourceUri.toString() == uri);
+    return this.configItems.find((i) => i.resourceUri.toString() === uri);
   }
 
   async refresh(context: Context, uri?: Uri): Promise<void> {
     if (uri) {
-      const configNodeEntries = context.getConfigNodes(this.nodeType);
-      const configNodes: T[] = configNodeEntries.map(([key, node]) => {
-        const item = new this.nodeCtor(key, node);
+      const doc = await context.getDocFromUri(uri);
+      const configNodeSymbols = context.getConfigNodes(this.nodeType);
+      const configNodes: T[] = configNodeSymbols.map(s => {
+        const item = new this.nodeCtor(s.name, getNodeFromSymbol(doc, s));
         item.setResourceUri(uri);
         return item;
       });
@@ -135,7 +137,7 @@ export class ConfigNodesProvider<T extends ConfigItem = ConfigItem> implements T
   }
 
   getItem(nodeName: string) {
-    return this.configItems.find((n) => n.label == nodeName);
+    return this.configItems.find((n) => n.label === nodeName);
   }
 
   getNodeType() {
