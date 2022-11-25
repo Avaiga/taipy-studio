@@ -1,7 +1,7 @@
 import { DefaultPortModel, DefaultPortModelOptions, DiagramModel, LinkModel, LinkModelGenerics, PortModelAlignment } from "@projectstorm/react-diagrams";
 
 import { InPortName, onLinkRemove, OutPortName } from "../utils/diagram";
-import { getChildType } from "../../../shared/toml";
+import { getChildType } from "../../../shared/childtype";
 import { DataNode, Task } from "../../../shared/names";
 
 export class TaipyDiagramModel extends DiagramModel {}

@@ -14,7 +14,6 @@
   "Select task": "Select task",
   "Select pipeline": "Select pipeline",
   "Select scenario": "Select scenario",
-  "Document '{0}' is not valid toml.": "Document '{0}' is not valid toml.",
   "Element '{0}.{1}' does not exist.": "Element '{0}.{1}' does not exist.",
   "No reference to Element '{0}.{1}'.": "No reference to Element '{0}.{1}'.",
   "Select file": "Select file",

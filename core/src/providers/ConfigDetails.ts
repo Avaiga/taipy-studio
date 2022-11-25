@@ -12,18 +12,19 @@ import {
   WorkspaceEdit,
   TextDocument,
   l10n,
+  SymbolKind,
+  Position,
 } from "vscode";
 
-import { getCspScriptSrc, getDefaultConfig, getNonce } from "../utils/utils";
+import { getCspScriptSrc, getDefaultConfig, getNonce, joinPaths } from "../utils/utils";
 import { DataNodeDetailsId, NoDetailsId, webviewsLibraryDir, webviewsLibraryName, containerId, DataNodeDetailsProps, NoDetailsProps } from "../../shared/views";
 import { Action, EditProperty, Refresh } from "../../shared/commands";
 import { ViewMessage } from "../../shared/messages";
 import { Context } from "../context";
 import { getOriginalUri, isUriEqual } from "./PerpectiveContentProvider";
 import { getEnum, getEnumProps, getProperties } from "../schema/validation";
-import { getDescendantProperties, getSectionName, getUnsuffixedName } from "../utils/toml";
-import { getChildType } from "../../shared/toml";
-import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
+import { getDescendantProperties, getNodeFromSymbol, getSectionName, getSymbol, getUnsuffixedName } from "../utils/symbols";
+import { getChildType } from "../../shared/childtype";
 import { stringify } from "@iarna/toml";
 
 export class ConfigDetailsView implements WebviewViewProvider {
@@ -95,37 +96,39 @@ export class ConfigDetailsView implements WebviewViewProvider {
 
   private docListener(textDocument: TextDocument) {
     if (isUriEqual(this.configUri, textDocument.uri)) {
-      const toml = this.taipyContext.getToml(this.configUri.toString());
+      const symbols = this.taipyContext.getSymbols(this.configUri.toString());
+      const nameSymbol = getSymbol(symbols, this.nodeType, this.nodeName);
+      const node = getNodeFromSymbol(textDocument, nameSymbol);
       this._view?.webview.postMessage({
         viewId: DataNodeDetailsId,
-        props: { nodeType: this.nodeType, nodeName: this.nodeName, node: toml[this.nodeType][this.nodeName] } as DataNodeDetailsProps,
+        props: { nodeType: this.nodeType, nodeName: this.nodeName, node: node } as DataNodeDetailsProps,
       } as ViewMessage);
     }
   }
 
   private async editProperty(nodeType: string, nodeName: string, propertyName?: string, propertyValue?: string | string[]) {
-    const toml = this.taipyContext.getToml(this.configUri.toString());
-    let pos: CodePos[];
+    const symbols = this.taipyContext.getSymbols(this.configUri.toString());
     const insert = !propertyName;
-    if (!propertyName) {
-      const entity = toml[nodeType][nodeName];
-      pos = entity[PosSymbol];
-      const currentProps = Object.keys(entity).map((k) => k.toLowerCase());
+    let propertyRange: Range;
+    if (insert) {
+      const nameSymbol = getSymbol(symbols, nodeType, nodeName);
+      propertyRange = nameSymbol.range;
+      const currentProps = nameSymbol.children.map(s => s.name.toLowerCase());
       const properties = (await getProperties(nodeType)).filter((p) => !currentProps.includes(p.toLowerCase()));
       propertyName = await window.showQuickPick(properties, { canPickMany: false, title: l10n.t("Select property for {0}.", nodeType) });
       if (!propertyName) {
         return;
       }
     } else {
-      pos = toml[nodeType][nodeName][propertyName][PosSymbol];
+      propertyRange = getSymbol(symbols, nodeType, nodeName, propertyName).range;
     }
     let newVal: string | string[];
-    const linksProp = getDescendantProperties(nodeType).find((p) => p.toLowerCase() == propertyName?.toLowerCase());
+    const linksProp = getDescendantProperties(nodeType).find((p) => p.toLowerCase() === propertyName?.toLowerCase());
     if (linksProp) {
       const childType = getChildType(nodeType);
       const values = ((propertyValue || []) as string[]).map((v) => getUnsuffixedName(v.toLowerCase()));
-      const childNames = Object.keys(toml[childType] || {}).map(
-        (k) => ({ label: getSectionName(k), picked: values.includes(getUnsuffixedName(k.toLowerCase())) } as QuickPickItem)
+      const childNames = getSymbol(symbols, childType).children.map(
+        s => ({ label: getSectionName(s.name), picked: values.includes(getUnsuffixedName(s.name.toLowerCase())) } as QuickPickItem)
       );
       if (!childNames.length) {
         window.showInformationMessage(l10n.t("No {0} entity in toml.", childType));
@@ -141,71 +144,38 @@ export class ConfigDetailsView implements WebviewViewProvider {
       newVal = res.map((q) => q.label);
     } else {
       const enumProps = await getEnumProps();
-      const enumProp = enumProps.find((p) => p.toLowerCase() == propertyName?.toLowerCase());
+      const enumProp = enumProps.find((p) => p.toLowerCase() === propertyName?.toLowerCase());
       const res = enumProp
         ? await window.showQuickPick(
-            getEnum(enumProp).map((v) => ({ label: v, picked: v == propertyValue })),
+            getEnum(enumProp).map((v) => ({ label: v, picked: v === propertyValue })),
             { canPickMany: false, title: l10n.t("Select value for {0}.{1}", nodeType, propertyName) }
           )
         : await window.showInputBox({ title: l10n.t("Enter value for {0}.{1}", nodeType, propertyName), value: propertyValue as string });
       if (res === undefined) {
         return;
       }
-      newVal = typeof res == "string" ? res : res.label;
+      newVal = typeof res === "string" ? res : res.label;
     }
-    let propertyRange = pos && pos.length && new Range(pos[0].line, pos[0].col, pos.at(-1).line, pos.at(-1).col);
-    if (!propertyRange) {
-      const doc = await workspace.openTextDocument(this.configUri);
-      const search = `[${nodeType}.${nodeName}]`;
-      let sectionFound = false;
-      for (let i = 0; i < doc.lineCount; i++) {
-        const line = doc.lineAt(i);
-        if (line.text.includes(search)) {
-          sectionFound = true;
-          if (insert) {
-            propertyRange = new Range(line.range.end.line + 1, 0, line.range.end.line + 1, 0);
-            break;
-          }
-        } else if (sectionFound) {
-          if (line.text.trim().startsWith("[")) {
-            break;
-          }
-          const parts = line.text.split("=", 2);
-          if (parts[0].trim() == propertyName) {
-            const pos = parts[0].length + (parts.length > 1 ? 1 + (parts[1].length - parts[1].trimStart().length) : 0);
-            propertyRange = line.range.with({ start: line.range.start.with({ character: pos }) });
-            break;
-          }
-        }
-      }
-    } else {
-      if (insert) {
-        propertyRange = propertyRange.with({ end: propertyRange.end.with({ character: 0 }) });
-      }
+    if (insert) {
+      propertyRange = propertyRange.with({ end: propertyRange.end.with({ character: 0 }) });
     }
-    if (propertyRange) {
-      const we = new WorkspaceEdit();
-      we.set(this.configUri, [
-        insert
-          ? TextEdit.insert(propertyRange.end, `${propertyName} = ${stringify.value(newVal).trim()}\n`)
-          : TextEdit.replace(propertyRange, stringify.value(newVal).trim()),
-      ]);
-      return workspace.applyEdit(we);
-    }
-  }
-
-  private joinPaths(...pathSegments: string[]): Uri {
-    return Uri.joinPath(this.extensionUri, "dist", ...pathSegments);
-  }
+    const we = new WorkspaceEdit();
+    we.set(this.configUri, [
+      insert
+        ? TextEdit.insert(propertyRange.end, `${propertyName} = ${stringify.value(newVal).trim()}\n`)
+        : TextEdit.replace(propertyRange, stringify.value(newVal).trim()),
+    ]);
+    return workspace.applyEdit(we);
+}
 
   private getHtmlForWebview(webview: Webview) {
     // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
     // Script to handle user action
-    const scriptUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, webviewsLibraryName));
+    const scriptUri = webview.asWebviewUri(joinPaths(this.extensionUri, webviewsLibraryDir, webviewsLibraryName));
     // CSS file to handle styling
-    const styleUri = webview.asWebviewUri(this.joinPaths(webviewsLibraryDir, "config-panel.css"));
+    const styleUri = webview.asWebviewUri(joinPaths(this.extensionUri, webviewsLibraryDir, "config-panel.css"));
 
-    const codiconsUri = webview.asWebviewUri(this.joinPaths("@vscode/codicons", "dist", "codicon.css"));
+    const codiconsUri = webview.asWebviewUri(joinPaths(this.extensionUri, "@vscode/codicons", "dist", "codicon.css"));
 
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();
@@ -222,7 +192,7 @@ export class ConfigDetailsView implements WebviewViewProvider {
 					<link href="${styleUri}" rel="stylesheet" />
 					<link href="${codiconsUri}" rel="stylesheet" />
 					<script nonce="${nonce}" defer type="text/javascript" src="${scriptUri}"></script>
-          <script nonce="${nonce}" type="text/javascript">window.taipyConfig=${JSON.stringify(getDefaultConfig(webview))};</script>
+          <script nonce="${nonce}" type="text/javascript">window.taipyConfig=${JSON.stringify(getDefaultConfig(webview, this.extensionUri))};</script>
 				</head>
 				<body>
 					<div id="${containerId}"></div>

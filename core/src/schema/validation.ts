@@ -55,4 +55,4 @@ export const getProperties = async (nodeType: string) => {
     });
   }
   return properties[nodeType] || [];
-}
+};

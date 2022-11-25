@@ -1,118 +1,82 @@
-import { Diagnostic, DiagnosticSeverity, l10n, languages, Range, TextDocument, ThemeColor, Uri, window, workspace } from "vscode";
-import { JsonMap } from "@iarna/toml";
+import { Diagnostic, DiagnosticSeverity, DocumentSymbol, l10n, languages, Range, TextDocument, Uri } from "vscode";
 import { ErrorObject } from "ajv";
 
-import { TaipyStudioSettingsName } from "./constants";
 import { getOriginalUri } from "../providers/PerpectiveContentProvider";
-import { CodePos, PosSymbol } from "../iarna-toml/AsyncParser";
-import { getDescendantProperties, getUnsuffixedName } from "./toml";
-import { getChildType } from "../../shared/toml";
+import { EXTRACT_STRINGS_RE, getDescendantProperties, getSymbol, getUnsuffixedName } from "./symbols";
+import { getChildType } from "../../shared/childtype";
 import { DataNode, Pipeline, Task } from "../../shared/names";
 
-const DiagnoticsCollection = languages.createDiagnosticCollection("toml");
+const diagnoticsCollection = languages.createDiagnosticCollection("taipy-config-symbol");
 
-interface TomlInfo {
-  line: number;
-  col: number;
-  fromTOML: boolean;
-}
+const linkNodeTypes = [DataNode, Task, Pipeline];
 
-export const handleTomlParseError = (doc: TextDocument, e: Error & TomlInfo) => {
-  const uri = getOriginalUri(doc.uri);
-  const line = e.fromTOML ? e.line : 0;
-  const col = e.fromTOML ? e.col : 0;
-  DiagnoticsCollection.set(uri, [
-    {
-      severity: DiagnosticSeverity.Error,
-      range: new Range(line, col, line, col),
-      message: e.message,
-      source: "toml parser",
-    },
-  ]);
-  const sbi = window.createStatusBarItem();
-  sbi.text = l10n.t("Document '{0}' is not valid toml.", doc.uri.path.split("/").at(-1));
-  sbi.backgroundColor = new ThemeColor("statusBarItem.warningBackground");
-  sbi.tooltip = e.message;
-  sbi.command = { title: "Open Editor", command: "vscode.open", arguments: [uri.with({ fragment: `L${line}C${col}` })] };
-  sbi.show();
-  setTimeout(() => sbi.dispose(), workspace.getConfiguration(TaipyStudioSettingsName).get("status.timeout", 2000));
-};
-
-export const cleanTomlParseError = (uri: Uri) => 
-  DiagnoticsCollection.delete(getOriginalUri(uri));
-
-export const reportInconsistencies = (doc: TextDocument, toml: JsonMap, schemaErrors: ErrorObject[] | null) => {
-  // @ts-ignore
-  if (!Array.isArray(toml[PosSymbol])) {
-    return;
-  }
+export const reportInconsistencies = (doc: TextDocument, symbols: Array<DocumentSymbol>, schemaErrors: ErrorObject[] | null) => {
   const nodeIds = new Set<string>();
   const diagnostics = [] as Diagnostic[];
   // Check the existence of the linked elements
-  Object.entries(toml).forEach(([nodeType, n]) => {
-    const childType = getChildType(nodeType);
+  symbols.forEach((symbol) => {
+    const childType = getChildType(symbol.name);
     childType &&
-      getDescendantProperties(nodeType)
+      getDescendantProperties(symbol.name)
         .filter((p) => p)
         .forEach((prop) => {
-          Object.values(n).forEach((e) => {
-            const links = e[prop];
-            Array.isArray(links) &&
-              links.forEach((childName: string, idx: number) => {
-                childName = getUnsuffixedName(childName);
-                nodeIds.add(`${childType}.${childName}`);
-                if (toml[childType] && toml[childType][childName]) {
-                  // all good
-                  return;
-                }
-                // @ts-ignore
-                if (Array.isArray(links[PosSymbol]) && links[PosSymbol].length > idx + 1) {
-                  // @ts-ignore
-                  const codePos = links[PosSymbol][idx + 1] as CodePos;
+          symbol.children.forEach((s) => {
+            const linksSymbol = s.children.find((ss) => ss.name === prop);
+            const startOffset = doc.offsetAt(linksSymbol.range.start);
+            const value = linksSymbol && doc.getText(linksSymbol.range);
+            value &&
+              value
+                .split(EXTRACT_STRINGS_RE)
+                .filter((n) => n)
+                .forEach((name: string) => {
+                  const childName = getUnsuffixedName(name);
+                  nodeIds.add(`${childType}.${childName}`);
+                  const sType = getSymbol(symbols, childType);
+                  if (sType && sType.children.find((s) => s.name === childName)) {
+                    // all good
+                    return;
+                  }
+                  const startPos = doc.positionAt(startOffset + value.indexOf(name));
                   diagnostics.push({
                     severity: DiagnosticSeverity.Warning,
-                    range: new Range(codePos.line, codePos.col, codePos.line, codePos.col + childName.length),
-                    message: l10n.t("Element '{0}.{1}' does not exist.", childType, childName),
+                    range: new Range(startPos, startPos.with({ character: startPos.character + name.length })),
+                    message: l10n.t("Element '{0}.{1}' does not exist.", childType, name),
                     source: "consistency checker",
                   });
-                }
-              });
+                });
           });
         });
   });
   // Check the use of the elements
-  [DataNode, Task, Pipeline].forEach(
-    (nodeType) =>
-      toml[nodeType] &&
-      Object.entries(toml[nodeType])
-        .filter(([nodeName, _]) => "default" != nodeName && !nodeIds.has(`${nodeType}.${nodeName}`))
-        .forEach(([nodeName, element]) => {
-          // @ts-ignore
-          if (Array.isArray(element[PosSymbol])) {
-            // @ts-ignore
-            const codePos = element[PosSymbol][0] as CodePos;
-            diagnostics.push({
-              severity: DiagnosticSeverity.Information,
-              range: new Range(codePos.line, codePos.col, codePos.line, codePos.col + nodeName.length),
-              message: l10n.t("No reference to Element '{0}.{1}'.", nodeType, nodeName),
-              source: "consistency checker",
-            });
-          }
+  symbols
+    .filter((s) => linkNodeTypes.includes(s.name))
+    .forEach((typeSymbol) =>
+      typeSymbol.children
+        .filter((nameSymbol) => "default" !== nameSymbol.name && !nodeIds.has(`${typeSymbol.name}.${nameSymbol.name}`))
+        .forEach((nameSymbol) => {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Information,
+            range: nameSymbol.range,
+            message: l10n.t("No reference to Element '{0}.{1}'.", typeSymbol.name, nameSymbol.name),
+            source: "consistency checker",
+          });
         })
-  );
-  schemaErrors && schemaErrors.forEach(err => {
-    const paths = err.instancePath.split("/").filter(p => p);
-    const element = paths.reduce((o, path) => o && o[path], toml);
-    // @ts-ignore
-    const codePos = element && Array.isArray(element[PosSymbol]) && element[PosSymbol][0] as CodePos;
-    codePos && diagnostics.push({
-      severity: DiagnosticSeverity.Warning,
-      range: new Range(codePos.line, codePos.col, codePos.line, codePos.col),
-      message: `${paths.join(".")} ${err.message}${err.keyword == "enum" ? `: ${err.params.allowedValues}` : ""}.`,
-      source: "schema validation",
+    );
+  schemaErrors &&
+    schemaErrors.forEach((err) => {
+      const paths = err.instancePath.split("/").filter((p) => p);
+      const symbol = getSymbol(symbols, ...paths);
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: symbol.range,
+        message: `${paths.join(".")} ${err.message}${err.keyword === "enum" ? `: ${err.params.allowedValues}` : ""}.`,
+        source: "schema validation",
+      });
     });
-  })
   if (diagnostics.length) {
-    DiagnoticsCollection.set(getOriginalUri(doc.uri), diagnostics);
+    diagnoticsCollection.set(getOriginalUri(doc.uri), diagnostics);
   }
 };
+
+export const cleanDocumentDiagnostics = (uri: Uri) => 
+  diagnoticsCollection.delete(getOriginalUri(uri));

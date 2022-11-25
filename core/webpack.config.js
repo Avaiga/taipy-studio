@@ -38,6 +38,10 @@ const config = (env, argv) => ({
           to: "webviews",
         },
         {
+          from: path.resolve(__dirname, "schemas"),
+          to: "schemas"
+        },
+        {
           from: path.resolve(__dirname, "l10n"),
           to: "l10n",
         }

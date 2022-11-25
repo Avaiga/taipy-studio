@@ -1,5 +1,4 @@
 {
-	"taipy.config.commands.taipy.hello": "Hello Taipy",
     "taipy.config.commands.taipy.config.refresh": "Taipy: Refresh",
     "taipy.config.commands.taipy.config.clearCache": "Taipy: Clear Config cache",
     "taipy.config.commands.taipy.config.revealInExplorer": "Taipy: Reveal file in explorer view",

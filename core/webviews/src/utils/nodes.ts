@@ -1,6 +1,6 @@
 import { DisplayModel, Link, Nodes } from "../../../shared/diagram";
 import { DataNode, Scenario } from "../../../shared/names";
-import { getChildType } from "../../../shared/toml";
+import { getChildType } from "../../../shared/childtype";
 import { perspectiveRootId } from "../../../shared/views";
 
 const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: string) => {
@@ -29,11 +29,11 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
         const foundLinks = [] as number[];
         modelLinks.forEach((link, idx) => {
           const [[sourceType, sourceName, targetType, targetName], _] = link;
-          if (sourceType == nodeType && sourceName == nodeName) {
-            queue.push([targetType, targetName, DataNode != targetType]);
+          if (sourceType === nodeType && sourceName === nodeName) {
+            queue.push([targetType, targetName, DataNode !== targetType]);
             links.push(link);
             foundLinks.push(idx);
-          } else if (sourceType == DataNode && targetType == nodeType && targetName == nodeName) {
+          } else if (sourceType === DataNode && targetType === nodeType && targetName === nodeName) {
             queue.push([sourceType, sourceName, false]);
             links.push(link);
             foundLinks.push(idx);
@@ -48,7 +48,7 @@ const applyNode = (displayModel: DisplayModel, nodeType: string, nodeName: strin
 };
 
 export const applyPerspective = (displayModel: DisplayModel, perspectiveId: string, extraEntities?: string): [any, string | undefined] => {
-  if (!displayModel || perspectiveId == perspectiveRootId) {
+  if (!displayModel || perspectiveId === perspectiveRootId) {
     return [displayModel, undefined];
   }
   const appliedEntities: string[] = [];

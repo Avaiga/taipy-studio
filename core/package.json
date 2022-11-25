@@ -28,12 +28,11 @@
   ],
   "main": "./dist/taipy-studio.js",
   "l10n": "./l10n",
+  "extensionDependencies": [
+    "tamasfe.even-better-toml"
+  ],
   "contributes": {
     "commands": [
-      {
-        "command": "taipy.hello",
-        "title": "%taipy.config.commands.taipy.hello%"
-      },
       {
         "command": "taipy.config.refresh",
         "title": "%taipy.config.commands.taipy.config.refresh%",
@@ -216,6 +215,12 @@
         }
       ]
     },
+    "tomlValidation": [
+      {
+        "regexMatch": "^.*\\.toml$",
+        "url": "file://./dist/schemas/config/schema.json"
+      }
+    ],
     "configuration": {
       "title": "Taipy Studio",
       "properties": {
@@ -336,7 +341,7 @@
     "typescript": "^4.8.4",
     "vsce": "^2.13.0",
     "webpack": "^5.69.1",
-    "webpack-cli": "^4.9.2"
+    "webpack-cli": "^5.0.0"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
