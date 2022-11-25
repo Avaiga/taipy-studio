@@ -34,10 +34,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "taipy.hello",
-        "title": "%taipy.config.commands.taipy.hello%"
-      },
-      {
         "command": "taipy.config.refresh",
         "title": "%taipy.config.commands.taipy.config.refresh%",
         "icon": "$(refresh)"
@@ -86,11 +82,6 @@
         "command": "taipy.config.revealInExplorer",
         "title": "%taipy.config.commands.taipy.config.revealInExplorer%",
         "icon": "$(go-to-file)"
-      },
-      {
-        "command": "taipy.config.showSymbols",
-        "title": "Show Symbols",
-        "icon": "$(symbol)"
       }
     ],
     "customEditors": [
