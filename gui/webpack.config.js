@@ -3,6 +3,7 @@
 'use strict';
 
 const path = require('path');
+const copyPlugin = require("copy-webpack-plugin");
 
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
@@ -16,7 +17,7 @@ const extensionConfig = {
   output: {
     // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
     path: path.resolve(__dirname, 'dist'),
-    filename: 'extension.js',
+    filename: 'taipy-studio-gui.js',
     libraryTarget: 'commonjs2'
   },
   externals: {
@@ -27,6 +28,19 @@ const extensionConfig = {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: ['.ts', '.js']
   },
+  plugins: [
+    new copyPlugin({
+      patterns: [
+        {
+          from: path.resolve(__dirname, "l10n"),
+          to: "l10n",
+        },
+        {
+          from: path.resolve(__dirname, "snippets.json"),
+        },
+      ]
+    })
+  ],
   module: {
     rules: [
       {

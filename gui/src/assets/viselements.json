@@ -16,6 +16,12 @@
             "doc": "The value displayed as text by this control."
           },
           {
+            "name": "raw",
+            "type": "bool",
+            "default_value": "False",
+            "doc": "If set to True, the component renders as an HTML &lt;span&gt; element without any default style."
+          },
+          {
             "name": "format",
             "type": "str",
             "doc": "The format to apply to the value.\nSee below."
@@ -253,6 +259,7 @@
           {
             "name": "data",
             "default_property": true,
+            "required": true,
             "type": "any",
             "doc": "The data object bound to this chart control."
           },
@@ -271,12 +278,12 @@
           {
             "name": "x",
             "type": "indexed(str)",
-            "doc": "Column name for the <i>x</i> axis. Synonym for <i>lon</i>."
+            "doc": "Column name for the <i>x</i> axis."
           },
           {
             "name": "y",
             "type": "indexed(str)",
-            "doc": "Column name for the <i>y</i> axis. Synonym for <i>lat</i>."
+            "doc": "Column name for the <i>y</i> axis."
           },
           {
             "name": "z",
@@ -286,12 +293,42 @@
           {
             "name": "lon",
             "type": "indexed(str)",
-            "doc": "Column name for the <i>longitude</i> value. Synonym for <i>x</i>."
+            "doc": "Column name for the <i>longitude</i> value. Cf. [Plotly Map Traces](https://plotly.com/javascript/reference/scattergeo/)."
           },
           {
             "name": "lat",
             "type": "indexed(str)",
-            "doc": "Column name for the <i>latitude</i> value. Synonym for <i>y</i>."
+            "doc": "Column name for the <i>latitude</i> value. Cf. [Plotly Map Traces](https://plotly.com/javascript/reference/scattergeo/)."
+          },
+          {
+            "name": "r",
+            "type": "indexed(str)",
+            "doc": "Column name for the <i>r</i> value. Cf. [Ploty Polar Charts](https://plotly.com/javascript/polar-chart/)."
+          },
+          {
+            "name": "theta",
+            "type": "indexed(str)",
+            "doc": "Column name for the <i>theta</i> value. Cf. [Ploty Polar Charts](https://plotly.com/javascript/polar-chart/)."
+          },
+          {
+            "name": "high",
+            "type": "indexed(str)",
+            "doc": "Column name for the <i>high</i> value. Cf. [Ploty candlestick](https://plotly.com/javascript/reference/candlestick/)."
+          },
+          {
+            "name": "low",
+            "type": "indexed(str)",
+            "doc": "Column name for the <i>low</i> value. Cf. [Ploty candlestick](https://plotly.com/javascript/reference/candlestick/)."
+          },
+          {
+            "name": "open",
+            "type": "indexed(str)",
+            "doc": "Column name for the <i>open</i> value. Cf. [Ploty candlestick](https://plotly.com/javascript/reference/candlestick/)."
+          },
+          {
+            "name": "close",
+            "type": "indexed(str)",
+            "doc": "Column name for the <i>close</i> value. Cf. [Ploty candlestick](https://plotly.com/javascript/reference/candlestick/)."
           },
           {
             "name": "text",
@@ -743,6 +780,7 @@
           {
             "name": "data",
             "default_property": true,
+            "required": true,
             "type": "any",
             "doc": "The data to be represented in this table."
           },
@@ -864,7 +902,7 @@
           {
             "name": "editable",
             "type": "dynamic(bool)",
-            "default_value": "False",
+            "default_value": "True",
             "doc": "Indicates, if True, that all columns can be edited."
           },
           {
@@ -892,7 +930,7 @@
             "name": "size",
             "type": "str",
             "default_value": "\"small\"",
-            "doc": "The size of the rows, valid values are small or medium."
+            "doc": "The size of the rows, valid values are \"small\" and \"medium\"."
           }
         ]
       }
@@ -971,23 +1009,6 @@
             "name": "row_height",
             "type": "str",
             "doc": "The height, in CSS units, of each row."
-          }
-        ]
-      }
-    ],
-    [
-      "partial",
-      {
-        "properties": [
-          {
-            "name": "partial",
-            "type": "Partial",
-            "doc": "A Partial object that holds the content of the dialog.\nThis should not be defined if <i>page</i> is set."
-          },
-          {
-            "name": "page",
-            "type": "str",
-            "doc": "The page name to show as the content of the dialog.\nThis should not be defined if <i>partial</i> is set."
           }
         ]
       }
@@ -1180,6 +1201,23 @@
       }
     ],
     [
+      "partial",
+      {
+        "properties": [
+          {
+            "name": "partial",
+            "type": "Partial",
+            "doc": "A Partial object that holds the content of the dialog.\nThis should not be defined if <i>page</i> is set."
+          },
+          {
+            "name": "page",
+            "type": "str",
+            "doc": "The page name to show as the content of the dialog.\nThis should not be defined if <i>partial</i> is set."
+          }
+        ]
+      }
+    ],
+    [
       "propagate",
       {
         "inherits": [
@@ -1236,7 +1274,7 @@
           },
           {
             "name": "class_name",
-            "type": "str",
+            "type": "dynamic(str)",
             "doc": "List of CSS class names that will be associated with the generated HTML Element.\nThis class names will be added to the default <code>taipy-&lt;element_type&gt;</code>."
           },
           {
