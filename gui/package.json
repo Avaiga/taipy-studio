@@ -2,11 +2,21 @@
   "name": "taipy-studio-gui",
   "displayName": "Taipy Studio: GUI",
   "description": "Provide support for taipy-gui package",
+  "publisher": "Avaiga",
   "version": "0.0.1",
+  "homepage": "https://github.com/Avaiga/taipy-studio.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Avaiga/taipy-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Avaiga/taipy-studio/issues"
+  },
   "engines": {
     "vscode": "^1.73.1"
   },
-  "l10n": "./l10n",
+  "icon": "assets/taipy-logo.png",
+  "l10n": "./dist/l10n",
   "categories": [
     "Other"
   ],
@@ -17,7 +27,7 @@
     "onLanguage:markdown",
     "onCommand:taipy.gui.md.generate"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/taipy-studio-gui.js",
   "capabilities": {
     "hoverProvider": "true",
     "completionProvider": {
@@ -37,19 +47,18 @@
     "snippets": [
       {
         "language": "python",
-        "path": "./snippets.json"
+        "path": "./dist/snippets.json"
       },
       {
         "language": "markdown",
-        "path": "./snippets.json"
+        "path": "./dist/snippets.json"
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
     "compile": "webpack",
     "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
+    "package": "webpack --mode production --devtool hidden-source-map && vsce package",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
@@ -66,13 +75,15 @@
     "@typescript-eslint/parser": "^5.38.1",
     "@vscode/l10n-dev": "^0.0.19",
     "@vscode/test-electron": "^2.1.5",
+    "copy-webpack-plugin": "^11.0.0",
     "eslint": "^8.24.0",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",
     "ts-loader": "^9.4.1",
     "typescript": "^4.8.4",
+    "vsce": "^2.14.0",
     "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "webpack-cli": "^5.0.0"
   },
   "dependencies": {
     "string-similarity": "^4.0.4"
