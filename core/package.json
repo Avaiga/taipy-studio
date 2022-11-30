@@ -3,7 +3,7 @@
   "displayName": "Taipy Studio Configuration Builder",
   "description": "Visual Studio Code extension for Taipy: Configuration Builder",
   "publisher": "Avaiga",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "homepage": "https://github.com/Avaiga/taipy-studio.git",
   "repository": {
     "type": "git",
@@ -27,7 +27,7 @@
     "onFileSystem:taipy-perspective"
   ],
   "main": "./dist/taipy-studio.js",
-  "l10n": "./l10n",
+  "l10n": "./dist/l10n",
   "extensionDependencies": [
     "tamasfe.even-better-toml"
   ],
@@ -218,7 +218,7 @@
     "tomlValidation": [
       {
         "regexMatch": "^.*\\.toml$",
-        "url": "file://./dist/schemas/config/schema.json"
+        "url": "./dist/schemas/config/schema.json"
       }
     ],
     "configuration": {
@@ -298,14 +298,7 @@
           "description": "%taipy.config.settings.status.timeout.desc%"
         }
       }
-    },
-    "productIconThemes": [
-      {
-        "id": "taipy-core",
-        "label": "%taipy.config.icon.theme.label%",
-        "path": "./assets/taipy-product-icon-theme.json"
-      }
-    ]
+    }
   },
   "scripts": {
     "build-this": "webpack --mode development",

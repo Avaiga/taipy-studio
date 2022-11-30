@@ -175,9 +175,10 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     const panelsByPersp = this.panelsByUri[baseUri];
     const symbols = this.taipyContext.getSymbols(baseUri);
     if (panelsByPersp) {
+      const realDocument = await getOriginalDocument(doc);
       Object.entries(panelsByPersp).forEach(([perspectiveId, panels]) => {
         const cache = this.getCache(getPerspectiveUri(originalUri, perspectiveId).toString());
-        const model = toDisplayModel(doc, symbols, cache.positions);
+        const model = toDisplayModel(realDocument, symbols, cache.positions);
         panels.forEach((p) => {
           try {
             p.webview.postMessage({
