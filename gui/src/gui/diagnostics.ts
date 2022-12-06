@@ -55,24 +55,20 @@ export enum DiagnosticCode {
 }
 
 export const registerDiagnostics = (context: ExtensionContext): void => {
-    const mdDiagnosticCollection = languages.createDiagnosticCollection("gui-markdown");
-
-    if (window.activeTextEditor) {
-        window.activeTextEditor && refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection);
-    }
-
+    const mdDiagnosticCollection = languages.createDiagnosticCollection("taipy-gui-markdown");
     const didOpen = workspace.onDidOpenTextDocument((doc) => refreshDiagnostics(doc, mdDiagnosticCollection));
     const didChange = workspace.onDidChangeTextDocument((e) => refreshDiagnostics(e.document, mdDiagnosticCollection));
     const didClose = workspace.onDidCloseTextDocument((doc) => mdDiagnosticCollection.delete(doc.uri));
-
+    window.activeTextEditor && refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection);
     context.subscriptions.push(mdDiagnosticCollection, didOpen, didChange, didClose);
 };
 
 const refreshDiagnostics = (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
     let diagnostics: Diagnostic[] | undefined = undefined;
-    if (doc.fileName.endsWith(".md")) {
+    const uri = doc.uri.toString();
+    if (uri.endsWith(".md") || doc.languageId === "markdown") {
         diagnostics = getMdDiagnostics(doc);
-    } else if (doc.fileName.endsWith(".py")) {
+    } else if (uri.endsWith(".py") || doc.languageId === "python") {
         diagnostics = getPyDiagnostics(doc);
     }
     diagnostics && diagnosticCollection.set(doc.uri, diagnostics);
