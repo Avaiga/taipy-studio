@@ -1,3 +1,5 @@
+import { DocumentFilter } from "vscode";
+
 export const countChar = (str: string, char: string): number => {
     return str.split(char).length - 1;
 };
@@ -113,3 +115,6 @@ const getElementDetailProperties = (
         ...handleElementDetailInherits(elementDetail.inherits, blocks, controls, undocumented),
     };
 };
+
+export const markdownDocumentFilter: DocumentFilter = { language: "markdown" };
+export const pythonDocumentFilter: DocumentFilter = { language: "python" };

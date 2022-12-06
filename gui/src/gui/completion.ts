@@ -4,16 +4,28 @@ import {
     CompletionItem,
     CompletionItemKind,
     CompletionItemProvider,
+    ExtensionContext,
+    languages,
     MarkdownString,
     Position,
     SymbolInformation,
     TextDocument,
 } from "vscode";
 import { defaultElementList, defaultElementProperties } from "./constant";
+import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
 
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
 
 export class GuiCompletionItemProvider implements CompletionItemProvider {
+    static register(context: ExtensionContext) {
+        context.subscriptions.push(
+            languages.registerCompletionItemProvider(markdownDocumentFilter, new GuiCompletionItemProvider(), "|")
+        );
+        context.subscriptions.push(
+            languages.registerCompletionItemProvider(pythonDocumentFilter, new GuiCompletionItemProvider(), "|", "{")
+        );
+    }
+
     public async provideCompletionItems(
         document: TextDocument,
         position: Position,
