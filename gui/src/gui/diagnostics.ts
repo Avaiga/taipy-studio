@@ -303,7 +303,7 @@ const getRangeFromPosition = (initialPosition: Position, range: Range): Range =>
     return new Range(
         initialPosition.line + range.start.line,
         range.start.line === 0 ? initialPosition.character + range.start.character : range.start.character,
-        range.end.line,
+        initialPosition.line + range.end.line,
         range.end.character
     );
 };
