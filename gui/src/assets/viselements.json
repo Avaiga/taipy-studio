@@ -447,6 +447,11 @@
             "name": "height",
             "type": "str|int|float",
             "doc": "The height, in CSS units, of this element."
+          },
+          {
+            "name": "decimator",
+            "type": "taipy.gui.data.Decimator",
+            "doc": "A decimator instance that will reduce the size of the data being sent back and forth."
           }
         ]
       }
