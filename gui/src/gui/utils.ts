@@ -116,5 +116,18 @@ const getElementDetailProperties = (
     };
 };
 
+export const getOnFunctionList = (elementProperties: Record<string, Record<string, string>>): string[] => {
+    const onFunctionList = new Set<string>();
+    for (const key in elementProperties) {
+        const elementProperty = elementProperties[key];
+        for (const k in elementProperty) {
+            if (k.startsWith("on_")) {
+                onFunctionList.add(k);
+            }
+        }
+    }
+    return [...onFunctionList];
+};
+
 export const markdownDocumentFilter: DocumentFilter = { language: "markdown" };
 export const pythonDocumentFilter: DocumentFilter = { language: "python" };
