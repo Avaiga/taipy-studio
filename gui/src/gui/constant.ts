@@ -1,5 +1,5 @@
 import visualElements from "../assets/viselements.json";
-import { getBlockElementList, getControlElementList, getElementList, getElementProperties } from "./utils";
+import { getBlockElementList, getControlElementList, getElementList, getElementProperties, getOnFunctionList } from "./utils";
 
 // object of all elements each with all of its properties
 const defaultElementProperties = getElementProperties(visualElements);
@@ -11,4 +11,12 @@ const defaultControlElementList = getControlElementList(visualElements);
 
 const defaultBlockElementList = getBlockElementList(visualElements);
 
-export { defaultElementProperties, defaultElementList, defaultControlElementList, defaultBlockElementList};
+const defaultOnFunctionList = getOnFunctionList(defaultElementProperties);
+
+export {
+    defaultElementProperties,
+    defaultElementList,
+    defaultControlElementList,
+    defaultBlockElementList,
+    defaultOnFunctionList,
+};

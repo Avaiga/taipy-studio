@@ -9,9 +9,10 @@ import {
     MarkdownString,
     Position,
     SymbolInformation,
+    SymbolKind,
     TextDocument,
 } from "vscode";
-import { defaultElementList, defaultElementProperties } from "./constant";
+import { defaultElementList, defaultElementProperties, defaultOnFunctionList } from "./constant";
 import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
 
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
@@ -22,7 +23,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
             languages.registerCompletionItemProvider(markdownDocumentFilter, new GuiCompletionItemProvider(), "|")
         );
         context.subscriptions.push(
-            languages.registerCompletionItemProvider(pythonDocumentFilter, new GuiCompletionItemProvider(), "|", "{")
+            languages.registerCompletionItemProvider(pythonDocumentFilter, new GuiCompletionItemProvider(), "|", "{", "=")
         );
     }
 
@@ -33,32 +34,47 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
     ): Promise<CompletionItem[]> {
         const line = document.lineAt(position).text;
         const linePrefix = line.slice(0, position.character);
+        let completionList: CompletionItem[] = [];
         if ((document.fileName.endsWith(".py") || document.languageId === "python") && linePrefix.endsWith("{")) {
-            const symbols = (await commands.executeCommand(
+            let symbols = (await commands.executeCommand(
                 "vscode.executeDocumentSymbolProvider",
                 document.uri
             )) as SymbolInformation[];
-            return symbols.map((v) => new CompletionItem(v.name, CompletionItemKind.Property));
+            symbols = symbols.filter((v) => v.kind === SymbolKind.Variable);
+            return symbols.map((v) => new CompletionItem(v.name, CompletionItemKind.Variable));
         }
-        let completionList: CompletionItem[] = [];
-        const foundElements = defaultElementList.reduce((p: string[], c: string) => {
-            linePrefix.includes(`|${c}`) && p.push(c);
-            return p;
-        }, []);
-        if (linePrefix.match(RE_LINE) && foundElements.length === 0) {
-            completionList = defaultElementList.map((v) => new CompletionItem(v, CompletionItemKind.Keyword));
-        } else if (foundElements.length > 0) {
-            const latestElement = foundElements[foundElements.length - 1];
-            const properties = defaultElementProperties[latestElement as keyof typeof defaultElementProperties];
-            const reducedPropertyList = Object.keys(properties).reduce((p: string[], c: string) => {
-                !linePrefix.includes(`|${c}`) && p.push(c);
+        if (
+            (document.fileName.endsWith(".py") || document.languageId === "python") &&
+            linePrefix.endsWith("=") &&
+            defaultOnFunctionList.some((v) => linePrefix.endsWith(v + "="))
+        ) {
+            let symbols = (await commands.executeCommand(
+                "vscode.executeDocumentSymbolProvider",
+                document.uri
+            )) as SymbolInformation[];
+            symbols = symbols.filter((v) => v.kind === SymbolKind.Function);
+            return symbols.map((v) => new CompletionItem(v.name, CompletionItemKind.Function));
+        }
+        else if (linePrefix.endsWith("|")) {
+            const foundElements = defaultElementList.reduce((p: string[], c: string) => {
+                linePrefix.includes(`|${c}`) && p.push(c);
                 return p;
             }, []);
-            completionList = reducedPropertyList.map((v) => {
-                let completionItem = new CompletionItem(v, CompletionItemKind.Property);
-                completionItem.documentation = new MarkdownString(properties[v as keyof typeof properties]);
-                return completionItem;
-            });
+            if (linePrefix.match(RE_LINE) && foundElements.length === 0) {
+                completionList = defaultElementList.map((v) => new CompletionItem(v, CompletionItemKind.Keyword));
+            } else if (foundElements.length > 0) {
+                const latestElement = foundElements[foundElements.length - 1];
+                const properties = defaultElementProperties[latestElement as keyof typeof defaultElementProperties];
+                const reducedPropertyList = Object.keys(properties).reduce((p: string[], c: string) => {
+                    !linePrefix.includes(`|${c}`) && p.push(c);
+                    return p;
+                }, []);
+                completionList = reducedPropertyList.map((v) => {
+                    let completionItem = new CompletionItem(v, CompletionItemKind.Property);
+                    completionItem.documentation = new MarkdownString(properties[v as keyof typeof properties]);
+                    return completionItem;
+                });
+            }
         }
         return completionList;
     }
