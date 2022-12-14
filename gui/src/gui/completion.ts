@@ -1,3 +1,5 @@
+import { existsSync } from "fs";
+import path from "path";
 import {
     CancellationToken,
     commands,
@@ -11,6 +13,7 @@ import {
     SymbolInformation,
     SymbolKind,
     TextDocument,
+    Uri,
 } from "vscode";
 import { defaultElementList, defaultElementProperties, defaultOnFunctionList } from "./constant";
 import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
@@ -35,6 +38,17 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         const line = document.lineAt(position).text;
         const linePrefix = line.slice(0, position.character);
         let completionList: CompletionItem[] = [];
+        if ((document.fileName.endsWith(".md") || document.languageId === "markdown") && linePrefix.endsWith("{")) {
+            const potentialPythonFile = path.join(path.dirname(document.uri.fsPath), path.parse(document.fileName).name + ".py");
+            if (existsSync(potentialPythonFile)) {
+                let symbols = (await commands.executeCommand(
+                    "vscode.executeDocumentSymbolProvider",
+                    Uri.file(potentialPythonFile)
+                )) as SymbolInformation[];
+                symbols = symbols.filter((v) => v.kind === SymbolKind.Variable);
+                return symbols.map((v) => new CompletionItem(v.name, CompletionItemKind.Variable));
+            }
+        }
         if ((document.fileName.endsWith(".py") || document.languageId === "python") && linePrefix.endsWith("{")) {
             let symbols = (await commands.executeCommand(
                 "vscode.executeDocumentSymbolProvider",
@@ -54,8 +68,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
             )) as SymbolInformation[];
             symbols = symbols.filter((v) => v.kind === SymbolKind.Function);
             return symbols.map((v) => new CompletionItem(v.name, CompletionItemKind.Function));
-        }
-        else if (linePrefix.endsWith("|")) {
+        } else if (linePrefix.endsWith("|")) {
             const foundElements = defaultElementList.reduce((p: string[], c: string) => {
                 linePrefix.includes(`|${c}`) && p.push(c);
                 return p;
