@@ -3,7 +3,7 @@
   "displayName": "Taipy Studio: GUI",
   "description": "Provide support for taipy-gui package",
   "publisher": "Avaiga",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "homepage": "https://github.com/Avaiga/taipy-studio.git",
   "repository": {
     "type": "git",
@@ -68,7 +68,7 @@
   "devDependencies": {
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.0",
-    "@types/node": "16.x",
+    "@types/node": "^18.11.15",
     "@types/string-similarity": "^4.0.0",
     "@types/vscode": "^1.73.1",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
