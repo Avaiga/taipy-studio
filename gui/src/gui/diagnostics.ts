@@ -65,7 +65,7 @@ export const registerDiagnostics = (context: ExtensionContext): void => {
 
 const refreshDiagnostics = (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
     let diagnostics: Diagnostic[] | undefined = undefined;
-    const uri = doc.uri.toString();
+    const uri = doc.uri.fsPath;
     if (uri.endsWith(".md") || doc.languageId === "markdown") {
         diagnostics = getMdDiagnostics(doc);
     } else if (uri.endsWith(".py") || doc.languageId === "python") {
