@@ -21,7 +21,7 @@ import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
 
 export class GuiCompletionItemProvider implements CompletionItemProvider {
-    language: string;
+    language: LanguageId;
 
     static register(context: ExtensionContext) {
         context.subscriptions.push(
@@ -44,7 +44,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         );
     }
 
-    private constructor(documentLanguage: string) {
+    private constructor(documentLanguage: LanguageId) {
         this.language = documentLanguage;
     }
 
