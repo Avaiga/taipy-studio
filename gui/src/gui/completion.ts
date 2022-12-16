@@ -15,7 +15,7 @@ import {
     TextDocument,
     Uri,
 } from "vscode";
-import { defaultElementList, defaultElementProperties, defaultOnFunctionList } from "./constant";
+import { defaultElementList, defaultElementProperties, defaultOnFunctionList, LanguageId } from "./constant";
 import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
 
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
@@ -27,14 +27,20 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         context.subscriptions.push(
             languages.registerCompletionItemProvider(
                 markdownDocumentFilter,
-                new GuiCompletionItemProvider("markdown"),
+                new GuiCompletionItemProvider(LanguageId.md),
                 "|",
                 "{",
                 "="
             )
         );
         context.subscriptions.push(
-            languages.registerCompletionItemProvider(pythonDocumentFilter, new GuiCompletionItemProvider("python"), "|", "{", "=")
+            languages.registerCompletionItemProvider(
+                pythonDocumentFilter,
+                new GuiCompletionItemProvider(LanguageId.py),
+                "|",
+                "{",
+                "="
+            )
         );
     }
 
@@ -50,11 +56,11 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         const line = document.lineAt(position).text;
         const linePrefix = line.slice(0, position.character);
         // md completion
-        if (this.language === "markdown") {
+        if (this.language === LanguageId.md) {
             return this.getMarkdownCompletion(document, linePrefix);
         }
         // python completion
-        if (this.language === "python") {
+        if (this.language === LanguageId.py) {
             return this.getPythonCompletion(document, linePrefix);
         }
         return [];
@@ -101,17 +107,17 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
             if (linePrefix.match(RE_LINE) && foundElements.length > 0) {
                 const latestElement = foundElements[foundElements.length - 1];
                 const properties = defaultElementProperties[latestElement as keyof typeof defaultElementProperties];
-                console.log(properties);
                 if (properties !== undefined) {
-                    const reducedPropertyList = Object.keys(properties).reduce((p: string[], c: string) => {
-                        !linePrefix.includes(`|${c}`) && p.push(c);
-                        return p;
-                    }, []);
-                    return reducedPropertyList.map((v) => {
-                        let completionItem = new CompletionItem(v, CompletionItemKind.Property);
-                        completionItem.documentation = new MarkdownString(properties[v as keyof typeof properties]);
-                        return completionItem;
-                    });
+                    return Object.keys(properties)
+                        .reduce((p: string[], c: string) => {
+                            !linePrefix.includes(`|${c}`) && p.push(c);
+                            return p;
+                        }, [])
+                        .map((v) => {
+                            let completionItem = new CompletionItem(v, CompletionItemKind.Property);
+                            completionItem.documentation = new MarkdownString(properties[v as keyof typeof properties]);
+                            return completionItem;
+                        });
                 }
             }
         }

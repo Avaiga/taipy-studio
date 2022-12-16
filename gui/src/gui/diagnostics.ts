@@ -12,7 +12,7 @@ import {
     workspace,
 } from "vscode";
 import { findBestMatch } from "string-similarity";
-import { defaultElementList, defaultBlockElementList, defaultElementProperties } from "./constant";
+import { defaultElementList, defaultBlockElementList, defaultElementProperties, LanguageId } from "./constant";
 
 const CONTROL_RE = /<\|(.*?)\|>/;
 const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
@@ -66,9 +66,9 @@ export const registerDiagnostics = (context: ExtensionContext): void => {
 const refreshDiagnostics = (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
     let diagnostics: Diagnostic[] | undefined = undefined;
     const uri = doc.uri.fsPath;
-    if (uri.endsWith(".md") || doc.languageId === "markdown") {
+    if (uri.endsWith(".md") || doc.languageId === LanguageId.md) {
         diagnostics = getMdDiagnostics(doc);
-    } else if (uri.endsWith(".py") || doc.languageId === "python") {
+    } else if (uri.endsWith(".py") || doc.languageId === LanguageId.py) {
         diagnostics = getPyDiagnostics(doc);
     }
     diagnostics && diagnosticCollection.set(doc.uri, diagnostics);

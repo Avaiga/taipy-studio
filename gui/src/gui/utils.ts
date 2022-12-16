@@ -1,4 +1,5 @@
 import { DocumentFilter } from "vscode";
+import { LanguageId } from "./constant";
 
 export const countChar = (str: string, char: string): number => {
     return str.split(char).length - 1;
@@ -129,5 +130,5 @@ export const getOnFunctionList = (elementProperties: Record<string, Record<strin
     return [...onFunctionList];
 };
 
-export const markdownDocumentFilter: DocumentFilter = { language: "markdown" };
-export const pythonDocumentFilter: DocumentFilter = { language: "python" };
+export const markdownDocumentFilter: DocumentFilter = { language: LanguageId.md };
+export const pythonDocumentFilter: DocumentFilter = { language: LanguageId.py };

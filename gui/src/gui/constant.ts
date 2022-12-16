@@ -2,21 +2,18 @@ import visualElements from "../assets/viselements.json";
 import { getBlockElementList, getControlElementList, getElementList, getElementProperties, getOnFunctionList } from "./utils";
 
 // object of all elements each with all of its properties
-const defaultElementProperties = getElementProperties(visualElements);
+export const defaultElementProperties = getElementProperties(visualElements);
 
 // Include control and block elements
-const defaultElementList = getElementList(visualElements);
+export const defaultElementList = getElementList(visualElements);
 
-const defaultControlElementList = getControlElementList(visualElements);
+export const defaultControlElementList = getControlElementList(visualElements);
 
-const defaultBlockElementList = getBlockElementList(visualElements);
+export const defaultBlockElementList = getBlockElementList(visualElements);
 
-const defaultOnFunctionList = getOnFunctionList(defaultElementProperties);
+export const defaultOnFunctionList = getOnFunctionList(defaultElementProperties);
 
-export {
-    defaultElementProperties,
-    defaultElementList,
-    defaultControlElementList,
-    defaultBlockElementList,
-    defaultOnFunctionList,
-};
+export enum LanguageId {
+    py = "python",
+    md = "markdown",
+}
