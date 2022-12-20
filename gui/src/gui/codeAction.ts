@@ -7,6 +7,7 @@ import {
     Diagnostic,
     ExtensionContext,
     languages,
+    Position,
     Range,
     Selection,
     TextDocument,
@@ -63,8 +64,13 @@ export class MarkdownActionProvider implements CodeActionProvider {
         action.isPreferred = true;
         action.edit = new WorkspaceEdit();
         const diagnosticText = document.getText(diagnostic.range);
-        let insertString = diagnosticText.endsWith("|") ? ">" : "|>";
-        action.edit.insert(document.uri, diagnostic.range.end, insertString);
+        if (diagnosticText.endsWith("|")) {
+            action.edit.insert(document.uri, diagnostic.range.end, ">");
+        } else if (diagnosticText.endsWith(">")) {
+            action.edit.insert(document.uri, new Position(diagnostic.range.end.line, diagnostic.range.end.character - 1), "|");
+        } else {
+            action.edit.insert(document.uri, diagnostic.range.end, "|>");
+        }
         return action;
     }
 }
