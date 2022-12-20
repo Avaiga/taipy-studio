@@ -67,7 +67,7 @@ export class MarkdownActionProvider implements CodeActionProvider {
         if (diagnosticText.endsWith("|")) {
             action.edit.insert(document.uri, diagnostic.range.end, ">");
         } else if (diagnosticText.endsWith(">")) {
-            action.edit.insert(document.uri, new Position(diagnostic.range.end.line, diagnostic.range.end.character - 1), "|");
+            action.edit.insert(document.uri, diagnostic.range.end.translate(0, -1), "|");
         } else {
             action.edit.insert(document.uri, diagnostic.range.end, "|>");
         }
