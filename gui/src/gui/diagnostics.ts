@@ -91,7 +91,7 @@ const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
         d.push(
             ...getSectionDiagnostics({
                 content: getTextFromPositions(text, quotePositions[i], quotePositions[i + 1]),
-                initialPosition: new Position(quotePositions[i].line, quotePositions[i].character + 3),
+                initialPosition: quotePositions[i].translate(0, 3),
             })
         );
     }
