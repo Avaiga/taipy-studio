@@ -9,6 +9,7 @@ import {
     Position,
     Range,
     SymbolInformation,
+    SymbolKind,
     TextDocument,
     window,
     workspace,
@@ -26,6 +27,7 @@ const BEST_MATCH_THRESHOLD = 0.8;
 interface DiagnosticSection {
     content: string;
     initialPosition?: Position;
+    symbols?: SymbolInformation[];
 }
 
 interface TaipyElementProperty {
@@ -60,32 +62,33 @@ export enum DiagnosticCode {
 export const registerDiagnostics = async (context: ExtensionContext): Promise<void> => {
     const mdDiagnosticCollection = languages.createDiagnosticCollection("taipy-gui-markdown");
     const didOpen = workspace.onDidOpenTextDocument(async (doc) => await refreshDiagnostics(doc, mdDiagnosticCollection));
-    const didChange = workspace.onDidChangeTextDocument(async (e) => await refreshDiagnostics(e.document, mdDiagnosticCollection));
+    const didChange = workspace.onDidChangeTextDocument(
+        async (e) => await refreshDiagnostics(e.document, mdDiagnosticCollection)
+    );
     const didClose = workspace.onDidCloseTextDocument((doc) => mdDiagnosticCollection.delete(doc.uri));
-    window.activeTextEditor && await refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection);
+    window.activeTextEditor && (await refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection));
     context.subscriptions.push(mdDiagnosticCollection, didOpen, didChange, didClose);
 };
 
 const refreshDiagnostics = async (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
     let diagnostics: Diagnostic[] | undefined = undefined;
-    const uri = doc.uri.fsPath;
-    if (uri.endsWith(".md") || doc.languageId === LanguageId.md) {
+    const uri = doc.uri;
+    if (uri.fsPath.endsWith(".md") || doc.languageId === LanguageId.md) {
         diagnostics = getMdDiagnostics(doc);
-    } else if (uri.endsWith(".py") || doc.languageId === LanguageId.py) {
-        const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri)) as SymbolInformation[];
-        console.log(symbols);
-        diagnostics = getPyDiagnostics(doc);
+    } else if (uri.fsPath.endsWith(".py") || doc.languageId === LanguageId.py) {
+        diagnostics = await getPyDiagnostics(doc);
     }
-    diagnostics && diagnosticCollection.set(doc.uri, diagnostics);
+    diagnostics && diagnosticCollection.set(uri, diagnostics);
 };
 
 const getMdDiagnostics = (doc: TextDocument): Diagnostic[] => {
     return getSectionDiagnostics({ content: doc.getText() });
 };
 
-const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
+const getPyDiagnostics = async (doc: TextDocument): Promise<Diagnostic[]> => {
     const text = doc.getText();
     const d: Diagnostic[] = [];
+    const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", doc.uri)) as SymbolInformation[];
     const quotePositions: Position[] = text.split(/\r?\n/).reduce<Position[]>((obj: Position[], v: string, i: number) => {
         return [...obj, ...[...v.matchAll(new RegExp('"""', "gi"))].map((a) => new Position(i, a.index || 0))];
     }, []);
@@ -97,6 +100,7 @@ const getPyDiagnostics = (doc: TextDocument): Diagnostic[] => {
             ...getSectionDiagnostics({
                 content: getTextFromPositions(text, quotePositions[i], quotePositions[i + 1]),
                 initialPosition: quotePositions[i].translate(0, 3),
+                symbols: symbols,
             })
         );
     }
@@ -149,7 +153,8 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
             const [d, _] = processElement(
                 elementMatch[1],
                 new Position(lineCount, line.indexOf(elementMatch[1])),
-                initialPosition
+                initialPosition,
+                diagnosticSection.symbols
             );
             diagnostics.push(...d);
         }
@@ -227,7 +232,12 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
     return diagnostics;
 };
 
-const processElement = (s: string, inlinePosition: Position, initialPosition: Position): [Diagnostic[], TaipyElement] => {
+const processElement = (
+    s: string,
+    inlinePosition: Position,
+    initialPosition: Position,
+    symbols: SymbolInformation[] | undefined = undefined
+): [Diagnostic[], TaipyElement] => {
     const d: Diagnostic[] = [];
     const fragments = s.split(SPLIT_RE).filter((v) => !!v);
     const e = buildEmptyTaipyElement();
@@ -275,6 +285,15 @@ const processElement = (s: string, inlinePosition: Position, initialPosition: Po
                 createWarningDiagnostic(
                     l10n.t("Negated value of property '{0}' will be ignored", propName),
                     DiagnosticCode.ignoreNegatedValue,
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
+                )
+            );
+        }
+        if (propName.startsWith("on_") && symbols && !symbols.some((s) => s.name === val && s.kind === SymbolKind.Function)) {
+            d.push(
+                createWarningDiagnostic(
+                    l10n.t("Function '{0}' is not available for property '{1}'", val, propName),
+                    DiagnosticCode.functionNotFound,
                     getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
             );

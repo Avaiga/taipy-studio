@@ -42,8 +42,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         );
     }
 
-    private constructor(private readonly language: LanguageId) {
-    }
+    private constructor(private readonly language: LanguageId) {}
 
     public async provideCompletionItems(
         document: TextDocument,
@@ -127,6 +126,6 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         completionItemKind: CompletionItemKind
     ): Promise<CompletionItem[]> {
         const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri)) as SymbolInformation[];
-        return symbols.filter((v) => v.kind === symbolKind).map((v) => new CompletionItem(v.name, completionItemKind));
+        return !symbols ? [] : symbols.filter((v) => v.kind === symbolKind).map((v) => new CompletionItem(v.name, completionItemKind));
     }
 }
