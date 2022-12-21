@@ -3,7 +3,7 @@
   "displayName": "taipy-studio-webviews",
   "description": "Components for Visual Studio Code extension for Taipy",
   "publisher": "Avaiga",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "categories": [
     "Other"
   ],
@@ -15,7 +15,7 @@
   "devDependencies": {
     "@types/debounce": "^1.2.1",
     "@types/dom-to-image": "^2.6.4",
-    "@types/node": "^16.11.57",
+    "@types/node": "^18.11.17",
     "@types/react": "^18.0.18",
     "@types/react-dom": "^18.0.6",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
