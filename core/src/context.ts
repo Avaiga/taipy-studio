@@ -147,6 +147,7 @@ export class Context {
   }
 
   private revealConfigNodesInTrees() {
+    this.unselectConfigNode();
     this.treeProviders.forEach((p, idx) => {
       const nodeType = p.getNodeType();
       const lastSelectedUri = this.selectionCache[nodeType];
@@ -213,6 +214,10 @@ export class Context {
 
   getDocFromUri(uri: Uri): Thenable<TextDocument> {
     return workspace.openTextDocument(getOriginalUri(uri));
+  }
+
+  private async unselectConfigNode(): Promise<void> {
+    this.configDetailsView.setEmptyContent();
   }
 
   private async selectConfigNode(nodeType: string, name: string, configNode: object, uri: Uri, reveal = true): Promise<void> {

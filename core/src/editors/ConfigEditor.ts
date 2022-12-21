@@ -299,7 +299,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   }
 
   private async applyEdits(uri: Uri, edits: TextEdit[]) {
-    if (edits.length) {
+    if (edits?.length) {
       const we = new WorkspaceEdit();
       we.set(uri, edits);
       return workspace.applyEdit(we);
@@ -357,7 +357,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   private async getNodeName(doc: TextDocument, nodeType: string, addNodeToActiveDiagram = true) {
     const symbols = this.taipyContext.getSymbols(doc.uri.toString());
     const typeSymbol = getSymbol(symbols, nodeType);
-    const nodeName = typeSymbol.children
+    const nodeName = (typeSymbol?.children || [])
       .filter(s => s.name.toLowerCase().startsWith(nodeType.toLowerCase()))
       .sort()
       .reduce((pv, s) => {
@@ -375,7 +375,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
       if (!value || /[\s\.]/.test(value) || value.toLowerCase() === "default") {
         return l10n.t("Entity {0} Name should not contain space, '.' or be empty or be default '{1}'", nodeType, value);
       }
-      if (typeSymbol.children.some(s => s.name.toLowerCase() === value.toLowerCase())) {
+      if (typeSymbol?.children.some(s => s.name.toLowerCase() === value.toLowerCase())) {
         return l10n.t("Another {0} entity has the name {1}", nodeType, value);
       }
       return undefined as string;

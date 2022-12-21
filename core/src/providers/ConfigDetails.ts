@@ -97,6 +97,9 @@ export class ConfigDetailsView implements WebviewViewProvider {
   private docListener(textDocument: TextDocument) {
     if (isUriEqual(this.configUri, textDocument.uri)) {
       const symbols = this.taipyContext.getSymbols(this.configUri.toString());
+      if (!symbols) {
+        this.setEmptyContent();
+      }
       const nameSymbol = getSymbol(symbols, this.nodeType, this.nodeName);
       const node = getNodeFromSymbol(textDocument, nameSymbol);
       this._view?.webview.postMessage({
@@ -108,6 +111,9 @@ export class ConfigDetailsView implements WebviewViewProvider {
 
   private async editProperty(nodeType: string, nodeName: string, propertyName?: string, propertyValue?: string | string[]) {
     const symbols = this.taipyContext.getSymbols(this.configUri.toString());
+    if (!symbols) {
+      return;
+    }
     const insert = !propertyName;
     let propertyRange: Range;
     if (insert) {
