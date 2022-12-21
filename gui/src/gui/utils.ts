@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "fs";
+import path from "path";
 import { DocumentFilter } from "vscode";
 
 export const countChar = (str: string, char: string): number => {
@@ -127,6 +129,18 @@ export const getOnFunctionList = (elementProperties: Record<string, Record<strin
         }
     }
     return [...onFunctionList];
+};
+
+export const getMustacheTemplates = (): Record<string, string> => {
+    const templates: Record<string, string> = {};
+    const templatesDir = path.join(__dirname, "..", "templates");
+    const files = readdirSync(templatesDir)
+        .filter((f) => f.endsWith(".mustache"))
+        .map((f) => path.join(templatesDir, f));
+    files.forEach((file) => {
+        templates[path.parse(file).name] = readFileSync(file, "utf8");
+    });
+    return templates;
 };
 
 export const markdownDocumentFilter: DocumentFilter = { language: "markdown" };

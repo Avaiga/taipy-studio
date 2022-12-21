@@ -1,5 +1,5 @@
 import visualElements from "../assets/viselements.json";
-import { getBlockElementList, getControlElementList, getElementList, getElementProperties, getOnFunctionList } from "./utils";
+import { getBlockElementList, getControlElementList, getElementList, getElementProperties, getMustacheTemplates, getOnFunctionList } from "./utils";
 
 // object of all elements each with all of its properties
 export const defaultElementProperties = getElementProperties(visualElements);
@@ -12,6 +12,8 @@ export const defaultControlElementList = getControlElementList(visualElements);
 export const defaultBlockElementList = getBlockElementList(visualElements);
 
 export const defaultOnFunctionList = getOnFunctionList(defaultElementProperties);
+
+export const mustacheTemplates = getMustacheTemplates();
 
 export enum LanguageId {
     py = "python",

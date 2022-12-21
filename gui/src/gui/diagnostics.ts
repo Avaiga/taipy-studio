@@ -292,9 +292,9 @@ const processElement = (
         if (propName.startsWith("on_") && symbols && !symbols.some((s) => s.name === val && s.kind === SymbolKind.Function)) {
             d.push(
                 createWarningDiagnostic(
-                    l10n.t("Function '{0}' is not available for property '{1}'", val, propName),
+                    l10n.t("Function '{0}' in property '{1}' is not available", val, propName),
                     DiagnosticCode.functionNotFound,
-                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, val, inlinePosition))
                 )
             );
         }

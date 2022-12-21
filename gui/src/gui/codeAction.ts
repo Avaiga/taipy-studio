@@ -6,20 +6,25 @@ import {
     CodeActionProvider,
     Diagnostic,
     ExtensionContext,
+    l10n,
     languages,
+    Position,
     Range,
     Selection,
     TextDocument,
     WorkspaceEdit,
 } from "vscode";
 
+import { render } from "mustache";
 import { DiagnosticCode } from "./diagnostics";
 import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
+import { mustacheTemplates } from "./constant";
 
 export class MarkdownActionProvider implements CodeActionProvider {
     public static readonly providedCodeActionKinds = [CodeActionKind.QuickFix];
     private readonly codeActionMap: Record<string, (document: TextDocument, diagnostic: Diagnostic) => CodeAction> = {
         [DiagnosticCode.missCSyntax]: this.createMCSCodeAction,
+        [DiagnosticCode.functionNotFound]: this.createFNFCodeAction,
     };
 
     static register(context: ExtensionContext): void {
@@ -42,8 +47,8 @@ export class MarkdownActionProvider implements CodeActionProvider {
         token: CancellationToken
     ): CodeAction[] {
         const codeActions: CodeAction[] = [];
-        context.diagnostics.forEach((v) => {
-            const codeAction = this.createCodeAction(document, v);
+        context.diagnostics.forEach((diagnostic) => {
+            const codeAction = this.createCodeAction(document, diagnostic);
             codeAction !== null && codeActions.push(codeAction);
         });
         return codeActions;
@@ -58,7 +63,7 @@ export class MarkdownActionProvider implements CodeActionProvider {
     }
 
     private createMCSCodeAction(document: TextDocument, diagnostic: Diagnostic): CodeAction {
-        const action = new CodeAction("Add closing tag", CodeActionKind.QuickFix);
+        const action = new CodeAction(l10n.t("Add closing tag"), CodeActionKind.QuickFix);
         action.diagnostics = [diagnostic];
         action.isPreferred = true;
         action.edit = new WorkspaceEdit();
@@ -70,6 +75,34 @@ export class MarkdownActionProvider implements CodeActionProvider {
         } else {
             action.edit.insert(document.uri, diagnostic.range.end, "|>");
         }
+        return action;
+    }
+
+    private createFNFCodeAction(document: TextDocument, diagnostic: Diagnostic): CodeAction {
+        const functionName = document.getText(diagnostic.range);
+        const action = new CodeAction(l10n.t("Create function '{0}'", functionName), CodeActionKind.QuickFix);
+        const diagnosticPosition = diagnostic.range.end;
+        const quotePositions: Position[] = document
+            .getText()
+            .split(/\r?\n/)
+            .reduce<Position[]>((obj: Position[], v: string, i: number) => {
+                return [...obj, ...[...v.matchAll(new RegExp('"""', "gi"))].map((a) => new Position(i, a.index || 0))];
+            }, [])
+            .filter(
+                (v) =>
+                    v.line > diagnosticPosition.line ||
+                    (v.line === diagnosticPosition.line && v.character > diagnosticPosition.character)
+            );
+        quotePositions.forEach((v) => {});
+        action.diagnostics = [diagnostic];
+        action.isPreferred = true;
+        action.edit = new WorkspaceEdit();
+        action.edit.insert(
+            document.uri,
+            quotePositions.length > 0 ? quotePositions[0].translate(0, 3) : new Position(document.lineCount - 1, 0),
+            "\n\n" + render(mustacheTemplates["on_function"], { functionName: functionName })
+        );
+        console.log(document.lineCount);
         return action;
     }
 }
