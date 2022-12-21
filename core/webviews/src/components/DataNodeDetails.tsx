@@ -4,7 +4,7 @@ import * as l10n from "@vscode/l10n";
 import { postEditProperty } from "../utils/messaging";
 import { DataNodeDetailsProps } from "../../../shared/views";
 
-const getAsString = (val: string | string[]) => (Array.isArray(val) ? (val as string[]).join(", ") : typeof val == "string" ? val : JSON.stringify(val));
+const getAsString = (val: string | string[]) => (Array.isArray(val) ? (val as string[]).join(", ") : typeof val === "string" ? val : JSON.stringify(val));
 
 const DataNodePanel = ({ nodeType, nodeName, node }: DataNodeDetailsProps) => {
 

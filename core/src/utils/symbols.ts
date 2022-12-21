@@ -57,7 +57,7 @@ export const getNodeFromSymbol = (doc: TextDocument, symbol: DocumentSymbol) => 
   return node;
 };
 
-export const EXTRACT_STRINGS_RE = /[^\w\:\-]+/;
+export const EXTRACT_STRINGS_RE = /[^\w\:\-\.]+/;
 
 export const getSymbolArrayValue = (doc: TextDocument, symbol: DocumentSymbol, prop?: string) => getSymbolValue(doc, symbol, prop) as string[];
 
