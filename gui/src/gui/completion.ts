@@ -126,7 +126,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         symbolKind: SymbolKind,
         completionItemKind: CompletionItemKind
     ): Promise<CompletionItem[]> {
-        let symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri)) as SymbolInformation[];
+        const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri)) as SymbolInformation[];
         return symbols.filter((v) => v.kind === symbolKind).map((v) => new CompletionItem(v.name, completionItemKind));
     }
 }

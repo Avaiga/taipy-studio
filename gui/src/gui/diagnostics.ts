@@ -1,4 +1,5 @@
 import {
+    commands,
     Diagnostic,
     DiagnosticCollection,
     DiagnosticSeverity,
@@ -7,6 +8,7 @@ import {
     languages,
     Position,
     Range,
+    SymbolInformation,
     TextDocument,
     window,
     workspace,
@@ -52,23 +54,26 @@ export enum DiagnosticCode {
     invalidPropertyFormat = "PE01",
     invalidPropertyName = "PE02",
     ignoreNegatedValue = "PE03",
+    functionNotFound = "FNF",
 }
 
-export const registerDiagnostics = (context: ExtensionContext): void => {
+export const registerDiagnostics = async (context: ExtensionContext): Promise<void> => {
     const mdDiagnosticCollection = languages.createDiagnosticCollection("taipy-gui-markdown");
-    const didOpen = workspace.onDidOpenTextDocument((doc) => refreshDiagnostics(doc, mdDiagnosticCollection));
-    const didChange = workspace.onDidChangeTextDocument((e) => refreshDiagnostics(e.document, mdDiagnosticCollection));
+    const didOpen = workspace.onDidOpenTextDocument(async (doc) => await refreshDiagnostics(doc, mdDiagnosticCollection));
+    const didChange = workspace.onDidChangeTextDocument(async (e) => await refreshDiagnostics(e.document, mdDiagnosticCollection));
     const didClose = workspace.onDidCloseTextDocument((doc) => mdDiagnosticCollection.delete(doc.uri));
-    window.activeTextEditor && refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection);
+    window.activeTextEditor && await refreshDiagnostics(window.activeTextEditor.document, mdDiagnosticCollection);
     context.subscriptions.push(mdDiagnosticCollection, didOpen, didChange, didClose);
 };
 
-const refreshDiagnostics = (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
+const refreshDiagnostics = async (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
     let diagnostics: Diagnostic[] | undefined = undefined;
     const uri = doc.uri.fsPath;
     if (uri.endsWith(".md") || doc.languageId === LanguageId.md) {
         diagnostics = getMdDiagnostics(doc);
     } else if (uri.endsWith(".py") || doc.languageId === LanguageId.py) {
+        const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri)) as SymbolInformation[];
+        console.log(symbols);
         diagnostics = getPyDiagnostics(doc);
     }
     diagnostics && diagnosticCollection.set(doc.uri, diagnostics);

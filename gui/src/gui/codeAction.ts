@@ -7,7 +7,6 @@ import {
     Diagnostic,
     ExtensionContext,
     languages,
-    Position,
     Range,
     Selection,
     TextDocument,
