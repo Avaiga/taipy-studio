@@ -13,6 +13,7 @@ const linkNodeTypes = [DataNode, Task, Pipeline];
 export const reportInconsistencies = (doc: TextDocument, symbols: Array<DocumentSymbol>, schemaErrors: ErrorObject[] | null) => {
   const nodeIds = new Set<string>();
   const diagnostics = [] as Diagnostic[];
+  if (Array.isArray(symbols)) {
   // Check the existence of the linked elements
   symbols.forEach((symbol) => {
     const childType = getChildType(symbol.name);
@@ -62,7 +63,8 @@ export const reportInconsistencies = (doc: TextDocument, symbols: Array<Document
           });
         })
     );
-  schemaErrors &&
+  }
+  Array.isArray(schemaErrors) &&
     schemaErrors.forEach((err) => {
       const paths = err.instancePath.split("/").filter((p) => p);
       const symbol = getSymbol(symbols, ...paths);
