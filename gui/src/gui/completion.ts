@@ -16,7 +16,7 @@ import {
     Uri,
 } from "vscode";
 import { defaultElementList, defaultElementProperties, defaultOnFunctionList, LanguageId } from "./constant";
-import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
+import { markdownDocumentFilter, parseProperty, pythonDocumentFilter } from "./utils";
 
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
 
@@ -42,8 +42,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         );
     }
 
-    private constructor(private readonly language: LanguageId) {
-    }
+    private constructor(private readonly language: LanguageId) {}
 
     public async provideCompletionItems(
         document: TextDocument,
@@ -112,7 +111,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
                         }, [])
                         .map((v) => {
                             let completionItem = new CompletionItem(v, CompletionItemKind.Property);
-                            completionItem.documentation = new MarkdownString(properties[v as keyof typeof properties]);
+                            completionItem.documentation = new MarkdownString(parseProperty(properties[v as keyof typeof properties]));
                             return completionItem;
                         });
                 }
@@ -126,7 +125,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
         symbolKind: SymbolKind,
         completionItemKind: CompletionItemKind
     ): Promise<CompletionItem[]> {
-        let symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri)) as SymbolInformation[];
-        return symbols.filter((v) => v.kind === symbolKind).map((v) => new CompletionItem(v.name, completionItemKind));
+        const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", uri)) as SymbolInformation[];
+        return !symbols ? [] : symbols.filter((v) => v.kind === symbolKind).map((v) => new CompletionItem(v.name, completionItemKind));
     }
 }
