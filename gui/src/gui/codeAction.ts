@@ -90,7 +90,7 @@ export class MarkdownActionProvider implements CodeActionProvider {
             .getText()
             .split(/\r?\n/)
             .reduce<Position[]>((obj: Position[], v: string, i: number) => {
-                return [...obj, ...[...v.matchAll(new RegExp('"""', "g"))].map((a) => new Position(i, a.index || 0))];
+                return [...obj, ...Array.from(v.matchAll(new RegExp('"""', "g")), (a) => new Position(i, a.index || 0))];
             }, [])
             .filter(
                 (v) =>
