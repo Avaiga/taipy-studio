@@ -285,7 +285,7 @@ export class Context {
     return (uri && this.symbolsByUri[uri]) || [];
   }
 
-  private async refreshSymbols(document: TextDocument) {
+  async refreshSymbols(document: TextDocument) {
     const uri = document.uri.toString();
     if (this.symbolsByUri[uri]) {
       await this.readSymbols(document);
