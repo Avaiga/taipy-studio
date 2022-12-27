@@ -90,7 +90,7 @@ const getPyDiagnostics = async (doc: TextDocument): Promise<Diagnostic[]> => {
     const d: Diagnostic[] = [];
     const symbols = (await commands.executeCommand("vscode.executeDocumentSymbolProvider", doc.uri)) as SymbolInformation[];
     const quotePositions: Position[] = text.split(/\r?\n/).reduce<Position[]>((obj: Position[], v: string, i: number) => {
-        return [...obj, ...[...v.matchAll(new RegExp('"""', "gi"))].map((a) => new Position(i, a.index || 0))];
+        return [...obj, ...[...v.matchAll(new RegExp('"""', "g"))].map((a) => new Position(i, a.index || 0))];
     }, []);
     if (quotePositions.length % 2 !== 0) {
         return [];
