@@ -3,7 +3,7 @@
   "displayName": "taipy-studio-webviews",
   "description": "Components for Visual Studio Code extension for Taipy",
   "publisher": "Avaiga",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "categories": [
     "Other"
   ],

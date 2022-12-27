@@ -3,7 +3,7 @@
   "displayName": "Taipy Studio Configuration Builder",
   "description": "Visual Studio Code extension for Taipy: Configuration Builder",
   "publisher": "Avaiga",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "homepage": "https://github.com/Avaiga/taipy-studio.git",
   "repository": {
     "type": "git",
@@ -50,13 +50,18 @@
       },
       {
         "command": "taipy.perspective.showFromDiagram",
-        "title": "%taipy.config.commands.taipy.perspective.show%",
+        "title": "%taipy.config.commands.taipy.perspective.showFromDiagram%",
         "icon": "$(type-hierarchy)"
       },
       {
         "command": "taipy.diagram.addNode",
         "title": "%taipy.config.commands.taipy.diagram.addNode%",
         "icon": "$(add)"
+      },
+      {
+        "command": "taipy.config.deleteNode",
+        "title": "%taipy.config.commands.taipy.config.deleteNode%",
+        "icon": "$(delete)"
       },
       {
         "command": "taipy.config.datanode.create",
@@ -202,6 +207,10 @@
         {
           "command": "taipy.diagram.addNode",
           "when": "viewItem != default && view == taipy-config-datanodes || viewItem != default && view == taipy-config-tasks || viewItem != default && view == taipy-config-pipelines"
+        },
+        {
+          "command": "taipy.config.deleteNode",
+          "when": "view == taipy-config-datanodes || view == taipy-config-tasks || view == taipy-config-pipelines || view == taipy-config-scenarios"
         },
         {
           "command": "taipy.config.revealInExplorer",

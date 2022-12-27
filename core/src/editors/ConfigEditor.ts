@@ -3,6 +3,7 @@ import {
   CancellationToken,
   commands,
   CustomTextEditorProvider,
+  DocumentSymbol,
   ExtensionContext,
   l10n,
   languages,
@@ -95,6 +96,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
     commands.registerCommand("taipy.config.clearCache", this.clearCache, this);
     commands.registerCommand("taipy.diagram.addNode", this.addNodeToCurrentDiagram, this);
+    commands.registerCommand("taipy.config.deleteNode", this.deleteConfigurationNode, this);
   }
 
   async createNewElement(uri: Uri, nodeType: string) {
@@ -132,13 +134,36 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     return this.cache[perspectiveUri];
   }
 
+  private async deleteConfigurationNode(item: TreeItem) {
+    const nodeType = item.contextValue;
+    const nodeName = item.label as string;
+    const answer = await window.showWarningMessage(l10n.t("Do you really want to definitely delete {0}:{1} from the configuration ?", nodeType, nodeName), "Yes", "No");
+    if (answer === "Yes") {
+      const uri = getOriginalUri(item.resourceUri);
+      const realDocument = await this.taipyContext.getDocFromUri(uri);
+      const symbols = this.taipyContext.getSymbols(uri.toString());
+      const nameSymbol = getSymbol(symbols, nodeType, nodeName);
+      if (!nameSymbol) {
+        return false;
+      }
+      const edits: TextEdit[] = [TextEdit.delete(nameSymbol.range)];
+      await this.removeNodeLinks(realDocument, nodeType, nodeName, symbols, edits);
+      const res = await this.applyEdits(realDocument.uri, edits);
+      if (res) {
+        await this.taipyContext.refreshSymbols(realDocument);
+        this.updateWebview(realDocument, realDocument.isDirty);
+      }
+      return res;
+    }
+  }
+
   private addNodeToCurrentDiagram(item: TreeItem) {
     this.addNodeToActiveDiagram(item.contextValue, item.label as string);
   }
 
   private addNodeToActiveDiagram(nodeType: string, nodeName: string, check = false) {
-    for (let pps of Object.values(this.panelsByUri)) {
-      for (let [pId, ps] of Object.entries(pps)) {
+    for (const pps of Object.values(this.panelsByUri)) {
+      for (const [pId, ps] of Object.entries(pps)) {
         const panel = ps.find((p) => p.active);
         if (panel) {
           if (check) {
@@ -410,21 +435,13 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     return this.applyEdits(uri, edits);
   }
 
-  private async removeNodeFromPerspective(realDocument: TextDocument, nodeType: string, nodeName: string) {
-    const uri = realDocument.uri;
-    const symbols = this.taipyContext.getSymbols(uri.toString());
-    const nameSymbol = getSymbol(symbols, nodeType, nodeName);
-    if (!nameSymbol) {
-      return false;
-    }
-    const edits = [] as TextEdit[];
-    getDescendantProperties(nodeType).forEach((p) => p && this.createOrDeleteLink(realDocument, nodeType, nodeName, p, "", false, true, edits));
+  private async removeNodeLinks(realDocument: TextDocument, nodeType: string, nodeName: string, symbols: DocumentSymbol[], edits: TextEdit[] = []) {
     const parentType = getParentType(nodeType);
     const pp = getDescendantProperties(parentType);
     const pTypeSymbol = getSymbol(symbols, parentType);
     pTypeSymbol && pTypeSymbol.children.forEach(parentSymbol => {
         pp.forEach((property, idx) => {
-          if (property && getSymbolArrayValue(realDocument, parentSymbol, property).some((n: string) => n === nodeName)) {
+          if (property && getSymbolArrayValue(realDocument, parentSymbol, property).some((n: string) => getUnsuffixedName(n) === nodeName)) {
             if (idx === 0) {
               // input property: reverse order
               this.createOrDeleteLink(realDocument, nodeType, nodeName, parentType, parentSymbol.name, false, false, edits);
@@ -435,6 +452,19 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
           }
         });
       });
+    return edits;
+  }
+
+  private async removeNodeFromPerspective(realDocument: TextDocument, nodeType: string, nodeName: string) {
+    const uri = realDocument.uri;
+    const symbols = this.taipyContext.getSymbols(uri.toString());
+    const nameSymbol = getSymbol(symbols, nodeType, nodeName);
+    if (!nameSymbol) {
+      return false;
+    }
+    const edits: TextEdit[] = [];
+    getDescendantProperties(nodeType).forEach((p) => p && this.createOrDeleteLink(realDocument, nodeType, nodeName, p, "", false, true, edits));
+    await this.removeNodeLinks(realDocument, nodeType, nodeName, symbols, edits);
     return this.applyEdits(realDocument.uri, edits);
   }
 
