@@ -210,7 +210,7 @@
         },
         {
           "command": "taipy.config.deleteNode",
-          "when": "view == taipy-config-datanodes || view == taipy-config-tasks || view == taipy-config-pipelines || view == taipy-config-scenarios"
+          "when": "view =~ /taipy-config-(datanodes|tasks|pipelines|scenarios)/"
         },
         {
           "command": "taipy.config.revealInExplorer",

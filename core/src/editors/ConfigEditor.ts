@@ -137,7 +137,7 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
   private async deleteConfigurationNode(item: TreeItem) {
     const nodeType = item.contextValue;
     const nodeName = item.label as string;
-    const answer = await window.showWarningMessage(l10n.t("Do you really want to definitely delete {0}:{1} from the configuration ?", nodeType, nodeName), "Yes", "No");
+    const answer = await window.showWarningMessage(l10n.t("Do you really want to permanently delete {0}:{1} from the configuration?", nodeType, nodeName.toLowerCase()), "Yes", "No");
     if (answer === "Yes") {
       const uri = getOriginalUri(item.resourceUri);
       const realDocument = await this.taipyContext.getDocFromUri(uri);
