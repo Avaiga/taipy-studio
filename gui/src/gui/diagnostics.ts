@@ -73,9 +73,9 @@ export const registerDiagnostics = async (context: ExtensionContext): Promise<vo
 const refreshDiagnostics = async (doc: TextDocument, diagnosticCollection: DiagnosticCollection) => {
     let diagnostics: Diagnostic[] | undefined = undefined;
     const uri = doc.uri;
-    if (uri.fsPath.endsWith(".md") || doc.languageId === LanguageId.md) {
+    if (uri.path.endsWith(".md") || doc.languageId === LanguageId.md) {
         diagnostics = getMdDiagnostics(doc);
-    } else if (uri.fsPath.endsWith(".py") || doc.languageId === LanguageId.py) {
+    } else if (uri.path.endsWith(".py") || doc.languageId === LanguageId.py) {
         diagnostics = await getPyDiagnostics(doc);
     }
     diagnostics && diagnosticCollection.set(uri, diagnostics);

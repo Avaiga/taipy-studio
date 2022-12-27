@@ -97,7 +97,6 @@ export class MarkdownActionProvider implements CodeActionProvider {
                     v.line > diagnosticPosition.line ||
                     (v.line === diagnosticPosition.line && v.character > diagnosticPosition.character)
             );
-        quotePositions.forEach((v) => {});
         action.diagnostics = [diagnostic];
         action.isPreferred = true;
         action.edit = new WorkspaceEdit();
