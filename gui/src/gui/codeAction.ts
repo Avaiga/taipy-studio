@@ -14,15 +14,14 @@ import {
     TextDocument,
     WorkspaceEdit,
 } from "vscode";
+import { defaultOnFunctionSignature } from "./constant";
 
-import { render } from "mustache";
-import { DiagnosticCode } from "./diagnostics";
-import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
-import { mustacheTemplates } from "./constant";
+import { DiagnosticCode, PROPERTY_RE } from "./diagnostics";
+import { generateOnFunction, markdownDocumentFilter, pythonDocumentFilter } from "./utils";
 
 export class MarkdownActionProvider implements CodeActionProvider {
     public static readonly providedCodeActionKinds = [CodeActionKind.QuickFix];
-    private readonly codeActionMap: Record<string, (document: TextDocument, diagnostic: Diagnostic) => CodeAction> = {
+    private readonly codeActionMap: Record<string, (document: TextDocument, diagnostic: Diagnostic) => CodeAction | null> = {
         [DiagnosticCode.missCSyntax]: this.createMCSCodeAction,
         [DiagnosticCode.functionNotFound]: this.createFNFCodeAction,
     };
@@ -78,8 +77,13 @@ export class MarkdownActionProvider implements CodeActionProvider {
         return action;
     }
 
-    private createFNFCodeAction(document: TextDocument, diagnostic: Diagnostic): CodeAction {
-        const functionName = document.getText(diagnostic.range);
+    private createFNFCodeAction(document: TextDocument, diagnostic: Diagnostic): CodeAction | null {
+        const propMatch = PROPERTY_RE.exec(document.getText(diagnostic.range));
+        if (!propMatch) {
+            return null;
+        }
+        const onFunctionType = propMatch[2];
+        const functionName = propMatch[3];
         const action = new CodeAction(l10n.t("Create function '{0}'", functionName), CodeActionKind.QuickFix);
         const diagnosticPosition = diagnostic.range.end;
         const quotePositions: Position[] = document
@@ -100,9 +104,8 @@ export class MarkdownActionProvider implements CodeActionProvider {
         action.edit.insert(
             document.uri,
             quotePositions.length > 0 ? quotePositions[0].translate(0, 3) : new Position(document.lineCount - 1, 0),
-            "\n\n" + render(mustacheTemplates["on_function"], { functionName: functionName })
+            "\n\n" + generateOnFunction(defaultOnFunctionSignature[onFunctionType] || [["state", "State"]], functionName)
         );
-        console.log(document.lineCount);
         return action;
     }
 }

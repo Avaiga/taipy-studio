@@ -21,7 +21,7 @@ const CONTROL_RE = /<\|(.*?)\|>/;
 const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
 const CLOSING_TAG_RE = /^\s*\|([0-9a-zA-Z\_\.]*)>/;
 const SPLIT_RE = /(?<!\\\\)\|/;
-const PROPERTY_RE = /((?:don'?t|not)\s+)?([a-zA-Z][\.a-zA-Z_$0-9]*(?:\[(?:.*?)\])?)\s*(?:=(.*))?$/;
+export const PROPERTY_RE = /((?:don'?t|not)\s+)?([a-zA-Z][\.a-zA-Z_$0-9]*(?:\[(?:.*?)\])?)\s*(?:=(.*))?$/;
 const BEST_MATCH_THRESHOLD = 0.8;
 
 interface DiagnosticSection {
@@ -294,7 +294,7 @@ const processElement = (
                 createWarningDiagnostic(
                     l10n.t("Function '{0}' in property '{1}' is not available", val, propName),
                     DiagnosticCode.functionNotFound,
-                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, val, inlinePosition))
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
                 )
             );
         }

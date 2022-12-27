@@ -1,6 +1,6 @@
 import { commands, ExtensionContext, l10n, window, workspace, WorkspaceEdit } from "vscode";
 import { defaultElementList, defaultElementProperties } from "./constant";
-import { countChar } from "./utils";
+import { countChar, parseProperty } from "./utils";
 
 interface GuiElement {
     elementName: string;
@@ -50,7 +50,7 @@ export class GenerateGuiCommand {
         }
         quickPick.items = Object.keys(propertyObject).map((label) => ({
             label,
-            detail: propertyObject[label as keyof typeof propertyObject],
+            detail: parseProperty(propertyObject[label as keyof typeof propertyObject]),
         }));
         quickPick.canSelectMany = true;
         quickPick.title = l10n.t("Select properties for element '{0}'", guiElement.elementName);

@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync } from "fs";
-import path from "path";
 import { DocumentFilter } from "vscode";
 
 export const countChar = (str: string, char: string): number => {
@@ -11,6 +9,7 @@ interface ElementProperty {
     default_property?: any;
     type: string;
     doc: string;
+    signature?: [string, string][];
 }
 
 interface ElementDetail {
@@ -19,7 +18,7 @@ interface ElementDetail {
 }
 
 // visual elements parser
-export const getElementProperties = (visualElements: object): Record<string, Record<string, string>> => {
+export const getElementProperties = (visualElements: object): Record<string, Record<string, ElementProperty>> => {
     const blocks: Record<string, ElementDetail> = (visualElements["blocks" as keyof typeof visualElements] as any).reduce(
         (obj: Record<string, ElementDetail>, v: any) => {
             obj[v[0]] = v[1];
@@ -40,8 +39,8 @@ export const getElementProperties = (visualElements: object): Record<string, Rec
         obj[v[0]] = v[1];
         return obj;
     }, {} as Record<string, ElementDetail>);
-    const blocksProperties: Record<string, Record<string, string>> = {};
-    const controlsProperties: Record<string, Record<string, string>> = {};
+    const blocksProperties: Record<string, Record<string, ElementProperty>> = {};
+    const controlsProperties: Record<string, Record<string, ElementProperty>> = {};
     // handle all blocks object
     Object.keys(blocks).forEach((v: string) => {
         let elementDetail: ElementDetail = blocks[v];
@@ -66,20 +65,20 @@ export const getElementList = (visualElements: object): string[] => {
     return [...getControlElementList(visualElements), ...getBlockElementList(visualElements)];
 };
 
-const parseProperty = (property: ElementProperty): string => {
+export const parseProperty = (property: ElementProperty): string => {
     return `[${property.type}]${property.default_property ? "(" + property.default_property.toString() + ")" : ""}: ${
         property.doc
     }`;
 };
 
-const parsePropertyList = (propertyList: ElementProperty[] | undefined): Record<string, string> => {
+const parsePropertyList = (propertyList: ElementProperty[] | undefined): Record<string, ElementProperty> => {
     if (!propertyList) {
         return {};
     }
-    return propertyList.reduce((obj: Record<string, string>, v: ElementProperty) => {
-        obj[v.name] = parseProperty(v);
+    return propertyList.reduce((obj: Record<string, ElementProperty>, v: ElementProperty) => {
+        obj[v.name] = v;
         return obj;
-    }, {} as Record<string, string>);
+    }, {} as Record<string, ElementProperty>);
 };
 
 const handleElementDetailInherits = (
@@ -87,8 +86,8 @@ const handleElementDetailInherits = (
     blocks: Record<string, ElementDetail>,
     controls: Record<string, ElementDetail>,
     undocumented: Record<string, ElementDetail>
-): Record<string, string> => {
-    let properties: Record<string, string> = {};
+): Record<string, ElementProperty> => {
+    let properties: Record<string, ElementProperty> = {};
     if (!inherits) {
         return properties;
     }
@@ -111,14 +110,14 @@ const getElementDetailProperties = (
     blocks: Record<string, ElementDetail>,
     controls: Record<string, ElementDetail>,
     undocumented: Record<string, ElementDetail>
-): Record<string, string> => {
+): Record<string, ElementProperty> => {
     return {
         ...parsePropertyList(elementDetail.properties),
         ...handleElementDetailInherits(elementDetail.inherits, blocks, controls, undocumented),
     };
 };
 
-export const getOnFunctionList = (elementProperties: Record<string, Record<string, string>>): string[] => {
+export const getOnFunctionList = (elementProperties: Record<string, Record<string, ElementProperty>>): string[] => {
     const onFunctionList = new Set<string>();
     for (const key in elementProperties) {
         const elementProperty = elementProperties[key];
@@ -131,16 +130,24 @@ export const getOnFunctionList = (elementProperties: Record<string, Record<strin
     return [...onFunctionList];
 };
 
-export const getMustacheTemplates = (): Record<string, string> => {
-    const templates: Record<string, string> = {};
-    const templatesDir = path.join(__dirname, "..", "templates");
-    const files = readdirSync(templatesDir)
-        .filter((f) => f.endsWith(".mustache"))
-        .map((f) => path.join(templatesDir, f));
-    files.forEach((file) => {
-        templates[path.parse(file).name] = readFileSync(file, "utf8");
-    });
-    return templates;
+export const getOnFunctionSignature = (
+    elementProperties: Record<string, Record<string, ElementProperty>>
+): Record<string, [string, string][]> => {
+    const onFunctionRecord: Record<string, [string, string][]> = {};
+    for (const key in elementProperties) {
+        const elementProperty = elementProperties[key];
+        for (const k in elementProperty) {
+            if (k.startsWith("on_")) {
+                const elements = elementProperty[k];
+                onFunctionRecord[k] = elements["signature"] || [["state", "State"]];
+            }
+        }
+    }
+    return onFunctionRecord;
+};
+
+export const generateOnFunction = (signature: [string, string][], functionName: string): string => {
+    return `def ${functionName}(${signature.map((v) => v[0]).join(", ")}):\n    pass\n`;
 };
 
 export const markdownDocumentFilter: DocumentFilter = { language: "markdown" };

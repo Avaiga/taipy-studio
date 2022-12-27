@@ -16,7 +16,7 @@ import {
     Uri,
 } from "vscode";
 import { defaultElementList, defaultElementProperties, defaultOnFunctionList, LanguageId } from "./constant";
-import { markdownDocumentFilter, pythonDocumentFilter } from "./utils";
+import { markdownDocumentFilter, parseProperty, pythonDocumentFilter } from "./utils";
 
 const RE_LINE = /<(([\|]{1})([^\|]*)){1,2}/;
 
@@ -111,7 +111,7 @@ export class GuiCompletionItemProvider implements CompletionItemProvider {
                         }, [])
                         .map((v) => {
                             let completionItem = new CompletionItem(v, CompletionItemKind.Property);
-                            completionItem.documentation = new MarkdownString(properties[v as keyof typeof properties]);
+                            completionItem.documentation = new MarkdownString(parseProperty(properties[v as keyof typeof properties]));
                             return completionItem;
                         });
                 }
