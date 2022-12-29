@@ -22,6 +22,7 @@ const OPENING_TAG_RE = /<([0-9a-zA-Z\_\.]*)\|((?:(?!\|>).)*)\s*$/;
 const CLOSING_TAG_RE = /^\s*\|([0-9a-zA-Z\_\.]*)>/;
 const SPLIT_RE = /(?<!\\\\)\|/;
 export const PROPERTY_RE = /((?:don'?t|not)\s+)?([a-zA-Z][\.a-zA-Z_$0-9]*(?:\[(?:.*?)\])?)\s*(?:=(.*))?$/;
+export const PROPERTY_NAME_RE = /([a-zA-Z][\.a-zA-Z_$0-9]*)(?:\[(.*?)\])?/;
 const BEST_MATCH_THRESHOLD = 0.8;
 
 interface DiagnosticSection {
@@ -272,7 +273,9 @@ const processElement = (
             return;
         }
         const notPrefix = propMatch[1];
-        const propName = propMatch[2];
+
+        const propNameMatch = PROPERTY_NAME_RE.exec(propMatch[2]);
+        const propName = propNameMatch ? propNameMatch[1] : propMatch[2];
         const val = propMatch[3];
         const validPropertyList = Object.keys(defaultElementProperties[e.type] || []);
         if (validPropertyList.length !== 0 && !validPropertyList.includes(propName)) {
@@ -285,7 +288,10 @@ const processElement = (
                 createWarningDiagnostic(
                     dS,
                     DiagnosticCode.invalidPropertyName,
-                    getRangeFromPosition(initialPosition, getRangeOfStringInline(fragment, propName, inlinePosition.translate(0, s.indexOf(fragment))))
+                    getRangeFromPosition(
+                        initialPosition,
+                        getRangeOfStringInline(fragment, propName, inlinePosition.translate(0, s.indexOf(fragment)))
+                    )
                 )
             );
             return;
@@ -295,7 +301,10 @@ const processElement = (
                 createWarningDiagnostic(
                     l10n.t("Negated value of property '{0}' will be ignored", propName),
                     DiagnosticCode.ignoreNegatedValue,
-                    getRangeFromPosition(initialPosition, getRangeOfStringInline(fragment, notPrefix, inlinePosition.translate(0, s.indexOf(fragment))))
+                    getRangeFromPosition(
+                        initialPosition,
+                        getRangeOfStringInline(fragment, notPrefix, inlinePosition.translate(0, s.indexOf(fragment)))
+                    )
                 )
             );
         }
