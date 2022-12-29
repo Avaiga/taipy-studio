@@ -24,6 +24,8 @@ export class MarkdownActionProvider implements CodeActionProvider {
     private readonly codeActionMap: Record<string, (document: TextDocument, diagnostic: Diagnostic) => CodeAction | null> = {
         [DiagnosticCode.missCSyntax]: this.createMCSCodeAction,
         [DiagnosticCode.functionNotFound]: this.createFNFCodeAction,
+        [DiagnosticCode.invalidPropertyName]: this.createPE02CodeAction,
+        [DiagnosticCode.ignoreNegatedValue]: this.createPE03CodeAction,
     };
 
     static register(context: ExtensionContext): void {
@@ -105,6 +107,30 @@ export class MarkdownActionProvider implements CodeActionProvider {
             quotePositions.length > 0 ? quotePositions[0].translate(0, 3) : new Position(document.lineCount - 1, 0),
             "\n\n" + generateOnFunction(defaultOnFunctionSignature[onFunctionType] || [["state", "State"]], functionName)
         );
+        return action;
+    }
+
+    private createPE02CodeAction(document: TextDocument, diagnostic: Diagnostic): CodeAction | null {
+        const BESTMATCH_RE = /\'([^']*?)\'\?/;
+        const propMatch = BESTMATCH_RE.exec(diagnostic.message);
+        if (!propMatch) {
+            return null;
+        }
+        const replaceText = propMatch[1];
+        const action = new CodeAction(l10n.t("Replace with '{0}'", replaceText), CodeActionKind.QuickFix);
+        action.diagnostics = [diagnostic];
+        action.isPreferred = true;
+        action.edit = new WorkspaceEdit();
+        action.edit.replace(document.uri, diagnostic.range, replaceText);
+        return action;
+    }
+
+    private createPE03CodeAction(document: TextDocument, diagnostic: Diagnostic): CodeAction | null {
+        const action = new CodeAction(l10n.t("Remove negated value"), CodeActionKind.QuickFix);
+        action.diagnostics = [diagnostic];
+        action.isPreferred = true;
+        action.edit = new WorkspaceEdit();
+        action.edit.replace(document.uri, diagnostic.range, '');
         return action;
     }
 }

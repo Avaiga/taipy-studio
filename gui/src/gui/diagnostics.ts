@@ -221,13 +221,23 @@ const getSectionDiagnostics = (diagnosticSection: DiagnosticSection): Diagnostic
     });
     for (const tag of tagQueue) {
         const [_, inlineP, p, tagId] = tag;
-        diagnostics.push(
-            createWarningDiagnostic(
-                l10n.t("Missing closing tag with tag identifier '{0}'", tagId),
-                DiagnosticCode.missCTag,
-                getRangeFromPosition(p, inlineP)
-            )
-        );
+        if (tagId) {
+            diagnostics.push(
+                createWarningDiagnostic(
+                    l10n.t("Missing closing tag with tag identifier '{0}'", tagId),
+                    DiagnosticCode.missCTagId,
+                    getRangeFromPosition(p, inlineP)
+                )
+            );
+        } else {
+            diagnostics.push(
+                createWarningDiagnostic(
+                    l10n.t("Missing closing tag", tagId),
+                    DiagnosticCode.missCTag,
+                    getRangeFromPosition(p, inlineP)
+                )
+            );
+        }
     }
     return diagnostics;
 };
@@ -275,7 +285,7 @@ const processElement = (
                 createWarningDiagnostic(
                     dS,
                     DiagnosticCode.invalidPropertyName,
-                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(fragment, propName, inlinePosition.translate(0, s.indexOf(fragment))))
                 )
             );
             return;
@@ -285,7 +295,7 @@ const processElement = (
                 createWarningDiagnostic(
                     l10n.t("Negated value of property '{0}' will be ignored", propName),
                     DiagnosticCode.ignoreNegatedValue,
-                    getRangeFromPosition(initialPosition, getRangeOfStringInline(s, fragment, inlinePosition))
+                    getRangeFromPosition(initialPosition, getRangeOfStringInline(fragment, notPrefix, inlinePosition.translate(0, s.indexOf(fragment))))
                 )
             );
         }
