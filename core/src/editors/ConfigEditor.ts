@@ -462,10 +462,15 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
     if (!nameSymbol) {
       return false;
     }
+    // edit document
     const edits: TextEdit[] = [];
     getDescendantProperties(nodeType).forEach((p) => p && this.createOrDeleteLink(realDocument, nodeType, nodeName, p, "", false, true, edits));
     await this.removeNodeLinks(realDocument, nodeType, nodeName, symbols, edits);
-    return this.applyEdits(realDocument.uri, edits);
+    const ret = await this.applyEdits(realDocument.uri, edits);
+    if (!ret) {
+      this.updateWebview(realDocument, realDocument.isDirty);
+    }
+    return ret;
   }
 
   private setPositions(docUri: Uri, positions: Positions) {
