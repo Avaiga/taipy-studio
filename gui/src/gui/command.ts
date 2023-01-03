@@ -23,6 +23,9 @@ export class GenerateGuiCommand {
         const result = await window.showQuickPick(defaultElementList, {
             placeHolder: l10n.t("Select an element type"),
         });
+        if (result === undefined) {
+            return;
+        }
         let guiElement: GuiElement = { elementName: result || "", elementValue: "", propertyList: [] };
         await GenerateGuiCommand.handleElementNameSelection(guiElement);
     }
@@ -37,6 +40,9 @@ export class GenerateGuiCommand {
                 return null;
             },
         });
+        if (result === undefined) {
+            return;
+        }
         guiElement.elementValue = result || "";
         await GenerateGuiCommand.handleElementPropertySelection(guiElement);
     }
