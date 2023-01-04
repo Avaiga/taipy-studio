@@ -3,7 +3,7 @@
   "displayName": "Taipy Studio Configuration Builder",
   "description": "Visual Studio Code extension for Taipy: Configuration Builder",
   "publisher": "Avaiga",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "homepage": "https://github.com/Avaiga/taipy-studio.git",
   "repository": {
     "type": "git",

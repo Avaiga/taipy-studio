@@ -29,8 +29,8 @@ export const getEnumProps = async () => {
   }
   const schema = (await getValidationSchema()) as SchemaObject;
   Object.values(schema.properties).forEach((v: any) => {
-    v.properties && addPropEnums(v.properties);
-    v.additionalProperties?.properties && addPropEnums(v.additionalProperties.properties);
+    addPropEnums(v.properties);
+    addPropEnums(v.additionalProperties?.properties);
   });
   return Object.keys(enums);
 };
@@ -46,13 +46,58 @@ const addPropEnums = (properties: any) => {
 
 const properties = {} as Record<string, string[]>;
 export const getProperties = async (nodeType: string) => {
-  const props = Object.keys(properties);
-  if (!props.length) {
+  if (!Object.keys(properties).length) {
     const schema = (await getValidationSchema()) as SchemaObject;
     Object.entries(schema.properties).forEach(([k, v]: [string, any]) => {
       properties[k] = Object.keys(v.properties);
-      properties[k].push(...Object.keys(v.additionalProperties?.properties || {}));
+      properties[k].push(...Object.keys(v.additionalProperties?.properties || {}).filter(p => p && p !== "if" && p !== "then" && p !== "else"));
     });
   }
   return properties[nodeType] || [];
+};
+
+let functions: string[] = undefined;
+let classes: string[] = undefined;
+export const calculatePythonSymbols = async () => {
+  if (functions === undefined) {
+    functions = [];
+    const schema = (await getValidationSchema()) as SchemaObject;
+    Object.values(schema.properties).forEach((v: any) => {
+      functions.push(...Object.entries(v.properties).filter(([_, v]) => !!(v as any).taipy_function).map(([k, _]) => k));
+      functions.push(...Object.entries(v.additionalProperties?.properties || {}).filter(([_, v]) => !!(v as any).taipy_function).map(([k, _]) => k));
+    });
+  }
+  if (classes === undefined) {
+    classes = [];
+    const schema = (await getValidationSchema()) as SchemaObject;
+    Object.values(schema.properties).forEach((v: any) => {
+      classes.push(...Object.entries(v.properties).filter(([_, v]) => !!(v as any).taipy_class).map(([k, _]) => k));
+      classes.push(...Object.entries(v.additionalProperties?.properties || {}).filter(([_, v]) => !!(v as any).taipy_class).map(([k, _]) => k));
+    });
+  }
+};
+export const isFunction = (property: string) => functions?.includes(property);
+export const isClass = (property: string) => classes?.includes(property);
+
+const pythonReferences = {} as Record<string, Record<string, boolean>>;
+export const getPythonReferences = async () => {
+  if (!Object.keys(pythonReferences).length) {
+    const schema = (await getValidationSchema()) as SchemaObject;
+    Object.entries(schema.properties).forEach(([nodeType, node]: [string, any]) => {
+      pythonReferences[nodeType] = {};
+      Object.entries(node.properties).forEach(([prop, v]) => {
+        if (!!(v as any).taipy_function || !!(v as any).taipy_class) {
+          pythonReferences[nodeType] = pythonReferences[nodeType] || {};
+          pythonReferences[nodeType][prop] = !!(v as any).taipy_function;
+        }
+      });
+      Object.entries(node.additionalProperties?.properties || {}).forEach(([prop, v]) => {
+        if (!!(v as any).taipy_function || !!(v as any).taipy_class) {
+          pythonReferences[nodeType] = pythonReferences[nodeType] || {};
+          pythonReferences[nodeType][prop] = !!(v as any).taipy_function;
+        }
+      });
+    });
+  }
+  return pythonReferences;
 };
