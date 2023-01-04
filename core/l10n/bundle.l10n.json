@@ -24,7 +24,7 @@
   "Element '{0}.{1}' does not exist.": "Element '{0}.{1}' does not exist.",
   "No reference to Element '{0}.{1}'.": "No reference to Element '{0}.{1}'.",
   "Python reference should include a module '{0}.{1}.{2}'.": "Python reference should include a module '{0}.{1}.{2}'.",
-  "Cannot find file for Python {0} {1}: '{2}'.": "Cannot find file for Python {0} {1}: '{2}'.",
+  "Cannot find file for Python {0}: '{1}'.": "Cannot find file for Python {0}: '{1}'.",
   "Cannot find Python {0}: '{1}'.": "Cannot find Python {0}: '{1}'.",
   "Select file": "Select file",
   "edit": "edit",
