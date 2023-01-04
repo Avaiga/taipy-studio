@@ -119,7 +119,7 @@ export const reportInconsistencies = async (doc: TextDocument, symbols: Array<Do
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: propSymbol.range,
-            message: l10n.t("Cannot find file for Python {0} {1}: '{2}'.", pythonSymbol2TomlSymbols[ps].isFunction ? "Function" : "Class", propSymbol.name, ps),
+            message: l10n.t("Cannot find file for Python {0}: '{1}'.", pythonSymbol2TomlSymbols[ps].isFunction ? "Function" : "Class", ps),
             source: "python reference checker",
           })
         );
