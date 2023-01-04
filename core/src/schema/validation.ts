@@ -50,7 +50,7 @@ export const getProperties = async (nodeType: string) => {
     const schema = (await getValidationSchema()) as SchemaObject;
     Object.entries(schema.properties).forEach(([k, v]: [string, any]) => {
       properties[k] = Object.keys(v.properties);
-      properties[k].push(...Object.keys(v.additionalProperties?.properties || {}).filter(p => p && p !== "if" && p !== "then" && p !== "else"));
+      properties[k].push(...Object.keys(v.additionalProperties?.properties || {}).filter((p) => p && p !== "if" && p !== "then" && p !== "else"));
     });
   }
   return properties[nodeType] || [];
@@ -63,16 +63,32 @@ export const calculatePythonSymbols = async () => {
     functions = [];
     const schema = (await getValidationSchema()) as SchemaObject;
     Object.values(schema.properties).forEach((v: any) => {
-      functions.push(...Object.entries(v.properties).filter(([_, v]) => !!(v as any).taipy_function).map(([k, _]) => k));
-      functions.push(...Object.entries(v.additionalProperties?.properties || {}).filter(([_, v]) => !!(v as any).taipy_function).map(([k, _]) => k));
+      functions.push(
+        ...Object.entries(v.properties)
+          .filter(([_, v]) => !!(v as any).taipy_function)
+          .map(([k, _]) => k)
+      );
+      functions.push(
+        ...Object.entries(v.additionalProperties?.properties || {})
+          .filter(([_, v]) => !!(v as any).taipy_function)
+          .map(([k, _]) => k)
+      );
     });
   }
   if (classes === undefined) {
     classes = [];
     const schema = (await getValidationSchema()) as SchemaObject;
     Object.values(schema.properties).forEach((v: any) => {
-      classes.push(...Object.entries(v.properties).filter(([_, v]) => !!(v as any).taipy_class).map(([k, _]) => k));
-      classes.push(...Object.entries(v.additionalProperties?.properties || {}).filter(([_, v]) => !!(v as any).taipy_class).map(([k, _]) => k));
+      classes.push(
+        ...Object.entries(v.properties)
+          .filter(([_, v]) => !!(v as any).taipy_class)
+          .map(([k, _]) => k)
+      );
+      classes.push(
+        ...Object.entries(v.additionalProperties?.properties || {})
+          .filter(([_, v]) => !!(v as any).taipy_class)
+          .map(([k, _]) => k)
+      );
     });
   }
 };
