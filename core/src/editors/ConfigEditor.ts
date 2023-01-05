@@ -226,8 +226,6 @@ export class ConfigEditorProvider implements CustomTextEditorProvider {
 
   /**
    * Called when our custom editor is opened.
-   *
-   *
    */
   public async resolveCustomTextEditor(document: TextDocument, webviewPanel: WebviewPanel, token: CancellationToken): Promise<void> {
     // Setup initial content for the webview

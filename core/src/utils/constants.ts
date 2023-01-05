@@ -5,4 +5,3 @@ export const CONFIG_AUTH_ID = "taipy-config-auth";
 export const CONFIG_DETAILS_ID = "taipy-config-details";
 
 export const TAIPY_STUDIO_SETTINGS_NAME = "taipyStudio";
-

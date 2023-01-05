@@ -38,5 +38,6 @@
     "taipy.config.settings.diagram.scenario.color.desc": "The color for the Scenario Diagram element.",
     "taipy.config.settings.diagram.scenario.icon.desc": "The icon for the Scenario Diagram element.",
     "taipy.config.settings.parser.usePositions.desc": "Use the (hacked) toml parser with position.",
-    "taipy.config.settings.status.timeout.desc": "The timeout for Status Bar Item (ms)."
+    "taipy.config.settings.status.timeout.desc": "The timeout for Status Bar Item (ms).",
+    "taipy.config.settings.config.mainPythonFile.desc": "The name of the main python file (module: __main__)."
 }

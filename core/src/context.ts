@@ -3,7 +3,6 @@ import {
   DocumentSymbol,
   ExtensionContext,
   Range,
-  SymbolInformation,
   TextDocument,
   TextDocumentChangeEvent,
   TextEditorRevealType,
@@ -38,6 +37,8 @@ import { cleanDocumentDiagnostics, reportInconsistencies } from "./utils/errors"
 import { ValidateFunction } from "ajv/dist/2020";
 import { getValidationFunction } from "./schema/validation";
 import { getSymbol } from "./utils/symbols";
+import { PythonCodeActionProvider } from "./providers/PythonCodeActionProvider";
+import { PythonLinkProvider } from "./providers/PythonLinkProvider";
 
 const configNodeKeySort = (a: DocumentSymbol, b: DocumentSymbol) => (a === b ? 0 : a.name === "default" ? -1 : b.name === "default" ? 1 : a.name > b.name ? 1 : -1);
 
@@ -111,6 +112,10 @@ export class Context {
     getValidationFunction()
       .then((fn) => (this.validateSchema = fn))
       .catch(console.warn);
+    // Quick fix
+    PythonCodeActionProvider.register(vsContext);
+    // python links
+    PythonLinkProvider.register(vsContext, this);
   }
 
   private async onDocumentChanged(e: TextDocumentChangeEvent) {

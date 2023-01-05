@@ -13,7 +13,7 @@
       "additionalProperties": {
         "properties": {
           "scope": {
-            "description": "",
+            "description": "An enum value among GLOBAL, CYCLE, SCENARIO or PIPELINE that represents the visibility of the data node in the graph of entities.",
             "type": "string",
             "enum": [
               "GLOBAL",
@@ -25,7 +25,7 @@
             "default": "SCENARIO"
           },
           "storage_type": {
-            "description": "",
+            "description": "An enum value indicating the type of storage of the data node.",
             "type": "string",
             "enum": [
               "pickle",
@@ -37,6 +37,7 @@
               "sql_table",
               "in_memory",
               "generic",
+              "parquet",
               ""
             ],
             "default": "pickle"
@@ -51,7 +52,7 @@
             "default": "False:bool"
           },
           "default_path": {
-            "description": "storage_type: pickle, csv, excel, json specific.",
+            "description": "storage_type: pickle, csv, excel, json, parquet specific.",
             "type": "string"
           },
           "default_data": {
@@ -69,7 +70,7 @@
             "type": "string"
           },
           "exposed_type": {
-            "description": "storage_type: csv, excel specific. If the exposed_type value provided is numpy, the data node will read the csv file to a numpy array. If the provided value is a custom class, data node will create a list of custom object with the given custom class, each object will represent a row in the csv file.If exposed_type is not provided, the data node will read the csv file as a pandas DataFrame.",
+            "description": "storage_type: csv, excel, sql, sql_table, parquet specific. If the exposed_type value provided is numpy, the data node will read the csv file to a numpy array. If the provided value is a custom class, data node will create a list of custom object with the given custom class, each object will represent a row in the csv file.If exposed_type is not provided, the data node will read the csv file as a pandas DataFrame.",
             "type": "string"
           },
           "sheet_name": {
@@ -104,6 +105,10 @@
             "description": "storage_type: sql, sql_table specific. The default value of db_driver is \"ODBC Driver 17 for SQL Server\".",
             "type": "string"
           },
+          "db_extra_args": {
+            "description": "storage_type: sql, sql_table, mongo_collection specific. The default value of db_extra_args is None",
+            "type": "array"
+          },
           "table_name": {
             "description": "storage_type: sql_table specific.",
             "type": "string"
@@ -114,7 +119,8 @@
           },
           "write_query_builder": {
             "description": "storage_type: sql specific. A callable function that takes in the data as an input parameter and returns a list of SQL queries to be executed when the write data node method is called.",
-            "type": "string"
+            "type": "string",
+            "taipy_function": true
           },
           "collection_name ": {
             "description": "storage_type: mongo_collection specific.",
@@ -122,15 +128,18 @@
           },
           "custom_document": {
             "description": "storage_type: mongo_collection specific.",
-            "type": "string"
+            "type": "string",
+            "taipy_class": true
           },
           "read_fct": {
             "description": "storage_type: generic specific.",
-            "type": "string"
+            "type": "string",
+            "taipy_function": true
           },
           "write_fct": {
             "description": "storage_type: generic specific.",
-            "type": "string"
+            "type": "string",
+            "taipy_function": true
           },
           "read_fct_params": {
             "description": "storage_type: generic specific.",
@@ -142,18 +151,37 @@
           },
           "encoder": {
             "description": "storage_type: json specific.",
-            "type": "string"
+            "type": "string",
+            "taipy_class": true
           },
           "decoder": {
             "description": "storage_type: json specific.",
+            "type": "string",
+            "taipy_class": true
+          },
+          "compression": {
+            "description": "storage_type: parquet specific. The name of the compression to use, default is None for no compression",
             "type": "string"
+          },
+          "engine": {
+            "description": "storage_type: parquet specific.The name of the parquet library to use, default is pyarrow",
+            "type": "string"
+          },
+          "read_kwargs": {
+            "description": "storage_type: parquet specific. Additional parameters when reading parquet files, default is an empty dictionary",
+            "type": "object"
+          },
+          "write_kwargs": {
+            "description": "storage_type: parquet specific.Additional parameters when writing parquet files, default is an empty dictionary",
+            "type": "object"
           },
           "if": {
             "properties": {
               "storage_type": {
                 "enum": [
                   "csv",
-                  "excel"
+                  "excel",
+                  "json"
                 ]
               }
             }
@@ -176,6 +204,68 @@
                 "read_fct",
                 "write_fct"
               ]
+            },
+            "else": {
+              "if": {
+                "properties": {
+                  "storage_type": {
+                    "enum": [
+                      "sql",
+                      "sql_table",
+                      "mongo_collection"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "db_name"
+                ],
+                "if": {
+                  "properties": {
+                    "storage_type": {
+                      "enum": [
+                        "sql",
+                        "sql_table"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "db_username",
+                    "db_password",
+                    "db_engine"
+                  ],
+                  "if": {
+                    "properties": {
+                      "storage_type": {
+                        "constant": "sql"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "read_query",
+                      "write_query_builder"
+                    ]
+                  },
+                  "else": {
+                    "then": {
+                      "required": [
+                        "table_name"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "then": {
+                    "required": [
+                      "collection_name"
+                    ]
+                  }
+                }
+              }
             }
           }
         }
@@ -190,7 +280,7 @@
         "type": "object",
         "properties": {
           "inputs": {
-            "description": "The input data nodes referring the parameter(s) data of the function to be executed.",
+            "description": "The input data node configs referring to the data node whose data will be passed as a parameter of the function to be executed.",
             "type": "array",
             "items": {
               "type": "string"
@@ -198,7 +288,7 @@
             "uniqueItems": true
           },
           "outputs": {
-            "description": "The output data nodes referring the result(s) data of the function to be executed.",
+            "description": "The output data node configs referring to the data node whose data will be populated by the result of the function to be executed.",
             "type": "array",
             "items": {
               "type": "string"
@@ -206,8 +296,9 @@
             "uniqueItems": true
           },
           "function": {
-            "description": "",
-            "type": "string"
+            "description": "Some description",
+            "type": "string",
+            "taipy_function": true
           }
         }
       }
@@ -262,7 +353,8 @@
             "description": "The list of functions used to compare scenarios. A comparator function is attached to a scenario's data node configuration. During the scenario comparison, each comparator is applied to all the data nodes instantiated from the data node configuration attached to the comparator.",
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "taipy_function": true
             }
           }
         }
@@ -273,20 +365,35 @@
       "type": "object",
       "properties": {
         "root_folder": {
+          "description": "Path of the base folder for the taipy application. The default value is ./taipy/",
           "type": "string"
         },
         "storage_folder": {
+          "description": "Folder name used to store Taipy data. The default value is .data/. It is used in conjunction with the root_folder field",
           "type": "string"
         },
         "clean_entities_enabled": {
+          "description": "Boolean field to activate/deactivate the clean entities feature.",
           "enum": [
             "True:bool",
             "False:bool"
-          ]
+          ],
+          "default": "False:bool"
         },
         "read_entity_retry": {
-          "description": "20:int",
-          "type": "string"
+          "description": "Number of times to retry before return failure to read an entity.",
+          "type": "int"
+        },
+        "repository_type": {
+          "description": "The repository type that is used to store the entities.",
+          "enum": [
+            "sql",
+            "filesystem"
+          ],
+          "default": "filesystem"
+        },
+        "repository_properties": {
+          "type": "object"
         }
       }
     },
@@ -296,12 +403,14 @@
       "properties": {
         "mode": {
           "enum": [
-            "standalone"
-          ]
+            "standalone",
+            "development"
+          ],
+          "default": "standalone"
         },
-        "nb_of_workers": {
-          "description": "2:int",
-          "type": "string"
+        "max_nb_of_workers": {
+          "description": "mode: standalone specific. The maximum number of jobs able to run in parallel.",
+          "type": "int"
         }
       }
     }
