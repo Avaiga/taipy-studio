@@ -14,6 +14,7 @@ import {
 
 import { Context } from "../context";
 import { getPythonReferences } from "../schema/validation";
+import { getMainPythonUri } from "../utils/utils";
 
 export class PythonLinkProvider implements DocumentLinkProvider<DocumentLink> {
   static register(vsContext: ExtensionContext, context: Context): void {
@@ -23,6 +24,7 @@ export class PythonLinkProvider implements DocumentLinkProvider<DocumentLink> {
   private constructor(private readonly taipyContext: Context) {}
 
   async provideDocumentLinks(document: TextDocument, token: CancellationToken) {
+    const mainUri = await getMainPythonUri();
     const links = [] as DocumentLink[];
     const pythonReferences = await getPythonReferences();
     const pythonSymbol2TomlSymbols = {} as Record<string, { uri?: Uri; symbols: Array<DocumentSymbol>; isFunction: boolean }>;
@@ -52,29 +54,18 @@ export class PythonLinkProvider implements DocumentLinkProvider<DocumentLink> {
     const pythonUris = [] as Uri[];
     if (pythonSymbols.length) {
       // check module availability
-      let needRootFiles = false;
       for (const ps of pythonSymbols) {
         const parts = ps.split(".");
-        let invalid = false;
-        if (parts[0] === "__main__") {
-          if (parts.length === 2) {
-            parts[0] = "*";
-            needRootFiles = true;
-          } else {
-            invalid = true;
-          }
-        }
         parts.pop();
-        const uris = invalid ? [] : await workspace.findFiles(`${parts.join("/")}.py`, null, 1);
+        const uris = parts[0] === "__main__" ? [mainUri] : await workspace.findFiles(`${parts.join("/")}.py`, null, 1);
         if (uris.length) {
           pythonSymbol2TomlSymbols[ps].uri = uris[0];
           pythonUris.push(uris[0]);
         }
       }
       // read python symbols for selected uris
-      const pythonFiles = needRootFiles ? await workspace.findFiles("*.py") : pythonUris;
       const symbolsByUri = await Promise.all(
-        pythonFiles.map(
+        pythonUris.map(
           (uri) =>
             new Promise<{ uri: Uri; symbols: DocumentSymbol[] }>((resolve, reject) => {
               commands
@@ -85,30 +76,17 @@ export class PythonLinkProvider implements DocumentLinkProvider<DocumentLink> {
       );
       // check availability of python symbols
       for (const ps of pythonSymbols) {
-        const parts = ps.split(".");
-        const fn = parts.at(-1);
-        if (parts[0] === "__main__") {
-          for (const { uri, symbols } of symbolsByUri) {
-            const pySymbol = symbols.find((pySymb) => pySymb.name === fn);
-            if (pySymbol) {
-              links.push(
-                ...pythonSymbol2TomlSymbols[ps].symbols.map((s) => new DocumentLink(s.range, uri.with({ fragment: getPositionFragment(pySymbol.range.start) })))
-              );
-              break;
-            }
-          }
-        } else {
-          const pyUri = pythonSymbol2TomlSymbols[ps].uri;
-          if (pyUri) {
-            const symbols = symbolsByUri.find(({ uri }) => uri.toString() === pyUri.toString());
-            const pySymbol = Array.isArray(symbols?.symbols) && symbols?.symbols.find((pySymbol) => pySymbol.name === fn);
-            if (pySymbol) {
-              links.push(
-                ...pythonSymbol2TomlSymbols[ps].symbols.map(
-                  (s) => new DocumentLink(s.range, pyUri.with({ fragment: getPositionFragment(pySymbol.range.start) }))
-                )
-              );
-            }
+        const fn = ps.split(".").at(-1);
+        const pyUri = pythonSymbol2TomlSymbols[ps].uri;
+        if (pyUri) {
+          const symbols = symbolsByUri.find(({ uri }) => uri.toString() === pyUri.toString());
+          const pySymbol = Array.isArray(symbols?.symbols) && symbols?.symbols.find((pySymbol) => pySymbol.name === fn);
+          if (pySymbol) {
+            links.push(
+              ...pythonSymbol2TomlSymbols[ps].symbols.map(
+                (s) => new DocumentLink(s.range, pyUri.with({ fragment: getPositionFragment(pySymbol.range.start) }))
+              )
+            );
           }
         }
       }

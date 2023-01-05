@@ -24,6 +24,7 @@ import { calculatePythonSymbols, getEnum, getEnumProps, getProperties, isClass, 
 import { TAIPY_STUDIO_SETTINGS_NAME } from "../utils/constants";
 import { getDescendantProperties, getSectionName, getSymbol, getSymbolArrayValue, getUnsuffixedName } from "../utils/symbols";
 import { getOriginalUri } from "./PerpectiveContentProvider";
+import { getMainPythonUri } from "../utils/utils";
 
 const nodeTypes = [DataNode, Task, Pipeline, Scenario];
 const validLinks = nodeTypes.reduce((vl, nt) => {
@@ -122,7 +123,7 @@ export class ConfigCompletionItemProvider implements CompletionItemProvider<Comp
         } else if (lineSplit.some((l) => isClass(l))) {
           return getPythonSymbols(false, lineText, position);
         }
-      } 
+      }
     }
     return [];
   }
@@ -130,28 +131,47 @@ export class ConfigCompletionItemProvider implements CompletionItemProvider<Comp
 
 const getPythonSymbols = async (isFunction: boolean, lineText: string, position: Position) => {
   // get python symbols in repository
-  const pythonFiles = await workspace.findFiles("**/*.py");
-  const symbolsByUri = (await Promise.all(pythonFiles.map((uri) => new Promise<{uri: Uri, symbols: DocumentSymbol[]}>((resolve, reject) => {
-    commands.executeCommand("vscode.executeDocumentSymbolProvider", uri).then((symbols: DocumentSymbol[]) => resolve({uri, symbols}), reject);
-  }))));
+  const pythonUris = await workspace.findFiles("**/*.py");
+  const mainUri = await getMainPythonUri();
+  const symbolsByUri = await Promise.all(
+    pythonUris.map(
+      (uri) =>
+        new Promise<{ uri: Uri; symbols: DocumentSymbol[] }>((resolve, reject) => {
+          commands.executeCommand("vscode.executeDocumentSymbolProvider", uri).then((symbols: DocumentSymbol[]) => resolve({ uri, symbols }), reject);
+        })
+    )
+  );
   const symbolsWithModule = [] as string[];
-  symbolsByUri.forEach(su => {
-    let module = "";
-    su.symbols.forEach(symbol => {
+  const modulesByUri = pythonUris.reduce((pv, uri) => {
+    const uriStr = uri.path;
+    if (uriStr === mainUri?.path) {
+      pv[uriStr] = "__main__";
+    } else {
+      const paths = workspace.asRelativePath(uri).split("/");
+      const file = paths.at(-1);
+      paths.pop();
+      const fileMod = `${file.split(".", 2)[0]}`;
+      const module = paths.length ? `${paths.join(".")}.${fileMod}` : fileMod;
+      pv[uriStr] = module;
+    }
+    return pv;
+  }, {} as Record<string, string>);
+  symbolsByUri.forEach((su) => {
+    su.symbols.forEach((symbol) => {
       if ((isFunction && symbol.kind === SymbolKind.Function) || (!isFunction && symbol.kind === SymbolKind.Class)) {
-        if (!module) {
-          const paths = workspace.asRelativePath(su.uri).split("/");
-          const file = paths.at(-1);
-          paths.pop();
-          const fileMod = `${file.split(".", 2)[0]}`;
-          module = paths.length ? `${paths.join(".")}.${fileMod}` : fileMod;
-        }
-        symbolsWithModule.push(`${module}.${symbol.name}`);
+        symbolsWithModule.push(`${modulesByUri[su.uri.path]}.${symbol.name}`);
       }
     });
   });
   const cis = symbolsWithModule.map((v) => getCompletionItemInString(v, lineText, position));
-  cis.push(getCompletionItemInString(isFunction ? l10n.t("create a new Function") : l10n.t("create a new Class"), lineText, position, [l10n.t("Module name"), ".", isFunction ? l10n.t("Function name") : l10n.t("Class name")]));
+  const modules = Object.values(modulesByUri);
+  modules.push(l10n.t("New module name"));
+  cis.push(
+    getCompletionItemInString(isFunction ? l10n.t("create a new function") : l10n.t("create a new class"), lineText, position, [
+      modules.length === 1 ? modules[0] : modules,
+      isFunction ? l10n.t("function name") : l10n.t("class name"),
+    ])
+  );
   return cis;
 };
 
@@ -213,7 +233,7 @@ const getCompletionItemInArray = (value: string, line: string, position: Positio
 };
 
 const stringRe = /(\w+)?\s*(=)?\s*(")?(\w*)(")?/; // storage_type = "toto": gr1 storage_type | gr2 = | gr3 " | gr4 toto | gr5 "
-const getCompletionItemInString = (value: string, line: string, position: Position, placeHolders?: string[]) => {
+const getCompletionItemInString = (value: string, line: string, position: Position, placeHolders?: [string[] | string, string]) => {
   const ci = new CompletionItem(value);
   const matches = line.match(listRe);
   const matchPos = getPosFromMatches(matches, line);
@@ -225,33 +245,47 @@ const getCompletionItemInString = (value: string, line: string, position: Positi
     startPos = matchPos[1] + matches[1].length;
     val = ' = "' + value + '"';
     si.appendText(' = "');
-    Array.isArray(placeHolders) && placeHolders.forEach(ph => si.appendPlaceholder(ph).appendTabstop());
+    appendPlaceHolders(si, placeHolders);
     si.appendText('"');
   } else {
     if (!matches[3]) {
       startPos = matchPos[2] + matches[2].length;
       val = ' "' + value + '"';
       si.appendText(' "');
-      Array.isArray(placeHolders) && placeHolders.forEach(ph => si.appendPlaceholder(ph).appendTabstop());
+      appendPlaceHolders(si, placeHolders);
       si.appendText('"');
     } else {
       startPos = matchPos[3] + matches[3].length;
       if (!matches[5]) {
         val = value + '"';
-        Array.isArray(placeHolders) && placeHolders.forEach(ph => si.appendPlaceholder(ph).appendTabstop());
+        appendPlaceHolders(si, placeHolders);
         si.appendText('"');
       } else {
         val = value;
-        Array.isArray(placeHolders) && placeHolders.forEach(ph => si.appendPlaceholder(ph).appendTabstop());
+        appendPlaceHolders(si, placeHolders);
         endPos = matchPos[5];
       }
     }
   }
   const rng = new Range(position.with(undefined, startPos), position.with(undefined, endPos + 1));
-  ci.additionalTextEdits = [TextEdit.replace(rng, placeHolders ? "": val)];
+  ci.additionalTextEdits = [TextEdit.replace(rng, placeHolders ? "" : val)];
   ci.insertText = placeHolders ? si : "";
   ci.sortText = placeHolders ? "ZZZ" + value : value;
   return ci;
+};
+
+const appendPlaceHolders = (si: SnippetString, placeHolders?: [string[] | string, string]) => {
+  Array.isArray(placeHolders) &&
+    placeHolders.forEach((ph, idx) => {
+      if (idx > 0) {
+        si.appendText(".");
+      }
+      if (Array.isArray(ph)) {
+        si.appendChoice(ph);
+      } else {
+        si.appendPlaceholder(ph);
+      }
+  });
 };
 
 const getPosFromMatches = (matches: string[], line: string) => {

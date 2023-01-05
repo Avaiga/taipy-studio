@@ -305,6 +305,11 @@
           "type": "integer",
           "default": 3000,
           "description": "%taipy.config.settings.status.timeout.desc%"
+        },
+        "taipyStudio.config.mainPythonFile": {
+          "type": "string",
+          "default": "main.py",
+          "description": "%taipy.config.settings.config.mainPythonFile.desc%"
         }
       }
     }

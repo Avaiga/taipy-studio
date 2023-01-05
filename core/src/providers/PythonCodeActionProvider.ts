@@ -27,6 +27,7 @@ export class PythonCodeActionProvider implements CodeActionProvider {
   }
 
   provideCodeActions(document: TextDocument, range: Range | Selection, context: CodeActionContext, token: CancellationToken): CodeAction[] {
+    const mainFile = workspace.workspaceFolders?.length ? workspace.getConfiguration("taipyStudio.config", workspace.workspaceFolders[0]).get<string>("mainPythonFile") : "main.py";
     return context.diagnostics
       .filter((diagnostic) => {
         const code = diagnostic.code as { target: Uri; value: string };
@@ -43,9 +44,9 @@ export class PythonCodeActionProvider implements CodeActionProvider {
         parts.pop();
         const pythonUri = code.target
           ? code.target
-          : Uri.joinPath(workspace.workspaceFolders[0].uri, ...parts, `${pythonFile === "__main__" ? "main" : pythonFile}.py`);
+          : Uri.joinPath(workspace.workspaceFolders[0].uri, ...parts, pythonFile === "__main__" ? mainFile : `${pythonFile}.py`);
         const codeAction = new CodeAction(
-          l10n.t("Create python {0} '{1}' in {2}", isFunction ? "Function" : "Class", pythonSymbol, workspace.asRelativePath(pythonUri)),
+          l10n.t("Create Python {0} '{1}' in {2}", isFunction ? "function" : "class", pythonSymbol, workspace.asRelativePath(pythonUri)),
           CodeActionKind.QuickFix
         );
         codeAction.diagnostics = [diagnostic];
