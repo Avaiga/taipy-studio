@@ -6,7 +6,8 @@ dist
 # Node.JS
 node_modules/
 
+.DS_Store
+
 # Python
 __pycache__/
 *.pyc
-package-lock.json

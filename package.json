@@ -1,0 +1,16 @@
+{
+  "name": "taipy-studio",
+  "displayName": "Taipy Studio",
+  "description": "Visual Studio Code extension for Taipy",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.73.1"
+  },
+  "categories": [
+    "Extension Packs"
+  ],
+  "extensionPack": [ 
+    "Taipy.taipy-studio-gui",
+    "Taipy.taipy-studio-config"
+  ]
+}
