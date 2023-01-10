@@ -1,0 +1,77 @@
+name: Publish pre-release to marketplace
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The package version to create (ex: 1.0.0)"
+        required: true
+
+jobs:
+  verify-package-version:
+    timeout-minutes: 20
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
+      - name: Ensure package version is properly set
+        run: |
+          echo """
+          import json, sys
+          with open('package.json') as version_file:
+              version = json.load(version_file)['version']
+          if version != sys.argv[1]:
+              raise ValueError(f'Invalid version {version} / {sys.argv[1]}')
+          """ > /tmp/check1.py
+          python /tmp/check1.py "${{ github.event.inputs.version }}"
+
+      - name: Validate branch name
+        run: |
+          echo """
+          import json, sys, re
+          with open('package.json') as version_file:
+              version = json.load(version_file)['version']
+          x = re.search(r'(\d+)\.(\d+)\.(\d+)(?:\.([a-zA-Z0-9_]+))?', version)
+          if not x:
+              raise ValueError('Invalid version expression')
+          if f'release/{x[1]}.{x[2]}' != sys.argv[1]:
+              raise ValueError(
+                  f'Branch name mismatch: release/{x[1]}.{x[2]} != {sys.argv[1]}'
+              )
+          """ > /tmp/check.py
+          python /tmp/check.py "${{ steps.extract_branch.outputs.branch }}"
+
+  publish:
+    needs: [verify-package-version]
+    timeout-minutes: 20
+    environment: publish
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup node version
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install webviews node_modules
+        working-directory: ./webviews
+        run: npm ci --include=dev
+
+      - name: Install node_modules
+        run: npm ci --include=dev
+
+      - name: Build the package
+        run: npm run package
+
+      - name: Publish
+        run: npm run prerelease-deploy
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

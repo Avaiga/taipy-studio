@@ -2,15 +2,33 @@
   "name": "taipy-studio",
   "displayName": "Taipy Studio",
   "description": "Visual Studio Code extension for Taipy",
+  "publisher": "Taipy",
+  "homepage": "https://github.com/Avaiga/taipy-studio.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Avaiga/taipy-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Avaiga/taipy-studio/issues"
+  },
   "version": "0.1.0",
   "engines": {
     "vscode": "^1.73.1"
   },
+  "icon": "assets/taipy-logo.png",
   "categories": [
     "Extension Packs"
   ],
-  "extensionPack": [ 
+  "scripts": {
+    "package": "vsce package",
+    "deploy": "vsce publish",
+    "prerelease-deploy": "vsce publish --pre-release"
+  },
+  "extensionPack": [
     "Taipy.taipy-studio-gui",
     "Taipy.taipy-studio-config"
-  ]
+  ],
+  "devDependencies": {
+    "@vscode/vsce": "^2.16.0"
+  }
 }
