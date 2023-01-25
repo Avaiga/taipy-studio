@@ -26,7 +26,7 @@ Taipy Studio automatically installs two extensions:
   1. Install the [Taipy Studio](https://marketplace.visualstudio.com/items?itemName=Taipy.taipy-studio)
      extension.<br/>
      You can look at the [Extension Marketplace](https://code.visualstudio.com/docs/editor/extension-marketplace)
-     page on how to install the extension. Look for extensions whose name contain "Taipy".
+     page on how to install the extension. Look for extensions whose names contain "Taipy".
 
 <p align="center">
 <img src="doc/images/installation.gif" width=75%>
@@ -48,13 +48,12 @@ Taipy Studio can be used in two main scenarios:
   the "Config Files" section at the top of this view.<br/>
   You can then select a configuration file to work on, adding and editing the configuration
   items that your application can use.<br/>
-  See the complete documentation on [Building Taipy configuration files](docs.taipy.io/TODO)
+  See the complete documentation on
+  [Building Taipy configuration files](https://docs.taipy.io/en/latest/manuals/studio/config/)
   for details.
 
 - Creating Taipy GUI pages:<br/>
-  If you edit a Markdown source file (`*.toml`) or a string in a Python source file (`*.py`),
+  If you edit a Markdown source file (`*.md`) or a string in a Python source file (`*.py`),
   Taipy Studio will provide you with support for the Taipy GUI syntax.<br/>
-  See the complete documentation on [Creating Taipy GUI pages](docs.taipy.io/TODO) for details.
-
-
-
+  See the complete documentation on
+  [Creating Taipy GUI pages](https://docs.taipy.io/en/latest/manuals/studio/gui/) for details.
