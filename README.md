@@ -41,8 +41,7 @@ Taipy Studio can be used in two main scenarios:
 
 - Building Taipy configuration files:<br/>
   If you plan to build Taipy configuration files, you can open the "Taipy Configs" view
-  and get started. It opens in the *Secondary Side Bar", usually located on the right side
-  of Visual Studio Code.
+  and get started. This view opens in the *Secondary Side Bar".
 
   If your current project has any configuration files (`*.toml`), they are listed in
   the "Config Files" section at the top of this view.<br/>
