@@ -12,10 +12,10 @@ programming language.
 
 Taipy Studio automatically installs two extensions:
 
-* [Taipy Studio Configuration Builder](https://marketplace.visualstudio.com/items?itemName=Taipy.taipy-studio-config) -
+* [Taipy Studio Configuration Builder](https://marketplace.visualstudio.com/items?itemName=Taipy.studio-config) -
   Provides a point-and-click edition environment to create and modify Taipy configuration
   files.
-* [Taipy Studio GUI Helper](https://marketplace.visualstudio.com/items?itemName=Taipy.taipy-studio-gui) -
+* [Taipy Studio GUI Helper](https://marketplace.visualstudio.com/items?itemName=Taipy.studio-gui) -
   Provides support for the extended Markdown syntax used in Taipy GUI. This includes IntelliSense on
   visual element properties, code navigation, variable explorer, and more.<br/>
   **Taipy API Support: 2.0+**
