@@ -1,5 +1,5 @@
 {
-  "name": "taipy-studio",
+  "name": "studio",
   "displayName": "Taipy Studio",
   "description": "Visual Studio Code extension for Taipy",
   "publisher": "Taipy",
@@ -25,8 +25,8 @@
     "prerelease-deploy": "vsce publish --pre-release"
   },
   "extensionPack": [
-    "Taipy.taipy-studio-gui",
-    "Taipy.taipy-studio-config"
+    "Taipy.studio-gui",
+    "Taipy.studio-config"
   ],
   "devDependencies": {
     "@vscode/vsce": "^2.16.0"
