@@ -11,13 +11,16 @@
   "bugs": {
     "url": "https://github.com/Avaiga/taipy-studio/issues"
   },
-  "version": "0.1.0",
+  "version": "0.1.2",
   "engines": {
     "vscode": "^1.73.1"
   },
   "icon": "assets/taipy-logo.png",
   "categories": [
-    "Extension Packs"
+    "Extension Packs",
+    "Linters",
+    "Machine Learning",
+    "Data Science"
   ],
   "scripts": {
     "package": "vsce package",
