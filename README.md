@@ -9,6 +9,7 @@ provides a whole development environment, including state-of-the-art support for
 programming language.
 
 You can get all the relevant information on this extension on the [Taipy Studio](https://docs.taipy.io/en/latest/manuals/studio/) documentation page.
+
 ## Extensions included
 
 Taipy Studio automatically installs two extensions:
