@@ -8,6 +8,8 @@ Taipy Studio is an extension to [Visual Studio Code](https://code.visualstudio.c
 provides a whole development environment, including state-of-the-art support for the Python
 programming language.
 
+You can get all the relevant information on this extension on the [Taipy Studio](https://docs.taipy.io/en/latest/manuals/studio/) documentation page.
+
 ## Extensions included
 
 Taipy Studio automatically installs two extensions:
@@ -26,10 +28,10 @@ Taipy Studio automatically installs two extensions:
   1. Install the [Taipy Studio](https://marketplace.visualstudio.com/items?itemName=Taipy.taipy-studio)
      extension.<br/>
      You can look at the [Extension Marketplace](https://code.visualstudio.com/docs/editor/extension-marketplace)
-     page on how to install the extension. Look for extensions whose names contain "Taipy".
+     page for how to install the extension. Look for extensions whose names contain "Taipy".
 
 <p align="center">
-<img src="doc/images/installation.gif" width=75%>
+<img src="doc/images/installation.gif" width=70%>
 </p>
 
 You can now start building your Taipy application with specific tools that will
