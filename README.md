@@ -8,7 +8,8 @@ Taipy Studio is an extension to [Visual Studio Code](https://code.visualstudio.c
 provides a whole development environment, including state-of-the-art support for the Python
 programming language.
 
-You can get all the relevant information on this extension on the [Taipy Studio](https://docs.taipy.io/en/latest/manuals/studio/) documentation page.
+You can get all the relevant information on this extension on the
+[Taipy Studio](https://docs.taipy.io/en/latest/manuals/studio/) documentation page.
 
 ## Extensions included
 
@@ -24,9 +25,11 @@ Taipy Studio automatically installs two extensions:
 
 ## Quick start
 
-  1. Install [Taipy](https://pypi.org/project/taipy/) version 2.0 or above on your system.
+  1. Install [Taipy](https://pypi.org/project/taipy/) version 3.0 or above on your system.
   1. Install the [Taipy Studio](https://marketplace.visualstudio.com/items?itemName=Taipy.taipy-studio)
      extension.<br/>
+     Note that Taipy Studio 2.0 and later is compatible with Taipy 3.0 and later. If you plan to
+     use a legacy version of Taipy, please install the latest Taipy Studio 1.x version.<br/>
      You can look at the [Extension Marketplace](https://code.visualstudio.com/docs/editor/extension-marketplace)
      page for how to install the extension. Look for extensions whose names contain "Taipy".
 
@@ -46,7 +49,7 @@ Taipy Studio can be used in two main scenarios:
   and get started. This view opens in the *Secondary Side Bar".
 
   If your current project has any configuration files (`*.toml`), they are listed in
-  the "Config Files" section at the top of this view.<br/>
+  the **Config Files** section at the top of this view.<br/>
   You can then select a configuration file to work on, adding and editing the configuration
   items that your application can use.<br/>
   See the complete documentation on
